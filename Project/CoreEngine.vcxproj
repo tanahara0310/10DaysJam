@@ -448,6 +448,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
@@ -1024,6 +1026,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h" />
     <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h" />
     <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h" />
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.h" />
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h" />
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h" />
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShipControllerComponent.h" />
+    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.h" />
+    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\PaddleComponent.h" />
+    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\FallingItemComponent.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />

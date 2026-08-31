@@ -796,6 +796,12 @@
     <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp">
       <Filter>Application\Src\Scenes\SampleGameScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.cpp">
+      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.cpp">
+      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -2427,6 +2433,27 @@
     <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h">
       <Filter>Application\Src\Scenes\SampleGameScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.h">
+      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h">
+      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h">
+      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShipControllerComponent.h">
+      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.h">
+      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\PaddleComponent.h">
+      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\FallingItemComponent.h">
+      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -2673,6 +2700,12 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\SampleGameScene">
       <UniqueIdentifier>{296989A0-B084-4643-ABA9-184DA0DDC6E3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\ShootingSampleScene">
+      <UniqueIdentifier>{65B4BE20-1815-46C3-91A4-0099398D063C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\Sprite2DSampleScene">
+      <UniqueIdentifier>{0594C199-08F3-4021-B85A-4EC3C966081F}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>

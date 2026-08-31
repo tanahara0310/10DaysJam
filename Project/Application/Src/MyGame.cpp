@@ -10,6 +10,8 @@
 #include "Scenes/WaterTestScene/WaterTestScene.h"
 #include "Scenes/CollisionTestScene/CollisionTestScene.h"
 #include "Scenes/SampleGameScene/SampleGameScene.h"
+#include "Scenes/ShootingSampleScene/ShootingSampleScene.h"
+#include "Scenes/Sprite2DSampleScene/Sprite2DSampleScene.h"
 
 using namespace CoreEngine;
 
@@ -73,6 +75,8 @@ void MyGame::CreateSceneManager()
     sceneManager_->RegisterScene<CollisionTest::CollisionTestScene>("CollisionTestScene");
     // 学習用のサンプルゲーム
     sceneManager_->RegisterScene<SampleGame::SampleGameScene>("SampleGameScene");
+    sceneManager_->RegisterScene<ShootingSample::ShootingSampleScene>("ShootingSampleScene");
+    sceneManager_->RegisterScene<Sprite2DSample::Sprite2DSampleScene>("Sprite2DSampleScene");
 }
 
 void MyGame::LoadInitialScene()
