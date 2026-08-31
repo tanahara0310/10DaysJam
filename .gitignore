@@ -23,6 +23,11 @@ mono_crash.*
 
 # C++ build intermediate / output files
 *.obj
+# ↑ の *.obj はコンパイラの中間ファイル用。
+# Wavefront OBJ（3Dモデル）まで巻き込んでアセットが commit されない事故を防ぐため、
+# Assets 配下の .obj は明示的に除外解除する。
+!Project/Application/Assets/**/*.obj
+!Project/Engine/Assets/**/*.obj
 *.ilk
 *.exp
 *.map
