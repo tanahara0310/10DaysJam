@@ -3,6 +3,7 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include <ImGuizmo.h>
 #include "Math/Matrix/Matrix4x4.h"
+#include "UI/UIElement.h"
 
 namespace CoreEngine
 {
@@ -38,6 +39,22 @@ namespace CoreEngine
         /// @param mode 操作モード
         /// @return トランスフォームが変更された場合true
         static bool Manipulate2D(SpriteObject* sprite, const Camera* camera, Mode mode = Mode::Translate);
+
+        /// @brief UI 要素用ギズモを描画し、レイアウトを操作する
+        /// @param layout 操作対象のレイアウト。変更はこの引数へ直接書き戻す
+        /// @param referenceSize UI の基準解像度（UIRenderer::GetScreenSize）
+        /// @param mode 操作モード
+        /// @return 変更された場合 true
+        /// @details
+        ///  UI はカメラに依存しないので、ビューを単位行列、
+        ///  射影を「基準解像度 → NDC」の正射影として渡す。
+        ///  これは UIRenderer が実際の描画で使うのと同じ変換なので、
+        ///  ギズモは画面に出ている UI とぴったり重なる。
+        ///
+        ///  スケールは `UILayout::size` に対応させてある。
+        ///  スプライトの scale と同じ感覚で矩形を伸ばせるようにするため。
+        static bool ManipulateUI(UILayout& layout, const Vector2& referenceSize,
+            Mode mode = Mode::Translate);
 
         /// @brief ギズモが現在操作中かどうか
         /// @return 操作中ならtrue

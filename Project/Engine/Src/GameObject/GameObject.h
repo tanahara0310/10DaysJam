@@ -251,6 +251,14 @@ namespace CoreEngine
         /// @param enable false にするとシーンデータへの保存・復元がスキップされる
         void SetSerializeEnabled(bool enable);
 
+        /// @brief シーン JSON から再生成するための型名
+        /// @return nullptr なら「シーン側のコードが生成する前提」で、
+        ///         マニフェストからは作られない（既存のオブジェクトはこちら）
+        /// @details エディタ上で追加した UI のように、コードに書かれていない
+        ///          オブジェクトを次回起動時に復活させるために使う。
+        ///          SceneSaveSystem::RegisterObjectType で同じ名前を登録しておくこと。
+        virtual const char* GetSerializeTypeName() const { return nullptr; }
+
         /// @brief オブジェクトデータを JSON に書き出す
         /// @return シリアライズ結果。保存不要な場合は空の json を返す。
         /// @note SceneSaveSystem から自動的に呼び出される。
