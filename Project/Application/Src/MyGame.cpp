@@ -12,6 +12,7 @@
 #include "Scenes/SampleGameScene/SampleGameScene.h"
 #include "Scenes/ShootingSampleScene/ShootingSampleScene.h"
 #include "Scenes/Sprite2DSampleScene/Sprite2DSampleScene.h"
+#include "Scenes/MsdfTextTestScene/MsdfTextTestScene.h"
 
 using namespace CoreEngine;
 
@@ -77,6 +78,8 @@ void MyGame::CreateSceneManager()
     sceneManager_->RegisterScene<SampleGame::SampleGameScene>("SampleGameScene");
     sceneManager_->RegisterScene<ShootingSample::ShootingSampleScene>("ShootingSampleScene");
     sceneManager_->RegisterScene<Sprite2DSample::Sprite2DSampleScene>("Sprite2DSampleScene");
+    // MSDF フォント描画の検証シーン
+    sceneManager_->RegisterScene<MsdfTextTest::MsdfTextTestScene>("MsdfTextTestScene");
 }
 
 void MyGame::LoadInitialScene()

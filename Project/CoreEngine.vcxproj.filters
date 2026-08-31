@@ -1147,6 +1147,69 @@
     <ClCompile Include="Externals\meshoptimizer\src\vfetchoptimizer.cpp">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\Contour.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\DistanceMapping.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\EdgeHolder.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\MSDFErrorCorrection.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\Projection.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\Scanline.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\Shape.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\contour-combiners.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\convergent-curve-ordering.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\edge-coloring.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\edge-segments.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\edge-selectors.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\equation-solver.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\msdf-error-correction.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\msdfgen\core\msdfgen.cpp">
+      <Filter>Externals\msdfgen\core</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Text\DirectWriteFontFace.cpp">
+      <Filter>Engine\Src\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Text\MsdfFontBaker.cpp">
+      <Filter>Engine\Src\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Text\MsdfFont.cpp">
+      <Filter>Engine\Src\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Material\TextMaterialInstance.cpp">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIText.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp">
+      <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">
@@ -2652,6 +2715,33 @@
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h">
       <Filter>Externals\meshoptimizer\src</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Text\MsdfFontTypes.h">
+      <Filter>Engine\Src\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Text\TextEncoding.h">
+      <Filter>Engine\Src\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Text\DirectWriteFontFace.h">
+      <Filter>Engine\Src\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Text\MsdfFontBaker.h">
+      <Filter>Engine\Src\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Text\MsdfFont.h">
+      <Filter>Engine\Src\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Material\TextMaterialInstance.h">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h">
+      <Filter>Engine\Src\Graphics\Render\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIText.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h">
+      <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
@@ -2697,6 +2787,9 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\CollisionTestScene">
       <UniqueIdentifier>{2C8F41A6-5B7D-4E93-9C10-6A4D2F8B7E51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\MsdfTextTestScene">
+      <UniqueIdentifier>{15CA7471-23C7-4DAE-A320-F49B83CF292A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\SampleGameScene">
       <UniqueIdentifier>{296989A0-B084-4643-ABA9-184DA0DDC6E3}</UniqueIdentifier>
@@ -3124,6 +3217,9 @@
     <Filter Include="Engine\Src\Scene\Feature">
       <UniqueIdentifier>{D4DC083E-4D17-492A-A32F-9CBA81EC3352}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Text">
+      <UniqueIdentifier>{D1CFE8DD-8D72-4161-AEF2-974DDA844058}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Threading">
       <UniqueIdentifier>{BA947100-DF5F-4273-BD5F-45D5B7B58B7B}</UniqueIdentifier>
     </Filter>
@@ -3180,6 +3276,12 @@
     </Filter>
     <Filter Include="Externals\meshoptimizer\src">
       <UniqueIdentifier>{2CC2475C-0018-40F0-8016-771D8A381D02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\msdfgen">
+      <UniqueIdentifier>{8C14DC65-A9F9-4484-91CF-9592FCBB358F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\msdfgen\core">
+      <UniqueIdentifier>{20709903-646C-4980-BF9A-292A677E35D3}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

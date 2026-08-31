@@ -9,30 +9,34 @@
 namespace CoreEngine
 {
     void UIRenderer::Initialize(ID3D12Device* device) {
+        const std::string debugName = GetPipelineDebugName();
+
         shaderCompiler_->Initialize();
 
-        auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/UI/UI.VS.hlsl", L"vs_6_0");
+        auto vertexShaderBlob = shaderCompiler_->CompileShader(GetVertexShaderPath(), L"vs_6_0");
         assert(vertexShaderBlob != nullptr);
 
-        auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/UI/UI.PS.hlsl", L"ps_6_0");
+        auto pixelShaderBlob = shaderCompiler_->CompileShader(GetPixelShaderPath(), L"ps_6_0");
         assert(pixelShaderBlob != nullptr);
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "UIRenderer");
+        reflectionData_ = reflectionBuilder_->BuildFromShaders(
+            vertexShaderBlob, pixelShaderBlob, debugName + "Renderer");
 
         // SpriteRenderer と同じシンプル構成
         RootSignatureConfig config;
 
         // UI はテキスト等で滑らかさが欲しいので Linear サンプラー
-        config.ConfigureSampler("gSampler", SamplerConfig::Linear());
+        config.ConfigureSampler("gSampler", GetSamplerConfig());
 
         auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
         if (!buildResult.success) {
-            throw std::runtime_error("Failed to create UI Root Signature: " + buildResult.errorMessage);
+            throw std::runtime_error(
+                "Failed to create " + debugName + " Root Signature: " + buildResult.errorMessage);
         }
 
         bool result = psoMg_->CreateBuilder()
-            .SetDebugName("UI")
+            .SetDebugName(debugName)
             .SetInputLayoutFromReflection(*reflectionData_)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
@@ -40,7 +44,7 @@ namespace CoreEngine
             .BuildAllBlendModes(device, vertexShaderBlob, pixelShaderBlob, rootSignatureMg_->GetRootSignature());
 
         if (!result) {
-            throw std::runtime_error("Failed to create UI Pipeline State Object");
+            throw std::runtime_error("Failed to create " + debugName + " Pipeline State Object");
         }
 
         pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNormal);
