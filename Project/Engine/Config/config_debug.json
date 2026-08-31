@@ -1,0 +1,25 @@
+{
+    "shader": {
+        "enableCache": true
+    },
+    "debug": {
+        "enableDRED": true,
+        "enableDebugLayer": true,
+        "enableGPUBasedValidation": false,
+        "enablePixRuntime": true
+    },
+    "descriptors": {
+        "maxDSVDescriptors": 10,
+        "maxRTVDescriptors": 256,
+        "maxSRVDescriptors": 2048
+    },
+    "sceneView": {
+        "enablePostEffect": true,
+        "resolutionScale": 0.5
+    },
+    "window": {
+        "height": 720,
+        "title": "CoreEngine",
+        "width": 1280
+    }
+}

@@ -1,0 +1,21 @@
+{
+    "shader": {
+        "enableCache": true
+    },
+    "debug": {
+        "enableDRED": false,
+        "enableDebugLayer": false,
+        "enableGPUBasedValidation": false,
+        "enablePixRuntime": false
+    },
+    "descriptors": {
+        "maxDSVDescriptors": 10,
+        "maxRTVDescriptors": 256,
+        "maxSRVDescriptors": 2048
+    },
+    "window": {
+        "height": 720,
+        "title": "CoreEngine",
+        "width": 1280
+    }
+}

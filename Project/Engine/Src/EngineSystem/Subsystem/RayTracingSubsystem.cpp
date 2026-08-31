@@ -1,0 +1,414 @@
+#include "pch.h"
+#include "RayTracingSubsystem.h"
+#include <algorithm>
+#include <vector>
+
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/Render/GBuffer/GBufferManager.h"
+#include "Graphics/Render/FrameBlackboard.h"
+#include "Graphics/Light/LightManager.h"
+#include "Graphics/Model/ModelManager.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
+#include "Graphics/Render/Pass/RenderPass.h"
+#include "Graphics/Water/FFTOceanManager.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/GameObjectManager.h"
+#include "GameObject/GameObjectManager.h"
+#include "Camera/View/ViewInfo.h"
+#include "Math/MathCore.h"
+#include "Scene/SceneManager.h"
+#include "Utility/Logger/Logger.h"
+
+namespace CoreEngine
+{
+    void RayTracingSubsystem::BuildAccelerationStructures(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ModelManager* modelManager,
+        SceneManager* sceneManager)
+    {
+        auto* asMgr = context.accelerationStructureManager;
+        if (!asMgr || !asMgr->IsSupported() || !dx) {
+            return;
+        }
+
+        // フレーム開始時に RT シャドウの状態をリセット
+        if (context.rtShadowManager) {
+            context.rtShadowManager->ResetFrameState();
+        }
+
+        // BLAS 遅延ビルド（未構築のモデルリソース全てを対象）
+        if (modelManager) {
+            auto* cmdListForBLAS = dx->GetCommandList();
+            modelManager->ForEachResource([&](ModelResource* resource) {
+                asMgr->BuildBLASFromModelResource(cmdListForBLAS, resource);
+                });
+        }
+
+        // DXR TLAS 構築（シーン内のメッシュを持つコンポーネントからインスタンスを収集）
+        if (!sceneManager) {
+            return;
+        }
+
+        auto* objMgr = sceneManager->GetCurrentGameObjectManager();
+        if (!objMgr) {
+            return;
+        }
+
+        std::vector<AccelerationStructureManager::InstanceDesc> tlasInstances;
+
+        // 以前は全オブジェクトを `dynamic_cast<ModelGameObject*>` していた。
+        // 「メッシュを持つか」はコンポーネントの有無で決まるので、具象クラスを知る必要はない。
+        // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う。
+        objMgr->ForEachComponent<MeshRendererComponent>(
+            [&tlasInstances](MeshRendererComponent& renderer) {
+                // 半透明オブジェクト（水面など）は RT シャドウのキャスターから除外する
+                if (renderer.GetBlendMode() != BlendMode::kBlendModeNone) return;
+
+                auto* model = renderer.GetModel();
+                if (!model) return;
+
+                auto* resource = model->GetModelResource();
+                if (!resource || !resource->HasBLAS()) return;
+
+                auto* transform = renderer.GetTransformComponent();
+                if (!transform) return;
+
+                AccelerationStructureManager::InstanceDesc inst;
+                inst.blasIndex = resource->GetBLASIndex();
+                inst.SetTransform(transform->Get().GetWorldMatrix());
+                tlasInstances.push_back(inst);
+            });
+
+        if (!tlasInstances.empty()) {
+            asMgr->BuildTLAS(dx->GetCommandList(), tlasInstances);
+        }
+    }
+
+    bool RayTracingSubsystem::BuildShadowStageContext(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        ShadowStageContext& outStageContext)
+    {
+        auto* rtShadow = context.rtShadowManager;
+        if (!rtShadow || !rtShadow->IsInitialized()) return false;
+        if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return false;
+        if (!dx || !cmdList) return false;
+
+        // 実行中のビューの ViewInfo を使う。ReflectionView を復活させる場合は
+        // FrameViews へそのビューを 1 つ足せば、ここは自動的に正しい行列を引く。
+        if (!context.frameViews) return false;
+        const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
+        if (!view.isValid) return false;
+
+        outStageContext.rtShadow = rtShadow;
+
+        // WorldPosition ターゲット廃止に伴い、深度から復元する（ビュー別に差し替わる FrameBlackboard 経由）
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(
+                FrameBlackboard::SceneDepth, outStageContext.sceneDepthSRV);
+        }
+        outStageContext.projection = view.projection;
+        outStageContext.invViewProj = view.invViewProjection;
+        outStageContext.normalSRV =
+            context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
+        outStageContext.motionVectorSRV =
+            context.gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector);
+        outStageContext.width = static_cast<UINT>(dx->GetClientWidth());
+        outStageContext.height = static_cast<UINT>(dx->GetClientHeight());
+        return true;
+    }
+
+    void RayTracingSubsystem::ForEachShadowCastingLight(
+        const RenderContext& context,
+        const std::function<void(uint32_t lightIndex, const Light& light)>& body)
+    {
+        const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
+        for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
+            auto* dirLight = context.lightManager->GetDirectionalLight(li);
+            if (!dirLight || !dirLight->enabled) continue;
+            body(li, *dirLight);
+        }
+    }
+
+    void RayTracingSubsystem::DispatchRTShadowTrace(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        RayTracingShadowManager::ViewID viewId)
+    {
+        ShadowStageContext stage;
+        if (!BuildShadowStageContext(context, dx, cmdList, stage)) return;
+
+        // 全ライト分 DispatchRays を先に実行（GPU パイプラインを詰めるため）
+        ForEachShadowCastingLight(context, [&](uint32_t li, const Light& light) {
+            stage.rtShadow->Dispatch(
+                cmdList,
+                stage.sceneDepthSRV,
+                stage.normalSRV,
+                light.direction,
+                stage.invViewProj,
+                stage.width,
+                stage.height,
+                viewId,
+                li);
+            });
+
+        // GBuffer 入力の前後状態遷移は RenderGraph 側の自動遷移へ委譲する。
+    }
+
+    void RayTracingSubsystem::DispatchRTShadowTemporal(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        RayTracingShadowManager::ViewID viewId)
+    {
+        ShadowStageContext stage;
+        if (!BuildShadowStageContext(context, dx, cmdList, stage)) return;
+
+        // 全ライト分 テンポラル蓄積パス（空間前処理+再投影+Variance Clamping）
+        ForEachShadowCastingLight(context, [&](uint32_t li, const Light&) {
+            stage.rtShadow->ApplyTemporal(
+                cmdList,
+                stage.normalSRV,
+                stage.sceneDepthSRV,
+                stage.motionVectorSRV,
+                stage.projection,
+                viewId,
+                li);
+            });
+    }
+
+    void RayTracingSubsystem::DispatchRTShadowDenoise(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        RayTracingShadowManager::ViewID viewId)
+    {
+        ShadowStageContext stage;
+        if (!BuildShadowStageContext(context, dx, cmdList, stage)) return;
+
+        // 全ライト分 A-Trous デノイズをまとめて実行
+        ForEachShadowCastingLight(context, [&](uint32_t li, const Light&) {
+            stage.rtShadow->Denoise(
+                cmdList,
+                stage.normalSRV,
+                stage.sceneDepthSRV,
+                stage.projection,
+                viewId,
+                li);
+            });
+
+        // RT シャドウの全ステージが終わったので、デバッグパネルが中間バッファ
+        // （生マスク・履歴）を ImGui で表示できる状態へ整える。
+        // パネルが要求していないフレームは何もしない。
+        stage.rtShadow->PrepareDebugViews(cmdList);
+    }
+
+    bool RayTracingSubsystem::BuildWaterDispatchContext(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        const WaterSurfaceData& surfaceData,
+        const char* debugLabel,
+        bool requireSceneColor,
+        WaterDispatchContext& outDispatchContext)
+    {
+        if (!context.gBufferManager || !context.sceneManager || !dx || !cmdList) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "RayTracingSubsystem: {} dispatch skipped. gBuffer={} sceneManager={} dx={} cmdList={}",
+                debugLabel,
+                context.gBufferManager != nullptr,
+                context.sceneManager != nullptr,
+                dx != nullptr,
+                cmdList != nullptr);
+            return false;
+        }
+
+        if (!context.frameViews || !context.frameViews->Get(context.viewSettings.viewType).isValid) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "RayTracingSubsystem: {} dispatch skipped. view is invalid.",
+                debugLabel);
+            return false;
+        }
+        const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
+
+        // 深度は WorldPosition ターゲット廃止に伴いここから復元する
+        // （ビュー別に差し替わるので FrameBlackboard 経由で取る）
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(
+                FrameBlackboard::SceneDepth, outDispatchContext.sceneDepthSRV);
+
+            // カラーソースは水面合成前の SceneColor スナップショット
+            // （空・雲・ゴッドレイ・島すべてを含み、水面のみ未合成）。
+            if (!context.frameBlackboard->TryGetSrvHandle(
+                FrameBlackboard::SceneColorSnapshot, outDispatchContext.sceneColorSRV)) {
+                context.frameBlackboard->TryGetSrvHandle(
+                    FrameBlackboard::SceneColor, outDispatchContext.sceneColorSRV);
+            }
+        }
+
+        if (requireSceneColor && outDispatchContext.sceneColorSRV.ptr == 0) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::RenderTarget,
+                "RayTracingSubsystem: {} dispatch skipped. SceneColorSnapshot/SceneColor SRV is invalid.",
+                debugLabel);
+            return false;
+        }
+
+        outDispatchContext.viewProjection = view.viewProjection;
+        outDispatchContext.cameraPosition = view.position;
+        outDispatchContext.width = static_cast<UINT>(dx->GetClientWidth());
+        outDispatchContext.height = static_cast<UINT>(dx->GetClientHeight());
+
+        // FFT Ocean 経路のときだけ波面テクスチャを接続する。
+        // Gerstner 経路では enabled=0 のままにして、シェーダー側を解析評価へ倒す。
+        if (context.fftOceanManager
+            && context.fftOceanManager->IsInitialized()
+            && surfaceData.simulationType == kWaterSurfaceModelTypeFFTOcean) {
+            const FFTOceanManager::Settings& fftSettings = context.fftOceanManager->GetSettings();
+            outDispatchContext.fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
+            outDispatchContext.fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
+            outDispatchContext.fftOceanInput.resolution = fftSettings.resolution;
+            outDispatchContext.fftOceanInput.enabled = 1;
+        }
+
+        return true;
+    }
+
+    void RayTracingSubsystem::DispatchWaterRefraction(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        WaterRefractionRayTracingManager::ViewID viewId,
+        const WaterSurfaceData& surfaceData)
+    {
+        auto* rtWaterRefraction = context.rtWaterRefractionManager;
+        if (!rtWaterRefraction || !rtWaterRefraction->IsInitialized()) {
+            return;
+        }
+
+        WaterDispatchContext dispatchContext;
+        if (!BuildWaterDispatchContext(
+            context, dx, cmdList, surfaceData, "water refraction", true, dispatchContext)) {
+            return;
+        }
+
+        rtWaterRefraction->Dispatch(
+            cmdList,
+            dispatchContext.sceneDepthSRV,
+            dispatchContext.sceneColorSRV,
+            dispatchContext.viewProjection,
+            dispatchContext.cameraPosition,
+            surfaceData,
+            dispatchContext.fftOceanInput,
+            dispatchContext.width,
+            dispatchContext.height,
+            viewId);
+    }
+
+    void RayTracingSubsystem::DispatchWaterReflection(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        WaterReflectionRayTracingManager::ViewID viewId,
+        const WaterSurfaceData& surfaceData)
+    {
+        auto* rtWaterReflection = context.rtWaterReflectionManager;
+        if (!rtWaterReflection || !rtWaterReflection->IsInitialized()) {
+            return;
+        }
+        WaterDispatchContext dispatchContext;
+        if (!BuildWaterDispatchContext(
+            context, dx, cmdList, surfaceData, "water reflection", true, dispatchContext)) {
+            return;
+        }
+
+        // 空キューブマップ（空＋雲）を反射パスへ渡す。
+        // レイが空へ抜けたときの色を「実際にトレースした向き」でこのパス内で
+        // 解決するために必要（Water.PS 側で平面法線の空と混ぜると二重像になる）。
+        D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSRV{};
+        if (auto* atmosphere = context.atmosphereManager) {
+            if (atmosphere->IsSkySpecularEnabled() && atmosphere->IsSkyEnvironmentReady()) {
+                skyEnvironmentSRV = atmosphere->GetSkySpecularSRVHandle();
+            }
+        }
+
+        rtWaterReflection->Dispatch(
+            cmdList,
+            dispatchContext.sceneDepthSRV,
+            dispatchContext.sceneColorSRV,
+            dispatchContext.viewProjection,
+            dispatchContext.cameraPosition,
+            surfaceData,
+            dispatchContext.fftOceanInput,
+            skyEnvironmentSRV,
+            dispatchContext.width,
+            dispatchContext.height,
+            viewId);
+    }
+
+    void RayTracingSubsystem::DispatchWaterCaustics(
+        const RenderContext& context,
+        GraphicsCore* dx,
+        ID3D12GraphicsCommandList* cmdList,
+        WaterCausticsRayTracingManager::ViewID viewId,
+        const WaterSurfaceData& surfaceData)
+    {
+        auto* rtWaterCaustics = context.rtWaterCausticsManager;
+        if (!rtWaterCaustics || !rtWaterCaustics->IsInitialized()) {
+            return;
+        }
+        // コースティクスは屈折・反射と違い SceneColor へ再投影しないので必須ではない
+        WaterDispatchContext dispatchContext;
+        if (!BuildWaterDispatchContext(
+            context, dx, cmdList, surfaceData, "water caustics", false, dispatchContext)) {
+            return;
+        }
+
+        // シーンの実際のディレクショナルライトの方向・色・強度・有効フラグを RT コースティクスへ
+        // 伝える。以前は方向しか渡しておらず、ライトを消してもコースティクスが消えない、
+        // ライトの色/強度を変えても常に一定の白い光量のままになる不具合の原因だった。
+        WaterCausticsRayTracingManager::LightInput lightInput{};
+        if (context.lightManager) {
+            if (Light* mainLight = context.lightManager->GetDirectionalLight(0);
+                mainLight && mainLight->enabled) {
+                lightInput.direction = CoreEngine::Normalize(mainLight->direction);
+                // 大気透過率適用済みの実効色（DeferredLighting・SS版コースティクスと同一基準）。
+                // 生の color を渡すと日没時に置換前後で輝度が食い違い水面線が不連続になる
+                const Vector3 effectiveColor =
+                    context.lightManager->GetEffectiveLightColorRGB(*mainLight);
+                lightInput.color = { effectiveColor.x, effectiveColor.y, effectiveColor.z };
+                // オーサリングは照度 [lx]。シェーダーが期待する従来単位へ換算する
+                lightInput.intensity = LightUnits::LuxToShader(mainLight->intensity);
+                lightInput.enabled = true;
+            } else {
+                lightInput.enabled = false;
+            }
+        } else {
+            lightInput.enabled = false;
+        }
+
+        rtWaterCaustics->Dispatch(
+            cmdList,
+            dispatchContext.sceneDepthSRV,
+            context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness),
+            lightInput,
+            surfaceData,
+            dispatchContext.fftOceanInput,
+            MathCore::Matrix::Inverse(dispatchContext.viewProjection),
+            dispatchContext.width,
+            dispatchContext.height,
+            viewId);
+    }
+}

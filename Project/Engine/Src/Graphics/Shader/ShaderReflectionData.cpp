@@ -1,0 +1,382 @@
+#include "pch.h"
+#include "ShaderReflectionData.h"
+#include "Utility/Logger/Logger.h"
+#include <algorithm>
+#include <cctype>
+#include <sstream>
+
+namespace CoreEngine
+{
+    namespace {
+    /// @brief 同じレジスタ・スペースへ既に登録されたバインドを探す（無ければ nullptr）
+        ShaderResourceBinding* FindMergeableBinding(
+            std::vector<ShaderResourceBinding>& bindings,
+            const ShaderResourceBinding& incoming)
+        {
+            auto it = std::find_if(bindings.begin(), bindings.end(),
+                [&incoming](const ShaderResourceBinding& binding) {
+                    return binding.type == incoming.type
+                        && binding.bindPoint == incoming.bindPoint
+                        && binding.space == incoming.space
+                        && binding.name == incoming.name;
+                });
+            return it != bindings.end() ? &(*it) : nullptr;
+        }
+
+    /// @brief 同じレジスタのバインドがあれば可視性をマージし、無ければ追加する
+        void AddOrMergeBinding(
+            std::vector<ShaderResourceBinding>& bindings,
+            const ShaderResourceBinding& incoming)
+        {
+            if (ShaderResourceBinding* existing = FindMergeableBinding(bindings, incoming)) {
+                existing->bindCount = std::max(existing->bindCount, incoming.bindCount);
+                existing->size = std::max(existing->size, incoming.size);
+                if (existing->visibility != incoming.visibility) {
+                    existing->visibility = D3D12_SHADER_VISIBILITY_ALL;
+                }
+                return;
+            }
+
+            bindings.push_back(incoming);
+        }
+    }
+
+    void ShaderReflectionData::AddCBV(const ShaderResourceBinding& binding) {
+        AddOrMergeBinding(cbvBindings_, binding);
+    }
+
+    void ShaderReflectionData::AddSRV(const ShaderResourceBinding& binding) {
+        AddOrMergeBinding(srvBindings_, binding);
+    }
+
+    void ShaderReflectionData::AddUAV(const ShaderResourceBinding& binding) {
+        AddOrMergeBinding(uavBindings_, binding);
+    }
+
+    void ShaderReflectionData::AddSampler(const ShaderResourceBinding& binding) {
+        AddOrMergeBinding(samplerBindings_, binding);
+    }
+
+    const ShaderResourceBinding* ShaderReflectionData::FindCBV(const std::string& name) const {
+        auto it = std::find_if(cbvBindings_.begin(), cbvBindings_.end(),
+            [&name](const ShaderResourceBinding& binding) {
+                return binding.name == name;
+            });
+        return it != cbvBindings_.end() ? &(*it) : nullptr;
+    }
+
+    const ShaderResourceBinding* ShaderReflectionData::FindSRV(const std::string& name) const {
+        auto it = std::find_if(srvBindings_.begin(), srvBindings_.end(),
+            [&name](const ShaderResourceBinding& binding) {
+                return binding.name == name;
+            });
+        return it != srvBindings_.end() ? &(*it) : nullptr;
+    }
+
+    const ShaderResourceBinding* ShaderReflectionData::FindUAV(const std::string& name) const {
+        auto it = std::find_if(uavBindings_.begin(), uavBindings_.end(),
+            [&name](const ShaderResourceBinding& binding) {
+                return binding.name == name;
+            });
+        return it != uavBindings_.end() ? &(*it) : nullptr;
+    }
+
+    std::string ShaderReflectionData::ToString() const {
+        std::stringstream ss;
+        
+        // シェーダー名のタイトル作成
+        std::string title = "SHADER REFLECTION";
+        if (!shaderName_.empty()) {
+            title = shaderName_;
+        }
+        
+        // タイトルを中央揃え（最大幅65文字）
+        // 枠幅を超える名前が来ると rightPad の符号なし減算がアンダーフローして
+        // std::string(巨大値, ' ') になるので、先に切り詰めておく
+        const size_t boxWidth = 65;
+        if (title.length() > boxWidth) {
+            title.resize(boxWidth);
+        }
+        const size_t padding = (boxWidth - title.length()) / 2;
+        std::string centeredTitle = std::string(padding, ' ') + title;
+
+        // ヘッダーライン
+        ss << "\n";
+        ss << "┌─────────────────────────────────────────────────────────────────┐\n";
+        ss << "│" << centeredTitle;
+        // 右側のパディング
+        const size_t rightPad = boxWidth - centeredTitle.length();
+        ss << std::string(rightPad, ' ') << "│\n";
+        ss << "├─────────────────────────────────────────────────────────────────┤\n";
+
+        // サマリー
+        ss << "│  Summary: CBV=" << cbvBindings_.size() 
+           << "  SRV=" << srvBindings_.size() 
+           << "  UAV=" << uavBindings_.size()
+           << "  Sampler=" << samplerBindings_.size() 
+           << "  InputLayout=" << inputElements_.size() << "\n";
+        ss << "├─────────────────────────────────────────────────────────────────┤\n";
+
+        // CBVs
+        if (!cbvBindings_.empty()) {
+            ss << "│  [Constant Buffers] (" << cbvBindings_.size() << ")\n";
+            for (const auto& cbv : cbvBindings_) {
+                ss << "│    • " << cbv.name;
+                ss << "  →  b" << cbv.bindPoint;
+                if (cbv.space > 0) ss << ", space" << cbv.space;
+                ss << "  (" << cbv.size << " bytes)";
+                ss << "  [" << GetShaderVisibilityString(cbv.visibility) << "]\n";
+            }
+        }
+
+        // SRVs
+        if (!srvBindings_.empty()) {
+            ss << "│  [Shader Resource Views] (" << srvBindings_.size() << ")\n";
+            for (const auto& srv : srvBindings_) {
+                ss << "│    • " << srv.name;
+                ss << "  →  t" << srv.bindPoint;
+                if (srv.space > 0) ss << ", space" << srv.space;
+                if (srv.bindCount > 1) ss << " [×" << srv.bindCount << "]";
+                ss << "  [" << GetShaderVisibilityString(srv.visibility) << "]\n";
+            }
+        }
+
+        // UAVs
+        if (!uavBindings_.empty()) {
+            ss << "│  [Unordered Access Views] (" << uavBindings_.size() << ")\n";
+            for (const auto& uav : uavBindings_) {
+                ss << "│    • " << uav.name;
+                ss << "  →  u" << uav.bindPoint;
+                if (uav.space > 0) ss << ", space" << uav.space;
+                if (uav.bindCount > 1) ss << " [×" << uav.bindCount << "]";
+                ss << "  [" << GetShaderVisibilityString(uav.visibility) << "]\n";
+            }
+        }
+
+        // Samplers
+        if (!samplerBindings_.empty()) {
+            ss << "│  [Samplers] (" << samplerBindings_.size() << ")\n";
+            for (const auto& sampler : samplerBindings_) {
+                ss << "│    • " << sampler.name;
+                ss << "  →  s" << sampler.bindPoint;
+                if (sampler.space > 0) ss << ", space" << sampler.space;
+                ss << "  [" << GetShaderVisibilityString(sampler.visibility) << "]\n";
+            }
+        }
+
+        // Input Layout
+        if (!inputElements_.empty()) {
+            ss << "│  [Input Layout] (" << inputElements_.size() << ")\n";
+            for (const auto& input : inputElements_) {
+                ss << "│    • " << input.semanticName << input.semanticIndex;
+                ss << "  (Slot:" << input.inputSlot << ", " << GetFormatString(input.format) << ")\n";
+            }
+        }
+
+        ss << "└─────────────────────────────────────────────────────────────────┘\n";
+        return ss.str();
+    }
+
+    void ShaderReflectionData::Merge(const ShaderReflectionData& other) {
+        // CBVをマージ（同一リソースが複数ステージで使われる場合は visibility を ALL に統合する）
+        for (const auto& cbv : other.cbvBindings_) {
+            AddOrMergeBinding(cbvBindings_, cbv);
+        }
+
+        // SRVをマージ
+        for (const auto& srv : other.srvBindings_) {
+            AddOrMergeBinding(srvBindings_, srv);
+        }
+
+        // UAVをマージ
+        for (const auto& uav : other.uavBindings_) {
+            AddOrMergeBinding(uavBindings_, uav);
+        }
+
+        // Samplerをマージ
+        for (const auto& sampler : other.samplerBindings_) {
+            AddOrMergeBinding(samplerBindings_, sampler);
+        }
+
+        // Input Layoutは頂点シェーダーからのみ取得するので、既存を優先
+        if (inputElements_.empty() && !other.inputElements_.empty()) {
+            inputElements_ = other.inputElements_;
+        }
+    }
+
+    RootSlot ShaderReflectionData::GetRootSlot(const std::string& resourceName) const {
+        auto it = rootParameterMapping_.find(resourceName);
+        if (it != rootParameterMapping_.end()) {
+            return it->second;
+        }
+        return RootSlot{};  // kind == None
+    }
+
+    int ShaderReflectionData::GetRootParameterIndexByName(const std::string& resourceName) const {
+        const RootSlot slot = GetRootSlot(resourceName);
+        return slot.IsValid() ? static_cast<int>(slot.index) : -1;
+    }
+
+    void ShaderReflectionData::SetRootParameterMapping(const std::map<std::string, RootSlot>& mapping) {
+        rootParameterMapping_ = mapping;
+    }
+
+    // ヘルパー関数
+    std::string ShaderReflectionData::GetShaderVisibilityString(D3D12_SHADER_VISIBILITY visibility) const {
+        switch (visibility) {
+        case D3D12_SHADER_VISIBILITY_ALL: return "ALL";
+        case D3D12_SHADER_VISIBILITY_VERTEX: return "VS";
+        case D3D12_SHADER_VISIBILITY_HULL: return "HS";
+        case D3D12_SHADER_VISIBILITY_DOMAIN: return "DS";
+        case D3D12_SHADER_VISIBILITY_GEOMETRY: return "GS";
+        case D3D12_SHADER_VISIBILITY_PIXEL: return "PS";
+        default: return "UNKNOWN";
+        }
+    }
+
+    std::string ShaderReflectionData::GetFormatString(DXGI_FORMAT format) const {
+        switch (format) {
+        case DXGI_FORMAT_R32G32B32A32_FLOAT: return "R32G32B32A32_FLOAT";
+        case DXGI_FORMAT_R32G32B32_FLOAT: return "R32G32B32_FLOAT";
+        case DXGI_FORMAT_R32G32_FLOAT: return "R32G32_FLOAT";
+        case DXGI_FORMAT_R32_FLOAT: return "R32_FLOAT";
+        case DXGI_FORMAT_R8G8B8A8_UNORM: return "R8G8B8A8_UNORM";
+        default: return "UNKNOWN";
+        }
+    }
+
+    bool ShaderReflectionData::ValidateCBVSize(const std::string& cbvName, size_t cppStructSize) const {
+        const auto* cbv = FindCBV(cbvName);
+        
+        if (!cbv) {
+            // CBVが見つからない場合は警告（オプショナルなリソースかもしれない）
+            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader, "{}", 
+                "[CBV Validation] Warning: CBV '" + cbvName + "' not found in " + shaderName_);
+            return true;  // 見つからない場合は検証スキップ（オプショナルとみなす）
+        }
+        
+        // HLSLの16バイトアライメントを考慮
+        // シェーダーのサイズは既にアライメント済みのはず
+        size_t shaderSize = cbv->size;
+        
+        // C++側のサイズとシェーダー側のサイズを比較
+        if (cppStructSize != shaderSize) {
+            std::ostringstream oss;
+            oss << "\n";
+            oss << "┌─────────────────────────────────────────────────────────────────┐\n";
+            oss << "│  [ERROR] CBV Size Mismatch Detected!                           │\n";
+            oss << "├─────────────────────────────────────────────────────────────────┤\n";
+            oss << "│  Shader:    " << shaderName_ << "\n";
+            oss << "│  CBV Name:  " << cbvName << "\n";
+            oss << "├─────────────────────────────────────────────────────────────────┤\n";
+            oss << "│  Shader expects:  " << shaderSize << " bytes\n";
+            oss << "│  C++ provides:    " << cppStructSize << " bytes\n";
+            oss << "│  Difference:      " << static_cast<int>(shaderSize) - static_cast<int>(cppStructSize) << " bytes\n";
+            oss << "├─────────────────────────────────────────────────────────────────┤\n";
+            oss << "│  [Possible Causes]                                             │\n";
+            
+            if (cppStructSize < shaderSize) {
+                oss << "│    • C++ struct is missing members                             │\n";
+                oss << "│    • HLSL has additional padding                               │\n";
+            } else {
+                oss << "│    • C++ struct has extra members                              │\n";
+                oss << "│    • HLSL struct is missing members                            │\n";
+            }
+            oss << "│    • Alignment mismatch (HLSL uses 16-byte alignment)          │\n";
+            oss << "└─────────────────────────────────────────────────────────────────┘\n";
+            
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", oss.str());
+            return false;
+        }
+        
+        return true;
+    }
+
+    bool ShaderReflectionData::ValidateAllCBVSizes(
+        const std::vector<std::pair<std::string, size_t>>& validations) const {
+        
+        bool allValid = true;
+        
+        for (const auto& [cbvName, structSize] : validations) {
+            if (!ValidateCBVSize(cbvName, structSize)) {
+                allValid = false;
+            }
+        }
+        
+        // 全て成功した場合はログ出力
+        if (allValid && !validations.empty()) {
+#ifdef _DEBUG
+            std::ostringstream oss;
+            oss << "\n";
+            oss << "┌─────────────────────────────────────────────────────────────────┐\n";
+            oss << "│  [OK] CBV Size Validation Passed - " << shaderName_ << "\n";
+            oss << "├─────────────────────────────────────────────────────────────────┤\n";
+            
+            for (const auto& [cbvName, structSize] : validations) {
+                const auto* cbv = FindCBV(cbvName);
+                if (cbv) {
+                    oss << "│    ✓ " << cbvName << ": " << structSize << " bytes\n";
+                }
+            }
+            
+            oss << "└─────────────────────────────────────────────────────────────────┘\n";
+            Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Shader, "{}", oss.str());
+#endif
+        }
+        
+        return allValid;
+    }
+
+    // ================================================================================
+    // スロット自動検出
+    // ================================================================================
+    
+    namespace {
+        // スキニング関連のセマンティック（スロット1に割り当て）
+        const std::vector<std::string> kSkinningSemantics = {
+            "WEIGHT", "INDEX", "BONEINDEX", "BONEWEIGHT", "BLENDWEIGHT", "BLENDINDICES"
+        };
+        
+        // インスタンシング関連のセマンティック（スロット2に割り当て）
+        const std::vector<std::string> kInstancingSemantics = {
+            "INSTANCE", "INSTANCEID", "INSTANCEDATA"
+        };
+        
+        // セマンティック名からスロットを判定
+        UINT DetectSlotFromSemantic(const std::string& semanticName) {
+            // 大文字に変換して比較
+            std::string upperSemantic = semanticName;
+            std::transform(upperSemantic.begin(), upperSemantic.end(), 
+                          upperSemantic.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
+            
+            // スキニングセマンティックチェック
+            for (const auto& skinSemantic : kSkinningSemantics) {
+                if (upperSemantic.find(skinSemantic) != std::string::npos) {
+                    return 1;  // スロット1
+                }
+            }
+            
+            // インスタンシングセマンティックチェック
+            for (const auto& instSemantic : kInstancingSemantics) {
+                if (upperSemantic.find(instSemantic) != std::string::npos) {
+                    return 2;  // スロット2
+                }
+            }
+            
+            return 0;  // デフォルトはスロット0
+        }
+    }
+
+    std::vector<InputElementInfo> ShaderReflectionData::GetInputElementsWithAutoSlots() const {
+        std::vector<InputElementInfo> elements = inputElements_;
+        
+        for (auto& element : elements) {
+            UINT detectedSlot = DetectSlotFromSemantic(element.semanticName);
+            element.inputSlot = detectedSlot;
+        }
+        
+        return elements;
+    }
+}
+
+

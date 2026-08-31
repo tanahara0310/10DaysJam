@@ -1,0 +1,574 @@
+#include "pch.h"
+#include "LensFlare.h"
+#include "Editor/ImGui/ImguiManager.h"
+#include "Utility/Logger/Logger.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Camera/View/ViewInfo.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
+#include <algorithm>
+#include <cassert>
+
+
+namespace CoreEngine
+{
+    void LensFlare::PrepareFrame(const PostEffectFrameContext& ctx)
+    {
+        // 太陽が特定できないフレームは画面中央・無効扱いにしてフレアを止める
+        if (!ctx.view || !ctx.view->isValid || !ctx.sunDirectionValid) {
+            SetSunScreenPosition(0.5f, 0.5f, false);
+            return;
+        }
+
+        // sunDirection は光の進行方向。太陽の見える方向はその逆。
+        const Vector3& sunDir = ctx.sunDirection;
+        const Vector3 toSun = { -sunDir.x, -sunDir.y, -sunDir.z };
+
+        // 無限遠の方向ベクトルとして投影する（w=0 の行ベクトル変換 = 平行移動行を無視）。
+        // 描画に使われたビューと同じ行列を使わないとマスク位置がずれ、
+        // 太陽を直視してもフレアが出なくなる。
+        const Matrix4x4& vp = ctx.view->viewProjection;
+        const float clipX = toSun.x * vp.m[0][0] + toSun.y * vp.m[1][0] + toSun.z * vp.m[2][0];
+        const float clipY = toSun.x * vp.m[0][1] + toSun.y * vp.m[1][1] + toSun.z * vp.m[2][1];
+        const float clipW = toSun.x * vp.m[0][3] + toSun.y * vp.m[1][3] + toSun.z * vp.m[2][3];
+
+        if (clipW <= 1e-5f) {
+            // 太陽がカメラ後方にある
+            SetSunScreenPosition(0.5f, 0.5f, false);
+            return;
+        }
+
+        SetSunScreenPosition(clipX / clipW * 0.5f + 0.5f, -clipY / clipW * 0.5f + 0.5f, true);
+    }
+
+    namespace {
+        // フレアバッファの解像度分割数（1/4 解像度。ゴーストはブラーで滲ませるため十分）
+        constexpr uint32_t kFlareResolutionDivisor = 4;
+        constexpr uint32_t kGroupSize = 8;
+
+    /// @brief スレッドグループ数（8x8 スレッドで size を覆う）
+        constexpr uint32_t DispatchCount(uint32_t size)
+        {
+            return (size + kGroupSize - 1) / kGroupSize;
+        }
+
+        // 既定値の根拠は LensFlare.h の LensFlareConstants のコメントを参照
+        CVar<float> cvIntensity{
+            "r.LensFlare.Intensity", 0.6f,
+            "フレア全体の強度",
+            CVarRange{ 0.0f, 3.0f } };
+
+        CVar<float> cvThreshold{
+            "r.LensFlare.Threshold", 28.0f,
+            "フレア源とする輝度の閾値（HDR）。下げすぎると太陽以外にも反応する",
+            CVarRange{ 0.0f, 100.0f } };
+
+        CVar<float> cvSoftKnee{
+            "r.LensFlare.SoftKnee", 0.5f,
+            "閾値付近のなめらかさ",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvMaxBrightness{
+            "r.LensFlare.MaxBrightness", 64.0f,
+            "抽出輝度のクランプ上限",
+            CVarRange{ 1.0f, 256.0f } };
+
+        CVar<Vector4> cvTint{
+            "r.LensFlare.Tint", Vector4{ 1.0f, 0.95f, 0.9f, 1.0f },
+            "フレア全体のティント（RGBA）" };
+
+        CVar<float> cvSunMaskRadius{
+            "r.LensFlare.SunMaskRadius", 0.12f,
+            "抽出を許可する太陽周辺の半径。広げるとミー散乱オーラまで源になる",
+            CVarRange{ 0.02f, 0.4f } };
+
+        CVar<int> cvGhostCount{
+            "r.LensFlare.GhostCount", 6,
+            "ゴーストの個数",
+            CVarRange{ 0.0f, 8.0f } };
+
+        CVar<float> cvGhostDispersal{
+            "r.LensFlare.GhostDispersal", 0.6f,
+            "ゴーストの間隔",
+            CVarRange{ 0.1f, 1.2f } };
+
+        CVar<float> cvGhostIntensity{
+            "r.LensFlare.GhostIntensity", 2.0f,
+            "ゴーストの強度",
+            CVarRange{ 0.0f, 3.0f } };
+
+        CVar<float> cvChromaDistortion{
+            "r.LensFlare.ChromaDistortion", 1.5f,
+            "ゴーストの色収差",
+            CVarRange{ 0.0f, 5.0f } };
+
+        CVar<float> cvGhostRadius{
+            "r.LensFlare.GhostRadius", 0.12f,
+            "ゴーストの半径。小さすぎると多角形の角が潰れる",
+            CVarRange{ 0.01f, 0.2f } };
+
+        CVar<int> cvApertureBladeCount{
+            "r.LensFlare.ApertureBladeCount", 6,
+            "絞り羽根の枚数（多角形ゴーストの角数）",
+            CVarRange{ 3.0f, 10.0f } };
+
+        CVar<float> cvApertureRotationRad{
+            "r.LensFlare.ApertureRotation", 0.3f,
+            "絞りの回転角 [rad]",
+            CVarRange{ 0.0f, 1.047f } };
+
+        CVar<float> cvGhostPolygonMix{
+            "r.LensFlare.GhostPolygonMix", 0.85f,
+            "多角形ゴーストの混在比率。0=全て円形、1=全て多角形",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvHaloWidth{
+            "r.LensFlare.HaloWidth", 0.45f,
+            "ハローの半径",
+            CVarRange{ 0.05f, 0.8f } };
+
+        CVar<float> cvHaloIntensity{
+            "r.LensFlare.HaloIntensity", 1.0f,
+            "ハローの強度",
+            CVarRange{ 0.0f, 3.0f } };
+
+        CVar<float> cvStarburstIntensity{
+            "r.LensFlare.StarburstIntensity", 0.5f,
+            "スターバースト変調の強さ",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvBlurSigma{
+            "r.LensFlare.BlurSigma", 1.0f,
+            "ガウスブラー σ。大きすぎると絞り羽根の角が潰れて円形に戻る",
+            CVarRange{ 0.5f, 6.0f } };
+
+        CVar<bool> cvEnabled{
+            "r.LensFlare.Enabled", true,
+            "レンズフレアを有効にする（大気の太陽で自動発生）",
+            CVarRange{}, CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.LensFlare";
+    }
+
+    void LensFlare::OnConfigureRootSignature(RootSignatureConfig& config)
+    {
+        // 合成 CS のフレアサンプルは画面端をクランプする（WRAP だと反対端の輝度が巻き込まれる）
+        config.ConfigureSampler("gLinearClamp", SamplerConfig::LinearClamp());
+    }
+
+    void LensFlare::OnCreateConstantBuffers()
+    {
+        auto* device = graphicsCore_->GetDevice();
+
+        const UINT paramsSize = (sizeof(LensFlareConstants) + 255) & ~255u;
+        paramsCB_ = ResourceFactory::CreateBufferResource(device, paramsSize);
+        HRESULT hr = paramsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedParams_));
+        assert(SUCCEEDED(hr));
+        *mappedParams_ = BuildConstants(0, 0, 0, 0);
+
+        // ブラー方向 CB（水平/垂直。内容は不変なので初期化時に書いて以後更新しない）
+        const UINT dirSize = (sizeof(BlurDirection) + 255) & ~255u;
+        blurDirHCB_ = ResourceFactory::CreateBufferResource(device, dirSize);
+        blurDirVCB_ = ResourceFactory::CreateBufferResource(device, dirSize);
+        BlurDirection* mappedDir = nullptr;
+        hr = blurDirHCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedDir));
+        assert(SUCCEEDED(hr));
+        *mappedDir = BlurDirection{ { 1.0f, 0.0f }, {} };
+        blurDirHCB_->Unmap(0, nullptr);
+        hr = blurDirVCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedDir));
+        assert(SUCCEEDED(hr));
+        *mappedDir = BlurDirection{ { 0.0f, 1.0f }, {} };
+        blurDirVCB_->Unmap(0, nullptr);
+
+        internalPipelinesReady_ = CreateInternalPipelines() && EnsureSourcePosTarget();
+        if (!internalPipelinesReady_) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "LensFlare: 内部パイプラインの構築に失敗（フレアは無効・入力をそのまま出力）");
+        }
+    }
+
+    bool LensFlare::EnsureSourcePosTarget()
+    {
+        // 支配的な光源の UV を書き戻すだけの 1x1 バッファ。
+        // CS 側が最大輝度テクセルの座標を 1 つ書き、次のパスがそれを読む
+        DescriptorAllocator* descriptorAllocator = graphicsCore_->GetDescriptorAllocator();
+        if (!descriptorAllocator) {
+            return false;
+        }
+        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = graphicsCore_->GetDevice();
+
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        desc.Width = 1;
+        desc.Height = 1;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = 1;
+        desc.Format = DXGI_FORMAT_R32G32_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        try {
+            sourcePosBuffer_.Reset(ResourceFactory::CreateTextureResource(
+                deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
+        catch (const std::exception&) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "LensFlare: 光源位置テクスチャの生成に失敗");
+            return false;
+        }
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = desc.Format;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+        uavDesc.Format = desc.Format;
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
+        sourcePosSrvHandle_ = descriptorAllocator->CreateSRV(sourcePosBuffer_.Get(), srvDesc, "LensFlareSourcePosSRV");
+        sourcePosUavHandle_ = descriptorAllocator->CreateUAV(sourcePosBuffer_.Get(), uavDesc, "LensFlareSourcePosUAV");
+        return true;
+    }
+
+    bool LensFlare::CreateInternalPipelines()
+    {
+        auto* device = graphicsCore_->GetDevice();
+
+        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
+        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
+        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
+        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
+
+        struct Entry {
+            CustomShaderPipeline& pipeline;
+            const ICustomShaderProvider& provider;
+            const char* name;
+        };
+        Entry entries[] = {
+            { downsamplePipeline_, downsampleShaderProvider_, "Downsample" },
+            { findSourcePipeline_, findSourceShaderProvider_, "FindSource" },
+            { ghostsPipeline_,     ghostsShaderProvider_,     "Ghosts" },
+            { blurPipeline_,       blurShaderProvider_,       "Blur" },
+        };
+
+        for (Entry& e : entries) {
+            const bool built = e.pipeline.Build(device, shaderCompiler, reflectionBuilder, e.provider);
+            if (!built || !e.pipeline.HasComputePSO()) {
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "LensFlare: {} コンピュートパイプラインの構築に失敗", e.name);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool LensFlare::EnsureTargets(uint32_t width, uint32_t height)
+    {
+        if (!graphicsCore_ || width == 0 || height == 0) {
+            return false;
+        }
+
+        const uint32_t flareW = std::max(width / kFlareResolutionDivisor, 1u);
+        const uint32_t flareH = std::max(height / kFlareResolutionDivisor, 1u);
+
+        if (brightBuffer_ && targetsWidth_ == flareW && targetsHeight_ == flareH) {
+            return true;
+        }
+
+        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = graphicsCore_->GetDevice();
+        DescriptorAllocator* descriptorAllocator = graphicsCore_->GetDescriptorAllocator();
+        if (!descriptorAllocator) {
+            return false;
+        }
+
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        desc.Width = flareW;
+        desc.Height = flareH;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = 1;
+        desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        // DescriptorHandle が CPU/GPU ハンドルとスロット番号をまとめて持つ
+        struct Target {
+            GpuResource& tex;
+            DescriptorHandle& srv;
+            DescriptorHandle& uav;
+            const char* name;
+        };
+        Target targets[] = {
+            { brightBuffer_,  brightSrvHandle_,  brightUavHandle_,  "LensFlareBright" },
+            { featureBuffer_, featureSrvHandle_, featureUavHandle_, "LensFlareFeature" },
+            { blurBuffer_,    blurSrvHandle_,    blurUavHandle_,    "LensFlareBlur" },
+        };
+
+        for (Target& t : targets) {
+            try {
+                t.tex.Reset(
+                    ResourceFactory::CreateTextureResource(
+                        deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            }
+            catch (const std::exception&) {
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "LensFlare: 中間テクスチャ {} の生成に失敗", t.name);
+                return false;
+            }
+
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.Format = desc.Format;
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Texture2D.MipLevels = 1;
+            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+            uavDesc.Format = desc.Format;
+            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+            // リサイズによる再生成時は既存スロットへ書き直す（毎回確保するとスロットリーク）
+            descriptorAllocator->EnsureSRV(t.srv, t.tex.Get(), srvDesc, std::string(t.name) + "SRV");
+            descriptorAllocator->EnsureUAV(t.uav, t.tex.Get(), uavDesc, std::string(t.name) + "UAV");
+        }
+
+        targetsWidth_ = flareW;
+        targetsHeight_ = flareH;
+        return true;
+    }
+
+    LensFlare::LensFlareConstants LensFlare::BuildConstants(
+        uint32_t width, uint32_t height, uint32_t flareWidth, uint32_t flareHeight) const
+    {
+        LensFlareConstants c{};
+        c.threshold          = cvThreshold.Get();
+        c.softKnee           = cvSoftKnee.Get();
+        c.ghostDispersal     = cvGhostDispersal.Get();
+        c.ghostIntensity     = cvGhostIntensity.Get();
+        c.haloWidth          = cvHaloWidth.Get();
+        c.haloIntensity      = cvHaloIntensity.Get();
+        c.chromaDistortion   = cvChromaDistortion.Get();
+        c.starburstIntensity = cvStarburstIntensity.Get();
+        c.intensity          = cvIntensity.Get();
+        c.ghostCount         = static_cast<uint32_t>(cvGhostCount.Get());
+        c.maxBrightness      = cvMaxBrightness.Get();
+        c.blurSigma          = cvBlurSigma.Get();
+
+        const Vector4& tint = cvTint.Get();
+        c.tint[0] = tint.x;
+        c.tint[1] = tint.y;
+        c.tint[2] = tint.z;
+        c.tint[3] = tint.w;
+
+        c.apertureBladeCount  = static_cast<float>(cvApertureBladeCount.Get());
+        c.apertureRotationRad = cvApertureRotationRad.Get();
+        c.ghostRadius         = cvGhostRadius.Get();
+        c.ghostPolygonMix     = cvGhostPolygonMix.Get();
+        c.sunMaskRadius       = cvSunMaskRadius.Get();
+
+        // ここから下は実行時値
+        c.sunUv[0]     = sunUv_[0];
+        c.sunUv[1]     = sunUv_[1];
+        c.sunValid     = sunValid_;
+        c.flareWidth   = flareWidth;
+        c.flareHeight  = flareHeight;
+        c.screenWidth  = width;
+        c.screenHeight = height;
+        return c;
+    }
+
+    void LensFlare::UploadConstants(uint32_t width, uint32_t height)
+    {
+        if (!mappedParams_) {
+            return;
+        }
+        *mappedParams_ = BuildConstants(width, height, targetsWidth_, targetsHeight_);
+    }
+
+    void LensFlare::Dispatch(
+        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+        uint32_t width,
+        uint32_t height)
+    {
+        auto* cmdList = graphicsCore_->GetCommandList();
+
+        const bool flareReady = internalPipelinesReady_ && EnsureTargets(width, height);
+
+        if (!flareReady) {
+            // フォールバック: フレア強度 0 で合成 CS のみ実行し、入力をそのまま出力する
+            // （出力を書かないとチェーン後段が未初期化テクスチャを読むため）
+            LensFlareConstants c = BuildConstants(
+                width, height,
+                std::max(width / kFlareResolutionDivisor, 1u),
+                std::max(height / kFlareResolutionDivisor, 1u));
+            c.intensity = 0.0f;
+            if (mappedParams_) { *mappedParams_ = c; }
+
+            cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
+            cmdList->SetPipelineState(computePso_.Get());
+            const int texIdx = GetRootParamIndex("gTexture");
+            const int flareIdx = GetRootParamIndex("gFlare");
+            const int outIdx = GetRootParamIndex("gOutput");
+            const int cbIdx = GetRootParamIndex("LensFlareParams");
+            if (texIdx >= 0)   cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
+            if (flareIdx >= 0) cmdList->SetComputeRootDescriptorTable(flareIdx, inputSrvHandle);
+            if (outIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outIdx, outputUavHandle);
+            if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, paramsCB_->GetGPUVirtualAddress());
+            cmdList->Dispatch(DispatchCount(width), DispatchCount(height), 1);
+            return;
+        }
+
+        UploadConstants(width, height);
+
+        const uint32_t flareGroupsX = DispatchCount(targetsWidth_);
+        const uint32_t flareGroupsY = DispatchCount(targetsHeight_);
+
+        // ===== Pass 1: 輝度抽出 + ダウンサンプル（入力 → brightBuffer_） =====
+        Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        cmdList->SetPipelineState(downsamplePipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(downsamplePipeline_.GetComputeRootSignature());
+        {
+            const int cbSlot = downsamplePipeline_.GetComputeRootParamIndex("LensFlareParams");
+            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsCB_->GetGPUVirtualAddress());
+            const int inSlot = downsamplePipeline_.GetComputeRootParamIndex("gSceneColor");
+            if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, inputSrvHandle);
+            const int outSlot = downsamplePipeline_.GetComputeRootParamIndex("gBright");
+            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, brightUavHandle_.gpuHandle);
+        }
+        cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
+
+        Barrier::UAV(cmdList, brightBuffer_);
+        Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        // ===== Pass 1.5: 支配的な光源の UV 位置を検出（brightBuffer_ → sourcePosBuffer_） =====
+        // 単一スレッドグループで全体を走査し最大輝度テクセルを求める。
+        // ゴースト／ハローの絞り羽根形状マスクは「このゴーストの中心がどこか」を必要とするため。
+        Barrier::Transition(cmdList, sourcePosBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        cmdList->SetPipelineState(findSourcePipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(findSourcePipeline_.GetComputeRootSignature());
+        {
+            const int cbSlot = findSourcePipeline_.GetComputeRootParamIndex("LensFlareParams");
+            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsCB_->GetGPUVirtualAddress());
+            const int inSlot = findSourcePipeline_.GetComputeRootParamIndex("gBright");
+            if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, brightSrvHandle_.gpuHandle);
+            const int outSlot = findSourcePipeline_.GetComputeRootParamIndex("gSourcePos");
+            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, sourcePosUavHandle_.gpuHandle);
+        }
+        cmdList->Dispatch(1, 1, 1);
+
+        Barrier::UAV(cmdList, sourcePosBuffer_);
+        Barrier::Transition(cmdList, sourcePosBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        // ===== Pass 2: ゴースト + ハロー生成（brightBuffer_ → featureBuffer_） =====
+        Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        cmdList->SetPipelineState(ghostsPipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(ghostsPipeline_.GetComputeRootSignature());
+        {
+            const int cbSlot = ghostsPipeline_.GetComputeRootParamIndex("LensFlareParams");
+            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsCB_->GetGPUVirtualAddress());
+            const int inSlot = ghostsPipeline_.GetComputeRootParamIndex("gBright");
+            if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, brightSrvHandle_.gpuHandle);
+            const int srcPosSlot = ghostsPipeline_.GetComputeRootParamIndex("gSourcePos");
+            if (srcPosSlot >= 0) cmdList->SetComputeRootDescriptorTable(srcPosSlot, sourcePosSrvHandle_.gpuHandle);
+            const int outSlot = ghostsPipeline_.GetComputeRootParamIndex("gFeatures");
+            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, featureUavHandle_.gpuHandle);
+        }
+        cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
+
+        Barrier::UAV(cmdList, featureBuffer_);
+
+        // ===== Pass 3: 分離ガウスブラー（水平: feature → blur、垂直: blur → feature） =====
+        cmdList->SetPipelineState(blurPipeline_.GetComputePSO());
+        cmdList->SetComputeRootSignature(blurPipeline_.GetComputeRootSignature());
+
+        const int blurCbSlot = blurPipeline_.GetComputeRootParamIndex("LensFlareParams");
+        const int blurDirSlot = blurPipeline_.GetComputeRootParamIndex("BlurDirection");
+        const int blurInSlot = blurPipeline_.GetComputeRootParamIndex("gFlareInput");
+        const int blurOutSlot = blurPipeline_.GetComputeRootParamIndex("gFlareOutput");
+
+        // 水平
+        Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, blurBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        if (blurCbSlot >= 0)  cmdList->SetComputeRootConstantBufferView(blurCbSlot, paramsCB_->GetGPUVirtualAddress());
+        if (blurDirSlot >= 0) cmdList->SetComputeRootConstantBufferView(blurDirSlot, blurDirHCB_->GetGPUVirtualAddress());
+        if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, featureSrvHandle_.gpuHandle);
+        if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, blurUavHandle_.gpuHandle);
+        cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
+
+        Barrier::UAV(cmdList, blurBuffer_);
+
+        // 垂直
+        Barrier::Transition(cmdList, blurBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        if (blurDirSlot >= 0) cmdList->SetComputeRootConstantBufferView(blurDirSlot, blurDirVCB_->GetGPUVirtualAddress());
+        if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, blurSrvHandle_.gpuHandle);
+        if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, featureUavHandle_.gpuHandle);
+        cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
+
+        Barrier::UAV(cmdList, featureBuffer_);
+        Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        // ===== Pass 4: 合成（入力 + featureBuffer_ → 出力） =====
+        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
+        cmdList->SetPipelineState(computePso_.Get());
+        {
+            const int texIdx = GetRootParamIndex("gTexture");
+            const int flareIdx = GetRootParamIndex("gFlare");
+            const int outIdx = GetRootParamIndex("gOutput");
+            const int cbIdx = GetRootParamIndex("LensFlareParams");
+            if (texIdx >= 0)   cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
+            if (flareIdx >= 0) cmdList->SetComputeRootDescriptorTable(flareIdx, featureSrvHandle_.gpuHandle);
+            if (outIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outIdx, outputUavHandle);
+            if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, paramsCB_->GetGPUVirtualAddress());
+        }
+        cmdList->Dispatch(DispatchCount(width), DispatchCount(height), 1);
+
+        // 次フレームの Pass 1〜3 に備えて内部バッファを UAV 状態へ戻す
+        Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, blurBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, sourcePosBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    }
+
+    void LensFlare::DrawImGui()
+    {
+#ifdef USE_IMGUI
+        ImGui::PushID("LensFlareParams");
+        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        if (!internalPipelinesReady_) {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f), "内部パイプライン構築失敗（無効）");
+        }
+        UI::Separator();
+
+        ImGui::TextWrapped(
+            "フレア源は太陽スクリーン位置の周辺のみ（太陽限定）。"
+            "パーティクル等の高輝度オブジェクトはフレアを起こさない。");
+        ImGui::Text("太陽UV: (%.3f, %.3f) %s", sunUv_[0], sunUv_[1],
+            sunValid_ > 0.5f ? "有効" : "無効(後方/情報なし)");
+        UI::Separator();
+
+        CVarUI::DrawTree(kCVarPrefix);
+
+        UI::Separator();
+        if (ImGui::Button("デフォルトに戻す")) {
+            CVarUI::ResetTree(kCVarPrefix);
+        }
+        ImGui::PopID();
+#endif // USE_IMGUI
+    }
+
+    CVar<bool>* LensFlare::GetEnabledCVar() const
+    {
+        return &cvEnabled;
+    }
+}

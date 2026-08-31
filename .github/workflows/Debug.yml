@@ -1,0 +1,33 @@
+name: DebugBuild
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  SOLUTION_FILE_PATH: Project/CoreEngine.slnx
+  CONFIGURATION: Debug
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Restore NuGet
+        run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+
+      - name: Add MSBuild to Path
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
+
+      - name: Build
+        run: |
+          msbuild ${{env.SOLUTION_FILE_PATH}} /p:platform=x64,Configuration=${{env.CONFIGURATION}},PlatformToolset=v143

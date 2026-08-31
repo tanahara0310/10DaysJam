@@ -1,0 +1,47 @@
+#include "pch.h"
+#include "ColorModule.h"
+#include "../ParticleSystem.h" // Particle構造体のために必要
+#include "Math/MathCore.h"
+#include <algorithm>
+
+// コンストラクタでデフォルトパラメータを設定
+
+namespace CoreEngine
+{
+    ColorModule::ColorModule() {
+        colorData_.endColor = { 1.0f, 1.0f, 1.0f, 0.0f };
+        colorData_.useGradient = true;
+    }
+
+    void ColorModule::UpdateColor(Particle& particle) {
+        if (!enabled_ || !colorData_.useGradient) {
+            return;
+        }
+
+        // ライフタイムに基づいて色を補間
+            // MainModuleで設定された初期色（initialColor）から終了色へ補間
+        const float t = MathCore::Saturate(particle.currentTime / particle.lifeTime);
+
+        // particle.initialColorを開始色として使用
+        particle.color = MathCore::Lerp(particle.initialColor, colorData_.endColor, t);
+    }
+
+#ifdef USE_IMGUI
+    bool ColorModule::ShowImGui() {
+        bool changed = false;
+
+        changed |= UI::Widgets::ToggleSwitch("寿命に応じて色を変化", &colorData_.useGradient);
+        UI::Tooltip("開始色（メインの「色」）から終了色へ、寿命に沿って線形補間します");
+
+        {
+            UI::Scope::DisabledScope ds(!colorData_.useGradient);
+            changed |= UI::ColorEdit("終了色", colorData_.endColor);
+            UI::SameLine();
+            UI::HelpMarker("寿命が尽きる瞬間の色。\nアルファを0にするとフェードアウトになります。\n開始色はメインモジュールの「色」です。");
+        }
+
+        return changed;
+    }
+#endif
+
+}

@@ -1,0 +1,129 @@
+#include "pch.h"
+#include "AnimationLoader.h"
+#include "Utility/Logger/Logger.h"
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+#include <cassert>
+
+
+namespace CoreEngine
+{
+Animation AnimationLoader::LoadAnimationFile(const std::string& directoryPath, const std::string& filename,
+    const std::string& sourceAnimationName) {
+    // ファイルパスを構築
+    std::string filePath = directoryPath + "/" + filename;
+
+    // Assimp はパスを UTF-8 とみなす。ModelManager::ResolveFilePath から
+    // 渡ってくる文字列は UTF-8 で統一してあるのでそのまま渡す。
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(
+        filePath.c_str(),
+        aiProcess_ConvertToLeftHanded
+    );
+
+    // アニメーションがない場合はアサート
+    assert(scene != nullptr && scene->mNumAnimations != 0 && "Animation not found in file");
+
+    // 1 つのファイルに複数のアニメーションが入っていることがある
+    // （例: Fox.gltf は Survey / Walk / Run の 3 本）。
+    // 名前が指定されていればそれを探し、無指定なら先頭の 1 本を使う。
+    const unsigned int animationIndex = FindAnimationIndex(scene, sourceAnimationName);
+
+    Logger::GetInstance().Logf(LogLevel::INFO, LogCategory::Resource,
+        "AnimationLoader: {} からアニメーション[{}] '{}' を読み込み（ファイル内 {} 本）",
+        filename, animationIndex,
+        scene->mAnimations[animationIndex]->mName.C_Str(), scene->mNumAnimations);
+
+    return ParseAnimation(scene, animationIndex);
+}
+
+unsigned int AnimationLoader::FindAnimationIndex(const aiScene* scene, const std::string& sourceAnimationName) {
+    if (sourceAnimationName.empty()) {
+        return 0;
+    }
+
+    for (unsigned int i = 0; i < scene->mNumAnimations; ++i) {
+        if (sourceAnimationName == scene->mAnimations[i]->mName.C_Str()) {
+            return i;
+        }
+    }
+
+    // 見つからないまま先頭を返すと「別のアニメーションが静かに再生される」ことになるので警告する
+    Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Resource,
+        "AnimationLoader: アニメーション '{}' が見つかりません。先頭の 1 本を使用します",
+        sourceAnimationName);
+    return 0;
+}
+
+Animation AnimationLoader::ParseAnimation(const aiScene* scene, unsigned int animationIndex) {
+    Animation animation;
+
+    // 指定されたインデックスのアニメーションを取得
+    const aiAnimation* animationAssimp = scene->mAnimations[animationIndex];
+
+    // アニメーションの長さを秒に変換
+    animation.duration = static_cast<float>(animationAssimp->mDuration / animationAssimp->mTicksPerSecond);
+
+    // 各ノードのアニメーションをChannelと呼んでいるのでChannelを回してNodeAnimationの情報をとってくる
+    for (uint32_t channelIndex = 0; channelIndex < animationAssimp->mNumChannels; ++channelIndex) {
+        const aiNodeAnim* nodeAnimationAssimp = animationAssimp->mChannels[channelIndex];
+
+        // NodeAnimationを変換
+        NodeAnimation nodeAnimation = ConvertNodeAnimation(nodeAnimationAssimp, animationAssimp->mTicksPerSecond);
+
+        // Node名でマップに登録
+        animation.nodeAnimations[nodeAnimationAssimp->mNodeName.C_Str()] = nodeAnimation;
+    }
+
+    return animation;
+}
+
+NodeAnimation AnimationLoader::ConvertNodeAnimation(const aiNodeAnim* aiNodeAnim, double ticksPerSecond) {
+    NodeAnimation nodeAnimation;
+
+    // === Translate（平行移動）のキーフレーム ===
+    for (uint32_t keyIndex = 0; keyIndex < aiNodeAnim->mNumPositionKeys; ++keyIndex) {
+        const aiVectorKey& keyAssimp = aiNodeAnim->mPositionKeys[keyIndex];
+        KeyframeVector3 keyframe;
+
+        // 時刻を秒に変換
+        keyframe.time = static_cast<float>(keyAssimp.mTime / ticksPerSecond);
+
+        // 値を取得（座標変換は不要：モデルロード時にaiProcess_ConvertToLeftHandedで処理済み）
+        keyframe.value = { keyAssimp.mValue.x, keyAssimp.mValue.y, keyAssimp.mValue.z };
+
+        nodeAnimation.translate.keyframes.push_back(keyframe);
+    }
+
+    // === Rotate（回転）のキーフレーム ===
+    for (uint32_t keyIndex = 0; keyIndex < aiNodeAnim->mNumRotationKeys; ++keyIndex) {
+        const aiQuatKey& keyAssimp = aiNodeAnim->mRotationKeys[keyIndex];
+        KeyframeQuaternion keyframe;
+
+        // 時刻を秒に変換
+        keyframe.time = static_cast<float>(keyAssimp.mTime / ticksPerSecond);
+
+        // 値を取得（座標変換は不要：モデルロード時にaiProcess_ConvertToLeftHandedで処理済み）
+        keyframe.value = { keyAssimp.mValue.x, keyAssimp.mValue.y, keyAssimp.mValue.z, keyAssimp.mValue.w };
+
+        nodeAnimation.rotate.keyframes.push_back(keyframe);
+    }
+
+    // === Scale（スケール）のキーフレーム ===
+    for (uint32_t keyIndex = 0; keyIndex < aiNodeAnim->mNumScalingKeys; ++keyIndex) {
+        const aiVectorKey& keyAssimp = aiNodeAnim->mScalingKeys[keyIndex];
+        KeyframeVector3 keyframe;
+
+        // 時刻を秒に変換
+        keyframe.time = static_cast<float>(keyAssimp.mTime / ticksPerSecond);
+
+        // スケールはそのまま
+        keyframe.value = { keyAssimp.mValue.x, keyAssimp.mValue.y, keyAssimp.mValue.z };
+
+        nodeAnimation.scale.keyframes.push_back(keyframe);
+    }
+
+    return nodeAnimation;
+}
+}
