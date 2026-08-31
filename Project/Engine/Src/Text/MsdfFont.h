@@ -18,14 +18,17 @@ namespace CoreEngine
     /// @brief MSDF フォントの生成指定
     struct MsdfFontDesc
     {
-        /// @brief 使うシステムフォントの候補（先頭から順に試す）
-        /// @note filePath が空のときだけ参照する。インストール済みフォントを
-        ///       名前で引けるのが DirectWrite を使う利点なので、既定はこちら。
-        std::vector<std::wstring> systemFamilyNames;
-
-        /// @brief フォントファイルのパス（指定するとシステムフォントより優先）
+        /// @brief フォントファイルのパス（指定するとフォールバック列の先頭になる）
         std::wstring filePath;
         uint32_t faceIndex = 0; ///< .ttc 内のフェイス番号
+
+        /// @brief システムフォントのフォールバック列（先頭が優先）
+        /// @details
+        ///  「最初に見つかった 1 つを使う」ではなく **文字ごとに先頭から探す**。
+        ///  先頭のフォントに無い文字は次のフォントから拾うので、
+        ///  和文フォント → 欧文フォント → 記号フォント のように並べる。
+        ///  行送り等のメトリクスは実際に採用できた先頭のフォントのものを使う。
+        std::vector<std::wstring> systemFamilyNames;
 
         /// @brief アトラスへ焼く文字（UTF-8）
         /// @note 最小構成では「使う文字を全部渡す」方式。
@@ -36,6 +39,14 @@ namespace CoreEngine
         bool includeAscii = true;
 
         MsdfBakeSettings bake{};
+
+        /// @brief 焼き上がったアトラスをディスクへ残して次回以降再利用する
+        /// @note 指定・フォント・文字集合のいずれかが変われば別キーになるので、
+        ///       手で消す必要は無い
+        bool useDiskCache = true;
+
+        /// @brief キャッシュの置き場所（作業ディレクトリからの相対でよい）
+        std::filesystem::path cacheDirectory = "Cache/FontCache";
 
         /// @brief 空でなければアトラスを PNG に書き出す（目視確認用）
         std::filesystem::path debugAtlasDumpPath;
@@ -68,8 +79,17 @@ namespace CoreEngine
         bool IsValid() const { return atlasHandle_.gpuHandle.ptr != 0; }
 
         /// @brief コードポイントからグリフ情報を引く
-        /// @return 未収録なら nullptr
+        /// @return アトラスに焼かれていなければ nullptr
         const MsdfGlyph* FindGlyph(char32_t codePoint) const;
+
+        /// @brief 描画に使うグリフを解決する（未収録なら .notdef を返す）
+        /// @details
+        ///  未収録の文字を「描かない」で済ませると文字列が部分的に消え、
+        ///  不具合として見えなくなる。必ず豆腐（□）を出して気付けるようにする。
+        const MsdfGlyph& ResolveGlyph(char32_t codePoint) const;
+
+        /// @brief 未収録文字の代わりに描くグリフ（□）
+        const MsdfGlyph& GetNotdefGlyph() const { return notdefGlyph_; }
 
         const MsdfFontMetrics& GetMetrics() const { return metrics_; }
 
@@ -82,11 +102,15 @@ namespace CoreEngine
         /// @brief 距離場の有効範囲（px。シェーダーへそのまま渡す）
         float GetPxRange() const { return pxRange_; }
 
-        /// @brief 実際に採用したフォント名（ログ・デバッグ表示用）
+        /// @brief メトリクスの供給元になったフォント名（ログ・デバッグ表示用）
         const std::wstring& GetResolvedFontName() const { return resolvedFontName_; }
+
+        /// @brief 実際に開けたフォールバック列（先頭が主フォント）
+        const std::vector<std::wstring>& GetFontChainNames() const { return fontChainNames_; }
 
     private:
         std::unordered_map<char32_t, MsdfGlyph> glyphs_;
+        MsdfGlyph notdefGlyph_{};
         MsdfFontMetrics metrics_{};
 
         Microsoft::WRL::ComPtr<ID3D12Resource> atlasTexture_;
@@ -95,6 +119,7 @@ namespace CoreEngine
         float pxRange_ = 4.0f;
 
         std::wstring resolvedFontName_;
+        std::vector<std::wstring> fontChainNames_;
         GraphicsCore* graphicsCore_ = nullptr;
     };
 }

@@ -6,7 +6,7 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Text/MsdfFont.h"
+#include "Text/FontManager.h"
 #include "UI/UIImage.h"
 #include "UI/UIText.h"
 #include "Utility/FrameRate/Time.h"
@@ -33,6 +33,14 @@ namespace MsdfTextTest
         constexpr const char* kRotatingText = "回転しても鋭い";
         constexpr const char* kCornerText = "角が丸まらない：レ・ト・国・永";
 
+        /// 未収録文字の確認用。〄 は下の kNotdefCharset に含めないので □ が出る
+        constexpr const char* kNotdefText = "アトラスに無い文字 → 〄〄〄";
+        /// 上の文字列から 〄 だけを除いたもの（アトラスへ焼く分）
+        constexpr const char* kNotdefCharset = "アトラスに無い文字 → ";
+
+        /// 毎フレーム内容が変わるテキスト（頂点バッファの検証用）に使う文字
+        constexpr const char* kCounterCharset = "経過秒フレーム目 ";
+
         /// サイズ階段（px）。全て同じ 1 枚のアトラスから描かれる
         constexpr float kLadderSizes[] = { 12.0f, 16.0f, 22.0f, 30.0f, 42.0f, 58.0f };
 
@@ -41,7 +49,9 @@ namespace MsdfTextTest
         constexpr float kScaleMaxPx = 100.0f;
         constexpr float kScalePeriodSeconds = 6.0f;
 
-        /// アトラス生成に使うシステムフォントの候補（上から順に試す）
+        /// フォントのフォールバック列（先頭が主フォント）
+        /// @note 「最初に見つかった 1 つ」ではなく、文字ごとに先頭から探す。
+        ///       先頭に無い文字は次のフォントから拾う
         const std::vector<std::wstring> kFontCandidates = {
             L"Yu Gothic UI",
             L"Meiryo",
@@ -116,6 +126,15 @@ namespace MsdfTextTest
         // SDF なら丸まる字形（カタカナの角・漢字の交差）を並べる
         CreateText(kCornerText, 40.0f, { 40.0f, 430.0f }, accent, "CornerCheck");
 
+        // ── ②-b 未収録文字の確認 ────────────────────────────────
+        // 〄 はアトラスに焼いていない。黙って消えずに □ が出れば正しい
+        CreateText(kNotdefText, 26.0f, { 40.0f, 490.0f }, dim, "NotdefCheck");
+
+        // ── ②-c 毎フレーム文字列が変わるテキスト ────────────────
+        // 頂点は UploadRing へ毎フレーム積み直すので、GPU が読んでいる最中の
+        // 上書きが起きない。ちらつき・崩れが無ければ正しい
+        counterText_ = CreateText("", 22.0f, { 40.0f, 530.0f }, white, "FrameCounter");
+
         // ── ③拡大縮小アニメーション（要件の直接検証）──────────────
         scalingText_ = CreateText(
             kScalingText, kScaleMinPx, { 0.0f, 90.0f }, accent, "ScalingText");
@@ -146,10 +165,10 @@ namespace MsdfTextTest
 
     void MsdfTextTestScene::BuildFont()
     {
-        auto* graphicsCore = engine_ ? engine_->GetService<GraphicsCore>() : nullptr;
-        if (!graphicsCore) {
+        auto* fontManager = engine_ ? engine_->GetService<FontManager>() : nullptr;
+        if (!fontManager) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
-                "MsdfTextTestScene: GraphicsCore を取得できませんでした");
+                "MsdfTextTestScene: FontManager を取得できませんでした");
             return;
         }
 
@@ -160,6 +179,7 @@ namespace MsdfTextTest
         // 和文を本格対応する際は、ここを動的アトラス（出てきた文字だけ焼く）へ置き換える
         desc.charsetUtf8 =
             std::string(kTitleText) + kLadderText + kScalingText + kRotatingText + kCornerText
+            + kNotdefCharset + kCounterCharset
             + "px 拡大しても輪郭が鋭いまま／縮小しても消えないことを確認する"
             + "font atlas pxRange";
         desc.includeAscii = true;
@@ -174,11 +194,12 @@ namespace MsdfTextTest
         // 出力された PNG を開いて、グリフが正しい向き・形で焼けているかを見る
         desc.debugAtlasDumpPath = kAtlasDumpPath;
 
-        font_ = std::make_unique<MsdfFont>();
-        if (!font_->Build(graphicsCore, desc)) {
+        // 所有は FontManager。同じ指定なら再利用され、
+        // 初回だけディスクキャッシュを見て、無ければ焼いて保存する
+        font_ = fontManager->Acquire(desc);
+        if (!font_) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
-                "MsdfTextTestScene: MSDF フォントの構築に失敗しました");
-            font_.reset();
+                "MsdfTextTestScene: MSDF フォントの取得に失敗しました");
         }
     }
 
@@ -192,7 +213,7 @@ namespace MsdfTextTest
         if (!font_) { return nullptr; }
 
         auto* uiText = CreateObject<UIText>();
-        uiText->Initialize(font_.get(), text, name);
+        uiText->Initialize(font_, text, name);
         uiText->SetSerializeEnabled(false);
         uiText->SetAnchor(UIAnchor::TopLeft);
         uiText->SetPivot({ 0.0f, 0.0f });
@@ -206,6 +227,16 @@ namespace MsdfTextTest
     void MsdfTextTestScene::OnUpdate()
     {
         elapsedSeconds_ += Time::DeltaTime();
+        ++frameCount_;
+
+        // ── 毎フレーム文字列を差し替える ──────────────────────────
+        // 自前の UPLOAD バッファを書き換える実装だと、GPU が前フレームの頂点を
+        // 読んでいる最中に上書きしてここが崩れる。UploadRing 化の検証がこれ
+        if (counterText_) {
+            counterText_->SetText(
+                "経過 " + std::to_string(static_cast<int>(elapsedSeconds_)) + " 秒 / "
+                + std::to_string(frameCount_) + " フレーム目");
+        }
 
         // ── 拡大縮小：0..1 を往復させてフォントサイズへ写す ────────
         // 頂点は em 単位なので、ここでサイズを変えても頂点は組み直されない。

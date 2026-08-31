@@ -10,11 +10,12 @@ cbuffer TransformationMatrix : register(b1)
     float4x4 World;
 }
 
+// 頂点は毎フレーム UploadRing へ積み直すので、要素は必要最小限にする。
+// （法線・接線を持つ汎用 VertexData のままだと 1 頂点 48B → 24B の倍の転送量になる）
 struct VertexShaderInput
 {
     float4 position : POSITION0;
     float2 texcoord : TEXCOORD0;
-    float3 normal   : NORMAL0;
 };
 
 VertexShaderOutput main(VertexShaderInput input)

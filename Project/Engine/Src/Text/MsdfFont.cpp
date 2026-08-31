@@ -3,6 +3,7 @@
 
 #include "Text/DirectWriteFontFace.h"
 #include "Text/MsdfFontBaker.h"
+#include "Text/MsdfFontCache.h"
 #include "Text/TextEncoding.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
@@ -12,6 +13,7 @@
 #include <externals/DirectXTex/DirectXTex.h>
 
 #include <cstring>
+#include <memory>
 
 namespace CoreEngine
 {
@@ -29,20 +31,40 @@ namespace CoreEngine
         if (!graphicsCore) { return false; }
         graphicsCore_ = graphicsCore;
 
-        // ── ①フォントを開く ──────────────────────────────────────
-        DirectWriteFontFace face;
+        // ── ①フォールバック列を開く ────────────────────────────
+        // 文字ごとに先頭から探すので、開けたものは全て残す
+        std::vector<std::unique_ptr<DirectWriteFontFace>> faces;
+        fontChainNames_.clear();
+
         if (!desc.filePath.empty()) {
-            if (!face.LoadFromFile(desc.filePath, desc.faceIndex)) {
-                return false;
+            auto face = std::make_unique<DirectWriteFontFace>();
+            if (face->LoadFromFile(desc.filePath, desc.faceIndex)) {
+                fontChainNames_.push_back(face->GetDisplayName());
+                faces.push_back(std::move(face));
             }
-            resolvedFontName_ = desc.filePath;
-        } else {
-            resolvedFontName_ = face.LoadFromSystemPreferred(desc.systemFamilyNames);
-            if (resolvedFontName_.empty()) {
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
-                    "MsdfFont: 候補のシステムフォントが 1 つも見つかりませんでした");
-                return false;
+        }
+
+        for (const std::wstring& familyName : desc.systemFamilyNames) {
+            auto face = std::make_unique<DirectWriteFontFace>();
+            if (face->LoadFromSystem(familyName)) {
+                fontChainNames_.push_back(familyName);
+                faces.push_back(std::move(face));
             }
+        }
+
+        if (faces.empty()) {
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
+                "MsdfFont: 指定されたフォントを 1 つも開けませんでした");
+            return false;
+        }
+
+        // メトリクスは先頭のフォントのものを使う
+        resolvedFontName_ = fontChainNames_.front();
+
+        std::vector<const DirectWriteFontFace*> faceChain;
+        faceChain.reserve(faces.size());
+        for (const auto& face : faces) {
+            faceChain.push_back(face.get());
         }
 
         // ── ②焼く文字を集める ────────────────────────────────────
@@ -63,17 +85,46 @@ namespace CoreEngine
             return false;
         }
 
-        // ── ③MSDF アトラスを生成 ────────────────────────────────
-        const MsdfBakeResult bake = MsdfFontBaker::Bake(face, codePoints, desc.bake);
-        if (!bake.success) {
-            return false;
+        // ── ③MSDF アトラスを用意する（キャッシュ優先）────────────
+        // ベイクは重い（Release で 152 グリフ 0.66 秒、最適化なしの Debug では 15 秒）。
+        // 指定・フォント・文字集合が同じなら前回の結果をそのまま使う
+        MsdfBakeResult bake{};
+        bool fromCache = false;
+        std::filesystem::path cachePath;
+
+        if (desc.useDiskCache) {
+            const uint64_t cacheKey = MsdfFontCache::ComputeKey(desc, fontChainNames_);
+            cachePath = MsdfFontCache::MakePath(desc.cacheDirectory, cacheKey);
+            fromCache = MsdfFontCache::TryLoad(cachePath, bake);
         }
 
+        if (fromCache) {
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Resource,
+                "MSDF アトラスをキャッシュから読み込みました: {} ({} グリフ)",
+                Logger::GetInstance().PathToUtf8(cachePath), bake.glyphs.size());
+        } else {
+            bake = MsdfFontBaker::Bake(faceChain, codePoints, desc.bake);
+            if (!bake.success) {
+                return false;
+            }
+            if (desc.useDiskCache && MsdfFontCache::Save(cachePath, bake)) {
+                Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Resource,
+                    "MSDF アトラスをキャッシュへ保存しました: {}",
+                    Logger::GetInstance().PathToUtf8(cachePath));
+            }
+        }
+
+        // 目視確認用の PNG は、焼き直したときと出力が消えているときだけ書く
+        // （毎起動書くと数十 ms を無駄に払う）
         if (!desc.debugAtlasDumpPath.empty()) {
-            MsdfFontBaker::SaveAtlasPng(bake, desc.debugAtlasDumpPath);
+            std::error_code ec;
+            if (!fromCache || !std::filesystem::exists(desc.debugAtlasDumpPath, ec)) {
+                MsdfFontBaker::SaveAtlasPng(bake, desc.debugAtlasDumpPath);
+            }
         }
 
         glyphs_ = bake.glyphs;
+        notdefGlyph_ = bake.notdefGlyph;
         metrics_ = bake.metrics;
         pxRange_ = desc.bake.pxRange;
         atlasSize_ = {
@@ -126,5 +177,11 @@ namespace CoreEngine
     {
         const auto it = glyphs_.find(codePoint);
         return (it != glyphs_.end()) ? &it->second : nullptr;
+    }
+
+    const MsdfGlyph& MsdfFont::ResolveGlyph(char32_t codePoint) const
+    {
+        const auto it = glyphs_.find(codePoint);
+        return (it != glyphs_.end()) ? it->second : notdefGlyph_;
     }
 }

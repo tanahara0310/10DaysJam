@@ -43,16 +43,20 @@ namespace MsdfTextTest
             const CoreEngine::Vector4& color,
             const std::string& name);
 
-        /// @brief フォントを構築する（失敗したらシーンはテキスト無しで動く）
+        /// @brief FontManager からフォントを取得する（失敗したらシーンはテキスト無しで動く）
         void BuildFont();
 
-        std::unique_ptr<CoreEngine::MsdfFont> font_;
+        /// @brief 使用するフォント（所有は FontManager。シーンは参照するだけ）
+        CoreEngine::MsdfFont* font_ = nullptr;
 
         /// 拡大縮小で輪郭が崩れないことを見るための対象
         CoreEngine::UIText* scalingText_ = nullptr;
         /// 回転しても崩れないことを見るための対象
         CoreEngine::UIText* rotatingText_ = nullptr;
+        /// 毎フレーム文字列が変わる対象（頂点バッファのフレーム跨ぎ破損の検証）
+        CoreEngine::UIText* counterText_ = nullptr;
 
         float elapsedSeconds_ = 0.0f;
+        uint64_t frameCount_ = 0;
     };
 }

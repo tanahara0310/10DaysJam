@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <format>
 
 namespace CoreEngine
 {
@@ -19,14 +20,20 @@ namespace CoreEngine
         /// これより鋭い折れをコーナーとみなしてチャンネルを切り替える
         constexpr double kEdgeColoringAngleThreshold = 3.0;
 
+        /// フォント側に .notdef の絵が無かったときに自前で描く豆腐の寸法（em 単位）
+        constexpr double kFallbackBoxAdvance = 0.5;
+        constexpr double kFallbackBoxMargin = 0.06;
+        constexpr double kFallbackBoxTop = 0.68;
+        constexpr double kFallbackBoxStroke = 0.05;
+
         /// @brief 焼く前に用意しておくグリフ 1 件分の情報
         struct PendingGlyph
         {
             char32_t codePoint = 0;
-            uint16_t glyphIndex = 0;
             float advance = 0.0f;
 
             bool hasOutline = false;
+            bool isNotdef = false; ///< true なら codePoint ではなく豆腐として扱う
 
             /// 距離場のマージンを含めた em 境界（Y 上正）
             double left = 0.0, bottom = 0.0, right = 0.0, top = 0.0;
@@ -35,6 +42,32 @@ namespace CoreEngine
             /// アトラス上の配置（左上）
             int atlasX = 0, atlasY = 0;
         };
+
+        /// @brief 中抜きの矩形（豆腐）を組み立てる
+        /// @details フォントの .notdef が空だった場合の最後の砦。
+        ///          何も描かないと「文字が消えた」ようにしか見えず不具合に気付けない。
+        void BuildFallbackBoxShape(msdfgen::Shape& shape)
+        {
+            const double l = kFallbackBoxMargin;
+            const double r = kFallbackBoxAdvance - kFallbackBoxMargin;
+            const double b = 0.0;
+            const double t = kFallbackBoxTop;
+            const double s = kFallbackBoxStroke;
+
+            // 外周（反時計回り）
+            msdfgen::Contour& outer = shape.addContour();
+            outer.addEdge(msdfgen::EdgeHolder(msdfgen::Point2(l, b), msdfgen::Point2(r, b)));
+            outer.addEdge(msdfgen::EdgeHolder(msdfgen::Point2(r, b), msdfgen::Point2(r, t)));
+            outer.addEdge(msdfgen::EdgeHolder(msdfgen::Point2(r, t), msdfgen::Point2(l, t)));
+            outer.addEdge(msdfgen::EdgeHolder(msdfgen::Point2(l, t), msdfgen::Point2(l, b)));
+
+            // 内周（時計回り＝逆巻き。非ゼロワインディングで中が抜ける）
+            msdfgen::Contour& inner = shape.addContour();
+            inner.addEdge(msdfgen::EdgeHolder(msdfgen::Point2(l + s, b + s), msdfgen::Point2(l + s, t - s)));
+            inner.addEdge(msdfgen::EdgeHolder(msdfgen::Point2(l + s, t - s), msdfgen::Point2(r - s, t - s)));
+            inner.addEdge(msdfgen::EdgeHolder(msdfgen::Point2(r - s, t - s), msdfgen::Point2(r - s, b + s)));
+            inner.addEdge(msdfgen::EdgeHolder(msdfgen::Point2(r - s, b + s), msdfgen::Point2(l + s, b + s)));
+        }
 
         /// @brief 高さ降順のシェルフ（棚）パッキング
         /// @details 同じ高さのグリフが横一列に並ぶので、単純なわりに隙間が少ない。
@@ -85,14 +118,14 @@ namespace CoreEngine
     // ──────────────────────────────────────────────────────────────
 
     MsdfBakeResult MsdfFontBaker::Bake(
-        const DirectWriteFontFace& face,
+        const std::vector<const DirectWriteFontFace*>& faceChain,
         const std::vector<char32_t>& codePoints,
         const MsdfBakeSettings& settings)
     {
         MsdfBakeResult result{};
         result.settings = settings;
 
-        if (!face.IsValid()) {
+        if (faceChain.empty() || !faceChain.front() || !faceChain.front()->IsValid()) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
                 "MsdfFontBaker: フォントが読み込まれていません");
             return result;
@@ -103,6 +136,7 @@ namespace CoreEngine
             return result;
         }
 
+        const DirectWriteFontFace& primaryFace = *faceChain.front();
         const auto startTime = std::chrono::steady_clock::now();
 
         const double pixelsPerEm = static_cast<double>(settings.glyphPixelSize);
@@ -116,47 +150,21 @@ namespace CoreEngine
             std::unique(uniqueCodePoints.begin(), uniqueCodePoints.end()),
             uniqueCodePoints.end());
 
-        // ── ①アウトラインを取り出して大きさを測る ────────────────
         std::vector<PendingGlyph> pending;
         std::vector<msdfgen::Shape> shapes;
-        pending.reserve(uniqueCodePoints.size());
-        shapes.reserve(uniqueCodePoints.size());
+        pending.reserve(uniqueCodePoints.size() + 1);
+        shapes.reserve(uniqueCodePoints.size() + 1);
 
-        for (char32_t codePoint : uniqueCodePoints) {
-            const uint16_t glyphIndex = face.GetGlyphIndex(codePoint);
-            if (glyphIndex == 0 && codePoint != U'\0') {
-                // フォントに収録が無い文字。豆腐を出さずに黙って捨てる
-                // （実運用ではここでフォントフォールバックへ回す）
-                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
-                    "MsdfFontBaker: フォントに収録されていない文字を飛ばしました (U+{:04X})",
-                    static_cast<uint32_t>(codePoint));
-                continue;
-            }
-
-            msdfgen::Shape shape;
-            if (!face.BuildShape(glyphIndex, shape)) {
-                continue;
-            }
-
-            PendingGlyph glyph{};
-            glyph.codePoint = codePoint;
-            glyph.glyphIndex = glyphIndex;
-            glyph.advance = face.GetAdvance(glyphIndex);
-
+        // 取り出したアウトラインを測って pending へ積む共通処理
+        const auto pushShape = [&](msdfgen::Shape&& shape, PendingGlyph glyph) -> bool {
             if (shape.contours.empty()) {
-                // 空白文字。絵は無いが advance は要る
                 glyph.hasOutline = false;
                 pending.push_back(glyph);
                 shapes.emplace_back();
-                ++result.blankGlyphCount;
-                continue;
+                return true;
             }
-
             if (!shape.validate()) {
-                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
-                    "MsdfFontBaker: 輪郭が不正なので飛ばしました (U+{:04X})",
-                    static_cast<uint32_t>(codePoint));
-                continue;
+                return false;
             }
             shape.normalize();
 
@@ -177,20 +185,88 @@ namespace CoreEngine
             // こうしておくと「plane 境界 ↔ UV 矩形」が誤差なく 1 対 1 で対応する
             glyph.right = glyph.left + glyph.width / pixelsPerEm;
             glyph.top = glyph.bottom + glyph.height / pixelsPerEm;
-
             glyph.hasOutline = true;
 
             pending.push_back(glyph);
             shapes.push_back(std::move(shape));
+            return true;
+            };
+
+        // ── ①.notdef（豆腐）を必ず 1 つ用意する ──────────────────
+        {
+            msdfgen::Shape notdefShape;
+            primaryFace.BuildShape(0, notdefShape);
+
+            PendingGlyph glyph{};
+            glyph.isNotdef = true;
+            glyph.advance = primaryFace.GetAdvance(0);
+
+            if (notdefShape.contours.empty()) {
+                // フォントの .notdef が空だった。自前の豆腐で代用する
+                notdefShape = msdfgen::Shape();
+                BuildFallbackBoxShape(notdefShape);
+                glyph.advance = static_cast<float>(kFallbackBoxAdvance);
+            }
+            if (glyph.advance <= 0.0f) {
+                glyph.advance = static_cast<float>(kFallbackBoxAdvance);
+            }
+
+            if (!pushShape(std::move(notdefShape), glyph)) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                    "MsdfFontBaker: .notdef の輪郭が不正でした。豆腐で代用します");
+                msdfgen::Shape box;
+                BuildFallbackBoxShape(box);
+                glyph.advance = static_cast<float>(kFallbackBoxAdvance);
+                pushShape(std::move(box), glyph);
+            }
         }
 
-        if (pending.empty()) {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Resource,
-                "MsdfFontBaker: 焼けるグリフが 1 つもありませんでした");
-            return result;
+        // ── ②各文字のアウトラインを取り出して大きさを測る ────────
+        for (char32_t codePoint : uniqueCodePoints) {
+            // フォントフォールバック: 先頭から順に、その文字を収録しているフォントを探す
+            const DirectWriteFontFace* sourceFace = nullptr;
+            uint16_t glyphIndex = 0;
+            for (size_t i = 0; i < faceChain.size(); ++i) {
+                const DirectWriteFontFace* face = faceChain[i];
+                if (!face || !face->IsValid()) { continue; }
+                const uint16_t index = face->GetGlyphIndex(codePoint);
+                if (index != 0) {
+                    sourceFace = face;
+                    glyphIndex = index;
+                    if (i > 0) { ++result.fallbackGlyphCount; }
+                    break;
+                }
+            }
+
+            if (!sourceFace) {
+                // どのフォントにも無い。glyphs へ入れないので、
+                // 描画時に MsdfFont::ResolveGlyph が .notdef へ倒す
+                result.missingCodePoints.push_back(codePoint);
+                continue;
+            }
+
+            msdfgen::Shape shape;
+            if (!sourceFace->BuildShape(glyphIndex, shape)) {
+                result.missingCodePoints.push_back(codePoint);
+                continue;
+            }
+
+            PendingGlyph glyph{};
+            glyph.codePoint = codePoint;
+            glyph.advance = sourceFace->GetAdvance(glyphIndex);
+
+            const bool hadOutline = !shape.contours.empty();
+            if (!pushShape(std::move(shape), glyph)) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                    "MsdfFontBaker: 輪郭が不正なので飛ばしました (U+{:04X})",
+                    static_cast<uint32_t>(codePoint));
+                result.missingCodePoints.push_back(codePoint);
+                continue;
+            }
+            if (!hadOutline) { ++result.blankGlyphCount; }
         }
 
-        // ── ②アトラスへ配置（高さ降順のシェルフパッキング）────────
+        // ── ③アトラスへ配置（高さ降順のシェルフパッキング）────────
         std::vector<size_t> order(pending.size());
         for (size_t i = 0; i < order.size(); ++i) { order[i] = i; }
         std::sort(order.begin(), order.end(), [&pending](size_t a, size_t b) {
@@ -206,7 +282,7 @@ namespace CoreEngine
         }
         result.droppedGlyphCount = dropped;
 
-        // ── ③距離場を焼いてアトラスへ書き込む ────────────────────
+        // ── ④距離場を焼いてアトラスへ書き込む ────────────────────
         result.atlasWidth = settings.atlasWidth;
         result.atlasHeight = settings.atlasHeight;
         result.pixels.assign(
@@ -274,20 +350,36 @@ namespace CoreEngine
                 ++result.bakedGlyphCount;
             }
 
-            result.glyphs[glyph.codePoint] = out;
+            if (glyph.isNotdef) {
+                result.notdefGlyph = out;
+            } else {
+                result.glyphs[glyph.codePoint] = out;
+            }
         }
 
-        result.metrics = face.GetMetrics();
+        result.metrics = primaryFace.GetMetrics();
         result.success = true;
         result.bakeSeconds = std::chrono::duration<double>(
             std::chrono::steady_clock::now() - startTime).count();
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Resource,
-            "MSDF アトラスを生成しました: {}x{} / 描画グリフ {} 件・空白 {} 件 / "
+            "MSDF アトラスを生成しました: {}x{} / 描画グリフ {} 件・空白 {} 件・代替フォント {} 件 / "
             "{}px 焼き・pxRange {} / {:.2f} 秒",
             result.atlasWidth, result.atlasHeight,
-            result.bakedGlyphCount, result.blankGlyphCount,
+            result.bakedGlyphCount, result.blankGlyphCount, result.fallbackGlyphCount,
             settings.glyphPixelSize, settings.pxRange, result.bakeSeconds);
+
+        if (!result.missingCodePoints.empty()) {
+            // 消えた文字を黙って見逃さないよう、どの文字が無かったかを必ず残す
+            std::string list;
+            for (size_t i = 0; i < result.missingCodePoints.size() && i < 32; ++i) {
+                list += std::format("U+{:04X} ",
+                    static_cast<uint32_t>(result.missingCodePoints[i]));
+            }
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                "MsdfFontBaker: どのフォントにも収録が無い文字が {} 件あります（.notdef で描画）: {}",
+                result.missingCodePoints.size(), list);
+        }
 
         return result;
     }

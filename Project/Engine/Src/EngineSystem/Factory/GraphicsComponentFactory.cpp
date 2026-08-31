@@ -22,6 +22,7 @@
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "Graphics/Render/UI/TextRenderer.h"
+#include "Text/FontManager.h"
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Render/Particle/GpuParticleRenderer.h"
@@ -116,6 +117,12 @@ namespace CoreEngine
             auto modelManager = std::make_unique<ModelManager>();
             modelManager->Initialize(state->dx, state->resourceFactory);
             enginePtr->RegisterComponent(std::move(modelManager));
+
+            // MSDF フォントの所有・共有・キャッシュはここが一元管理する。
+            // シーンが MsdfFont を直接持つと、シーンをまたぐたびに焼き直しになる
+            auto fontManager = std::make_unique<FontManager>();
+            fontManager->Initialize(state->dx);
+            enginePtr->RegisterComponent(std::move(fontManager));
         });
 
         return state;

@@ -3,26 +3,29 @@
 #include "UIElement.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Material/TextMaterialInstance.h"
+#include "Graphics/Render/UI/TextRenderer.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector4.h"
 
-#include <d3d12.h>
 #include <memory>
 #include <string>
-#include <wrl.h>
+#include <vector>
 
 namespace CoreEngine
 {
-    class UIRenderer;
     class MsdfFont;
 
     /// @brief MSDF フォントで文字列を描く UI 要素
     /// @details
     ///  頂点は **em 単位**（フォントサイズ 1.0 のときの大きさ）で組み、
     ///  フォントサイズはワールド行列のスケール成分として掛ける。
-    ///  そのため SetFontSize() は頂点バッファを作り直さない。
+    ///  そのため SetFontSize() は頂点を組み直さない。
     ///  「スケールを変えても輪郭が崩れない」は距離場が担保し、
     ///  「スケール変更が軽い」はこの構成が担保する。
+    ///
+    ///  頂点そのものは CPU 側に持ち、描画のたびに UploadRing（フレーム単位で
+    ///  巻き戻る UPLOAD ヒープ）へ積む。自前の UPLOAD バッファを持って書き換えると、
+    ///  GPU が前フレームの内容を読んでいる最中に上書きしてしまう。
     class UIText : public GameObject
     {
     public:
@@ -50,6 +53,7 @@ namespace CoreEngine
         // ===== テキスト =====
 
         /// @brief 表示文字列を差し替える（頂点を組み直す）
+        /// @note 組み直すのは CPU 側の配列だけなので、毎フレーム呼んでも GPU 側は壊れない
         void SetText(const std::string& textUtf8);
         const std::string& GetText() const { return textUtf8_; }
 
@@ -67,6 +71,9 @@ namespace CoreEngine
         {
             return { measuredSizeEm_.x * fontSize_, measuredSizeEm_.y * fontSize_ };
         }
+
+        /// @brief 描画するグリフ数
+        uint32_t GetGlyphCount() const { return static_cast<uint32_t>(vertices_.size() / 4); }
 
         // ===== UILayout アクセサ =====
         void SetAnchor(UIAnchor anchor) { layout_.anchor = anchor; }
@@ -97,15 +104,10 @@ namespace CoreEngine
 #endif
 
     private:
-        /// @brief 文字列からグリフのクワッド列を組み立てる
+        /// @brief 文字列からグリフのクワッド列（CPU 側）を組み立てる
         void RebuildGeometry();
 
-        /// @brief 必要な容量の頂点・インデックスバッファを確保し直す
-        /// @param glyphCount 描画するグリフ数
-        /// @return 確保できたら true
-        bool EnsureBufferCapacity(size_t glyphCount);
-
-        UIRenderer* renderer_ = nullptr;
+        TextRenderer* renderer_ = nullptr;
         MsdfFont* font_ = nullptr;
 
         std::string textUtf8_;
@@ -116,15 +118,13 @@ namespace CoreEngine
         /// 文字列を囲む矩形（em 単位）。GetMeasuredSize / pivot の計算に使う
         Vector2 measuredSizeEm_ = { 0.0f, 0.0f };
 
+        /// CPU 側の頂点。描画時に UploadRing へ積む
+        std::vector<TextVertex> vertices_;
+
         std::unique_ptr<TextMaterialInstance> material_;
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
-        D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
-        D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
-
-        size_t glyphCapacity_ = 0; ///< 確保済みのグリフ数
-        uint32_t indexCount_ = 0;  ///< 今フレーム描くインデックス数
         bool geometryDirty_ = false;
+        /// グリフ数上限の警告を 1 回だけ出すためのフラグ
+        bool glyphLimitWarned_ = false;
     };
 }
