@@ -14,7 +14,7 @@ namespace CoreEngine
     {
         /// キャッシュ形式の版。構造を変えたら必ず上げること
         /// （上げ忘れると古いキャッシュを新しい版として読んで壊れる）
-        constexpr uint32_t kCacheVersion = 1;
+        constexpr uint32_t kCacheVersion = 3;
         constexpr char kCacheMagic[8] = { 'M','S','D','F','A','T','L','\0' };
 
         /// @brief キャッシュファイル先頭の固定長ヘッダ
@@ -31,8 +31,14 @@ namespace CoreEngine
             float    ascender;
             float    descender;
             float    lineHeight;
+            int32_t  pageCount;        ///< pixels に入っている枚数
             uint32_t glyphCount;
             uint32_t pixelByteCount;
+            // 実行時に続きから切り出すための棚の進み具合
+            int32_t  allocatorPageIndex;
+            int32_t  allocatorCursorX;
+            int32_t  allocatorCursorY;
+            int32_t  allocatorShelfHeight;
         };
 
         // ── FNV-1a 64bit ────────────────────────────────────────
@@ -130,8 +136,8 @@ namespace CoreEngine
         }
 
         const size_t expectedPixels =
-            static_cast<size_t>(header.atlasWidth) * header.atlasHeight * 4;
-        if (header.atlasWidth <= 0 || header.atlasHeight <= 0
+            static_cast<size_t>(header.atlasWidth) * header.atlasHeight * 4 * header.pageCount;
+        if (header.atlasWidth <= 0 || header.atlasHeight <= 0 || header.pageCount <= 0
             || header.pixelByteCount != expectedPixels) {
             return false;
         }
@@ -144,9 +150,15 @@ namespace CoreEngine
         loaded.settings.atlasWidth = header.atlasWidth;
         loaded.settings.atlasHeight = header.atlasHeight;
         loaded.settings.padding = header.padding;
+        loaded.settings.atlasPageCount = header.pageCount;
+        loaded.pageCount = header.pageCount;
         loaded.metrics.ascender = header.ascender;
         loaded.metrics.descender = header.descender;
         loaded.metrics.lineHeight = header.lineHeight;
+        loaded.allocatorState.pageIndex = header.allocatorPageIndex;
+        loaded.allocatorState.cursorX = header.allocatorCursorX;
+        loaded.allocatorState.cursorY = header.allocatorCursorY;
+        loaded.allocatorState.shelfHeight = header.allocatorShelfHeight;
 
         if (std::fread(&loaded.notdefGlyph, sizeof(MsdfGlyph), 1, handle.file) != 1) {
             return false;
@@ -210,8 +222,13 @@ namespace CoreEngine
             header.ascender = result.metrics.ascender;
             header.descender = result.metrics.descender;
             header.lineHeight = result.metrics.lineHeight;
+            header.pageCount = result.pageCount;
             header.glyphCount = static_cast<uint32_t>(result.glyphs.size());
             header.pixelByteCount = static_cast<uint32_t>(result.pixels.size());
+            header.allocatorPageIndex = result.allocatorState.pageIndex;
+            header.allocatorCursorX = result.allocatorState.cursorX;
+            header.allocatorCursorY = result.allocatorState.cursorY;
+            header.allocatorShelfHeight = result.allocatorState.shelfHeight;
 
             bool ok = std::fwrite(&header, sizeof(header), 1, handle.file) == 1;
             ok = ok && std::fwrite(&result.notdefGlyph, sizeof(MsdfGlyph), 1, handle.file) == 1;

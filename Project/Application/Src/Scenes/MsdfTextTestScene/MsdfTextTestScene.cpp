@@ -33,13 +33,36 @@ namespace MsdfTextTest
         constexpr const char* kRotatingText = "回転しても鋭い";
         constexpr const char* kCornerText = "角が丸まらない：レ・ト・国・永";
 
-        /// 未収録文字の確認用。〄 は下の kNotdefCharset に含めないので □ が出る
-        constexpr const char* kNotdefText = "アトラスに無い文字 → 〄〄〄";
-        /// 上の文字列から 〄 だけを除いたもの（アトラスへ焼く分）
-        constexpr const char* kNotdefCharset = "アトラスに無い文字 → ";
+        /// @brief U+E123（私用領域）の UTF-8 バイト列
+        /// @note 文字列リテラルの \x エスケープは /utf-8 だと「ソース文字」と
+        ///       解釈されて UTF-8 へ再エンコードされてしまう
+        ///       （\xEE が î = C3 AE の 2 バイトになる）。
+        ///       生バイトを置きたいときは char の配列で組むこと
+        constexpr char kPrivateUseUtf8[] = { '\xEE', '\x84', '\xA3', '\0' };
+
+        /// @brief 未収録文字の確認用の見出し
+        /// @details U+E123 は私用領域なのでどのフォントも収録しない。
+        ///          実行時ベイクでも焼けないので □ のまま残るのが正しい
+        constexpr const char* kNotdefPrefix = "どのフォントにも無い文字 → ";
+        constexpr const char* kNotdefSuffix = " (U+E123)";
+        /// アトラスへ焼く分（U+E123 は当然含まれない）
+        constexpr const char* kNotdefCharset = "どのフォントにも無い文字 → (U+E123)";
 
         /// 毎フレーム内容が変わるテキスト（頂点バッファの検証用）に使う文字
         constexpr const char* kCounterCharset = "経過秒フレーム目 ";
+
+        /// @brief 実行時ベイクの確認用
+        /// @details **これらの漢字は charsetUtf8 に入れない**。
+        ///          最初の数フレームは □ が出て、裏で焼き上がると自動で本来の字へ変わる
+        constexpr const char* kDynamicSamples[] = {
+            "贅沢な麒麟が薔薇を頬張る",
+            "檸檬・葡萄・林檎・蜜柑・西瓜",
+            "躑躅 憂鬱 齷齪 灣 鑑 驫",
+        };
+        constexpr float kDynamicSwitchSeconds = 3.0f;
+
+        /// 実行時ベイクの見出し（こちらは焼いておく）
+        constexpr const char* kDynamicLabelCharset = "実行時ベイク 登録済み 待ち 使用量 枚 ％";
 
         /// サイズ階段（px）。全て同じ 1 枚のアトラスから描かれる
         constexpr float kLadderSizes[] = { 12.0f, 16.0f, 22.0f, 30.0f, 42.0f, 58.0f };
@@ -127,13 +150,21 @@ namespace MsdfTextTest
         CreateText(kCornerText, 40.0f, { 40.0f, 430.0f }, accent, "CornerCheck");
 
         // ── ②-b 未収録文字の確認 ────────────────────────────────
-        // 〄 はアトラスに焼いていない。黙って消えずに □ が出れば正しい
-        CreateText(kNotdefText, 26.0f, { 40.0f, 490.0f }, dim, "NotdefCheck");
+        // U+E123 はどのフォントにも無い。黙って消えずに □ が出れば正しい
+        CreateText(std::string(kNotdefPrefix) + kPrivateUseUtf8 + kNotdefSuffix,
+            26.0f, { 40.0f, 490.0f }, dim, "NotdefCheck");
 
         // ── ②-c 毎フレーム文字列が変わるテキスト ────────────────
         // 頂点は UploadRing へ毎フレーム積み直すので、GPU が読んでいる最中の
         // 上書きが起きない。ちらつき・崩れが無ければ正しい
         counterText_ = CreateText("", 22.0f, { 40.0f, 530.0f }, white, "FrameCounter");
+
+        // ── ②-d 実行時ベイク ────────────────────────────────────
+        // アトラスに焼いていない漢字を出す。最初は □ で、裏で焼き上がると差し替わる
+        CreateText("実行時ベイク", 18.0f, { 40.0f, 566.0f }, dim, "DynamicLabel");
+        dynamicText_ = CreateText(kDynamicSamples[0], 32.0f, { 40.0f, 590.0f },
+            accent, "DynamicText");
+        statusText_ = CreateText("", 15.0f, { 40.0f, 636.0f }, dim, "AtlasStatus");
 
         // ── ③拡大縮小アニメーション（要件の直接検証）──────────────
         scalingText_ = CreateText(
@@ -179,15 +210,18 @@ namespace MsdfTextTest
         // 和文を本格対応する際は、ここを動的アトラス（出てきた文字だけ焼く）へ置き換える
         desc.charsetUtf8 =
             std::string(kTitleText) + kLadderText + kScalingText + kRotatingText + kCornerText
-            + kNotdefCharset + kCounterCharset
+            + kNotdefCharset + kCounterCharset + kDynamicLabelCharset
             + "px 拡大しても輪郭が鋭いまま／縮小しても消えないことを確認する"
             + "font atlas pxRange";
         desc.includeAscii = true;
 
         desc.bake.glyphPixelSize = 40; // 和文の推奨値
         desc.bake.pxRange = 4.0f;      // 40px 焼きでの安全圏
-        desc.bake.atlasWidth = 1024;
-        desc.bake.atlasHeight = 1024;
+        // 1 枚あたりを小さくして、枚をまたぐ経路を実際に通す。
+        // 総面積は 1024x1024 x1枚 と同じ（実運用では 1024x1024 x4枚 あたりが目安）
+        desc.bake.atlasWidth = 512;
+        desc.bake.atlasHeight = 512;
+        desc.bake.atlasPageCount = 4;
         desc.bake.padding = 2;
 
         // 工程①（DirectWrite → Shape 変換）の目視確認用。
@@ -246,6 +280,25 @@ namespace MsdfTextTest
                 elapsedSeconds_ * 2.0f * static_cast<float>(std::numbers::pi) / kScalePeriodSeconds;
             const float t = 0.5f - 0.5f * std::cos(phase); // 0..1 を滑らかに往復
             scalingText_->SetFontSize(kScaleMinPx + (kScaleMaxPx - kScaleMinPx) * t);
+        }
+
+        // ── 実行時ベイク：一定間隔で未登録の文字列へ差し替える ────
+        // 差し替えた直後は □ で出て、ワーカーが焼き終わると自動で本来の字になる
+        dynamicTimer_ += Time::DeltaTime();
+        if (dynamicText_ && dynamicTimer_ >= kDynamicSwitchSeconds) {
+            dynamicTimer_ = 0.0f;
+            dynamicIndex_ = (dynamicIndex_ + 1) % std::size(kDynamicSamples);
+            dynamicText_->SetText(kDynamicSamples[dynamicIndex_]);
+        }
+
+        // アトラスの状態を毎フレーム出す（焼き進み具合が数字で追える）
+        if (statusText_ && font_) {
+            statusText_->SetText(
+                "登録済み " + std::to_string(font_->GetGlyphCount())
+                + " / 待ち " + std::to_string(font_->GetPendingGlyphCount())
+                + " / 使用量 " + std::to_string(static_cast<int>(font_->GetAtlasOccupancy() * 100.0f))
+                + " ％ / " + std::to_string(font_->GetUsedPageCount())
+                + " / " + std::to_string(font_->GetPageCount()) + " 枚");
         }
 
         // ── 回転：MSDF は回転にも強い（ビットマップ方式だと斜めでジャギる）──

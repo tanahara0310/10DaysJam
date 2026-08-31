@@ -3,6 +3,7 @@
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Math/Vector/Vector2.h"
+#include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
 
 #include <cstdint>
@@ -16,7 +17,10 @@ namespace CoreEngine
     struct TextVertex
     {
         Vector4 position;
-        Vector2 texcoord;
+        /// xy = アトラス UV / z = アトラス配列の何枚目か
+        /// @note 枚数を頂点に載せることで、複数枚にまたがる文字列でも
+        ///       ドローコールを分けずに 1 回で描ける
+        Vector3 texcoord;
     };
 
     static constexpr Cb::Field kTextVertexFields[] = {

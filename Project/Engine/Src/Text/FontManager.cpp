@@ -2,6 +2,7 @@
 #include "Text/FontManager.h"
 
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -37,12 +38,18 @@ namespace CoreEngine
     void FontManager::Initialize(GraphicsCore* graphicsCore)
     {
         graphicsCore_ = graphicsCore;
+
+        // 実行時グリフのベイク用。バッチ内のグリフを並列に焼く
+        bakeThreadPool_ = std::make_unique<ThreadPool>(kBakeThreadCount);
     }
 
     void FontManager::Finalize()
     {
         std::lock_guard lock(mutex_);
+        // フォントのデストラクタが自分のベイクタスクを待つので、
+        // プールを畳むのはフォントを全て捨ててから
         fonts_.clear();
+        bakeThreadPool_.reset();
         graphicsCore_ = nullptr;
     }
 
@@ -89,7 +96,7 @@ namespace CoreEngine
         }
 
         auto font = std::make_unique<MsdfFont>();
-        const bool built = font->Build(graphicsCore_, desc);
+        const bool built = font->Build(graphicsCore_, bakeThreadPool_.get(), desc);
 
         MsdfFont* result = font.get();
         fonts_.emplace(key, std::move(font));

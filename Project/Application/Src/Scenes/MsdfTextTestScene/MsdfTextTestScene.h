@@ -55,8 +55,14 @@ namespace MsdfTextTest
         CoreEngine::UIText* rotatingText_ = nullptr;
         /// 毎フレーム文字列が変わる対象（頂点バッファのフレーム跨ぎ破損の検証）
         CoreEngine::UIText* counterText_ = nullptr;
+        /// アトラスに焼いていない文字を出す対象（実行時ベイクの検証）
+        CoreEngine::UIText* dynamicText_ = nullptr;
+        /// アトラスの登録数・待ち件数・使用量を出す
+        CoreEngine::UIText* statusText_ = nullptr;
 
         float elapsedSeconds_ = 0.0f;
         uint64_t frameCount_ = 0;
+        float dynamicTimer_ = 0.0f;
+        size_t dynamicIndex_ = 0;
     };
 }

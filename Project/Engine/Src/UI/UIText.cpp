@@ -92,6 +92,11 @@ namespace CoreEngine
         const std::vector<char32_t> codePoints = Utf8ToUtf32(textUtf8_);
         if (codePoints.empty()) { return; }
 
+        // アトラスに無い文字は裏で焼いてもらう。焼き上がるとフォント側の
+        // グリフ世代が進み、Draw がそれを見て再度ここへ来る
+        font_->RequestGlyphs(codePoints);
+        lastGlyphGeneration_ = font_->GetGlyphGeneration();
+
         const MsdfFontMetrics& metrics = font_->GetMetrics();
         const float lineAdvance = metrics.lineHeight * lineSpacing_;
 
@@ -110,7 +115,7 @@ namespace CoreEngine
 
             // アトラスに無い文字は .notdef（□）へ倒す。
             // ここで捨てると「文字が黙って消える」ことになり、不具合に気付けない
-            const MsdfGlyph& glyph = font_->ResolveGlyph(codePoint);
+            const MsdfGlyph glyph = font_->ResolveGlyph(codePoint);
 
             lineWidths.back() += glyph.advance;
             if (glyph.hasBitmap) { ++drawableGlyphCount; }
@@ -157,7 +162,7 @@ namespace CoreEngine
             }
             if (codePoint == U'\r') { continue; }
 
-            const MsdfGlyph& glyph = font_->ResolveGlyph(codePoint);
+            const MsdfGlyph glyph = font_->ResolveGlyph(codePoint);
 
             if (glyph.hasBitmap && vertices_.size() / 4 < drawableGlyphCount) {
                 // UI 座標系は Y 下正。フォントの plane 境界は Y 上正なので符号を反転する
@@ -169,10 +174,14 @@ namespace CoreEngine
                 const float top = baselineY - glyph.planeTop;
                 const float bottom = baselineY - glyph.planeBottom;
 
-                vertices_.push_back({ { left,  bottom, 0.0f, 1.0f }, { glyph.uvLeft,  glyph.uvBottom } });
-                vertices_.push_back({ { left,  top,    0.0f, 1.0f }, { glyph.uvLeft,  glyph.uvTop } });
-                vertices_.push_back({ { right, bottom, 0.0f, 1.0f }, { glyph.uvRight, glyph.uvBottom } });
-                vertices_.push_back({ { right, top,    0.0f, 1.0f }, { glyph.uvRight, glyph.uvTop } });
+                // texcoord.z にアトラス配列の枚番号を載せる。
+                // 複数枚にまたがる文字列でもドローコールが分かれない
+                const float page = static_cast<float>(glyph.page);
+
+                vertices_.push_back({ { left,  bottom, 0.0f, 1.0f }, { glyph.uvLeft,  glyph.uvBottom, page } });
+                vertices_.push_back({ { left,  top,    0.0f, 1.0f }, { glyph.uvLeft,  glyph.uvTop,    page } });
+                vertices_.push_back({ { right, bottom, 0.0f, 1.0f }, { glyph.uvRight, glyph.uvBottom, page } });
+                vertices_.push_back({ { right, top,    0.0f, 1.0f }, { glyph.uvRight, glyph.uvTop,    page } });
             }
 
             penX += glyph.advance;
@@ -194,6 +203,11 @@ namespace CoreEngine
         auto* commandList = view.cmdList;
         if (!commandList) { return; }
 
+        // 実行時ベイクで新しいグリフが増えていたら組み直す。
+        // これが □ から本来の字へ差し替わる瞬間
+        if (font_->GetGlyphGeneration() != lastGlyphGeneration_) {
+            geometryDirty_ = true;
+        }
         if (geometryDirty_) { RebuildGeometry(); }
         if (vertices_.empty()) { return; }
 

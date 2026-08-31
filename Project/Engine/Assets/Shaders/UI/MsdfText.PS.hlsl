@@ -2,8 +2,10 @@
 
 ConstantBuffer<TextMaterial> gMaterial : register(b0);
 
-Texture2D<float4> gAtlas  : register(t0);
-SamplerState      gSampler : register(s0);
+// アトラスは Texture2DArray。1 枚が埋まったら次の枚へ送るので、
+// 文字列が複数枚にまたがっても 1 ドローコールで描ける
+Texture2DArray<float4> gAtlas   : register(t0);
+SamplerState           gSampler : register(s0);
 
 struct PixelShaderOutput
 {
@@ -46,13 +48,14 @@ float ScreenPxRange(float2 uv)
 
 PixelShaderOutput main(VertexShaderOutput input)
 {
+    // texcoord.z が配列の添字（正規化しない実数の枚番号）
     float4 msd = gAtlas.Sample(gSampler, input.texcoord);
 
     // 0.5 が輪郭。これより大きければ字の内側
     float signedDistance = Median(msd.r, msd.g, msd.b);
 
     // 画面ピクセル単位の符号付き距離へ直し、±0.5px で 1px 幅の AA を作る
-    float screenPxDistance = ScreenPxRange(input.texcoord) * (signedDistance - 0.5f);
+    float screenPxDistance = ScreenPxRange(input.texcoord.xy) * (signedDistance - 0.5f);
     float alpha = saturate(screenPxDistance + 0.5f);
 
     PixelShaderOutput output;

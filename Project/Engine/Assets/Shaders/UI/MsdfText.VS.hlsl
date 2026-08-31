@@ -11,11 +11,12 @@ cbuffer TransformationMatrix : register(b1)
 }
 
 // 頂点は毎フレーム UploadRing へ積み直すので、要素は必要最小限にする。
-// （法線・接線を持つ汎用 VertexData のままだと 1 頂点 48B → 24B の倍の転送量になる）
+// texcoord.z にアトラス配列の枚数添字を載せているので、
+// 複数枚にまたがる文字列でもドローコールを分けずに済む
 struct VertexShaderInput
 {
     float4 position : POSITION0;
-    float2 texcoord : TEXCOORD0;
+    float3 texcoord : TEXCOORD0;
 };
 
 VertexShaderOutput main(VertexShaderInput input)

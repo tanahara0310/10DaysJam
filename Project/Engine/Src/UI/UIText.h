@@ -126,5 +126,10 @@ namespace CoreEngine
         bool geometryDirty_ = false;
         /// グリフ数上限の警告を 1 回だけ出すためのフラグ
         bool glyphLimitWarned_ = false;
+
+        /// @brief 最後に組んだときのフォント側のグリフ世代
+        /// @details 実行時ベイクでグリフ表が更新されると進む。
+        ///          変化を検出したら頂点を組み直し、□ が本来の字へ差し替わる
+        uint32_t lastGlyphGeneration_ = 0;
     };
 }

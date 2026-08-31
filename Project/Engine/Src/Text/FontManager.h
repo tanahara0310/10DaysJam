@@ -11,6 +11,7 @@
 namespace CoreEngine
 {
     class GraphicsCore;
+    class ThreadPool;
 
     /// @brief MSDF フォントの所有と共有を一元管理するエンジンサービス
     /// @details
@@ -60,5 +61,15 @@ namespace CoreEngine
         GraphicsCore* graphicsCore_ = nullptr;
         std::unordered_map<uint64_t, std::unique_ptr<MsdfFont>> fonts_;
         mutable std::mutex mutex_;
+
+        /// @brief 実行時グリフのベイクを回すワーカー
+        /// @details
+        ///  MsdfFont はバッチ内のグリフをこのプールへ並列に投げる。
+        ///  1 本はキューの取りまとめに使われるので、実際に焼くのは残り。
+        ///  距離場の計算は CPU を食うため、増やしすぎると描画と食い合う。
+        std::unique_ptr<ThreadPool> bakeThreadPool_;
+
+        /// @brief ベイク用ワーカー数
+        static constexpr uint32_t kBakeThreadCount = 4;
     };
 }
