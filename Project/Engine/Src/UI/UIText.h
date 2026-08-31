@@ -2,12 +2,12 @@
 
 #include "UIElement.h"
 #include "GameObject/GameObject.h"
-#include "Graphics/Material/TextMaterialInstance.h"
 #include "Graphics/Render/UI/TextRenderer.h"
+// MsdfGlyph を値で扱うので実体が要る（POD だけの軽いヘッダ）
+#include "Text/MsdfFontTypes.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector4.h"
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -18,14 +18,16 @@ namespace CoreEngine
     /// @brief MSDF フォントで文字列を描く UI 要素
     /// @details
     ///  頂点は **em 単位**（フォントサイズ 1.0 のときの大きさ）で組み、
-    ///  フォントサイズはワールド行列のスケール成分として掛ける。
-    ///  そのため SetFontSize() は頂点を組み直さない。
+    ///  フォントサイズ・位置・回転は描画時にまとめて掛ける。
+    ///  そのため SetFontSize() は頂点を組み直さない
+    ///  （折り返しが有効なときだけ、折り位置が変わるので組み直す）。
     ///  「スケールを変えても輪郭が崩れない」は距離場が担保し、
     ///  「スケール変更が軽い」はこの構成が担保する。
     ///
-    ///  頂点そのものは CPU 側に持ち、描画のたびに UploadRing（フレーム単位で
-    ///  巻き戻る UPLOAD ヒープ）へ積む。自前の UPLOAD バッファを持って書き換えると、
-    ///  GPU が前フレームの内容を読んでいる最中に上書きしてしまう。
+    ///  **描画はここでは行わない。** Draw() は TextRenderer へ頂点を積むだけで、
+    ///  実際のドローコールはレンダラー側で 1 本にまとめて発行される。
+    ///  そのため色・縁取り・変換はテキストごとの定数バッファではなく
+    ///  頂点へ焼き込まれる（TextRenderer::Submit を参照）。
     class UIText : public GameObject
     {
     public:
@@ -58,9 +60,18 @@ namespace CoreEngine
         const std::string& GetText() const { return textUtf8_; }
 
         /// @brief フォントサイズ（px）を設定する
-        /// @note 頂点は em 単位なので、ここを変えても再構築は起きない
-        void SetFontSize(float pixelSize) { fontSize_ = pixelSize; }
+        /// @note 頂点は em 単位なので通常は再構築が起きない。
+        ///       折り返しが有効なときだけ、折り位置が変わるので組み直す
+        void SetFontSize(float pixelSize);
         float GetFontSize() const { return fontSize_; }
+
+        /// @brief 折り返し幅（px）。0 で折り返し無効
+        /// @details
+        ///  和文は単語の切れ目が無いのでどこでも折れるが、
+        ///  句読点や閉じ括弧が行頭に落ちないよう禁則処理をかける。
+        ///  欧文は空白でのみ折る（単語の途中で切らない）。
+        void SetWrapWidth(float pixelWidth);
+        float GetWrapWidth() const { return wrapWidthPx_; }
 
         /// @brief 行間の倍率（1.0 でフォント本来の行送り）
         void SetLineSpacing(float scale);
@@ -73,7 +84,10 @@ namespace CoreEngine
         }
 
         /// @brief 描画するグリフ数
-        uint32_t GetGlyphCount() const { return static_cast<uint32_t>(vertices_.size() / 4); }
+        uint32_t GetGlyphCount() const { return static_cast<uint32_t>(glyphVertices_.size() / 4); }
+
+        /// @brief 折り返し後の行数
+        uint32_t GetLineCount() const { return lineCount_; }
 
         // ===== UILayout アクセサ =====
         void SetAnchor(UIAnchor anchor) { layout_.anchor = anchor; }
@@ -94,9 +108,26 @@ namespace CoreEngine
 
         const UILayout& GetLayout() const { return layout_; }
 
-        // ===== カラー =====
-        void SetColor(const Vector4& color);
-        Vector4 GetColor() const;
+        // ===== 見た目 =====
+        // 色・縁取りは頂点へ焼き込まれるので、変えても再構築は起きない
+        void SetColor(const Vector4& color) { style_.color = color; }
+        Vector4 GetColor() const { return style_.color; }
+
+        /// @brief 縁取りを設定する
+        /// @param color 縁取り色（a = 0 で無効）
+        /// @param widthEm 太さ（em 単位＝フォントサイズに対する割合）
+        /// @note 距離場が持つ情報量で上限が決まる（GetMaxOutlineWidth）。
+        ///       それ以上太くしたい場合はベイク時の pxRange を上げること。
+        void SetOutline(const Vector4& color, float widthEm);
+        Vector4 GetOutlineColor() const { return style_.outlineColor; }
+        float GetOutlineWidth() const { return style_.outlineWidthEm; }
+
+        /// @brief 文字の太さ調整（em 単位。正で太く）
+        void SetWeight(float weightEm) { style_.weightEm = weightEm; }
+        float GetWeight() const { return style_.weightEm; }
+
+        /// @brief 縁取りとして表現できる最大の太さ（em 単位）
+        float GetMaxOutlineWidth() const;
 
 #ifdef USE_IMGUI
         int  GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const override;
@@ -104,8 +135,25 @@ namespace CoreEngine
 #endif
 
     private:
-        /// @brief 文字列からグリフのクワッド列（CPU 側）を組み立てる
+        /// @brief 行の範囲（コードポイント列への添字）と幅（em）
+        struct LineRange
+        {
+            size_t begin = 0;
+            size_t end = 0;   ///< 半開区間
+            float  width = 0.0f;
+        };
+
+        /// @brief 文字列からグリフのクワッド列（CPU 側・em 単位）を組み立てる
         void RebuildGeometry();
+
+        /// @brief 折り返し位置を決めて行に分ける
+        /// @param codePoints 文字列
+        /// @param glyphs 各文字のグリフ情報（codePoints と同じ長さ）
+        /// @param wrapWidthEm 折り返し幅（em）。0 なら改行文字だけで分ける
+        static void BuildLines(const std::vector<char32_t>& codePoints,
+            const std::vector<MsdfGlyph>& glyphs,
+            float wrapWidthEm,
+            std::vector<LineRange>& outLines);
 
         TextRenderer* renderer_ = nullptr;
         MsdfFont* font_ = nullptr;
@@ -113,15 +161,18 @@ namespace CoreEngine
         std::string textUtf8_;
         float fontSize_ = 32.0f;
         float lineSpacing_ = 1.0f;
+        float wrapWidthPx_ = 0.0f;
 
         UILayout layout_;
         /// 文字列を囲む矩形（em 単位）。GetMeasuredSize / pivot の計算に使う
         Vector2 measuredSizeEm_ = { 0.0f, 0.0f };
+        uint32_t lineCount_ = 0;
 
-        /// CPU 側の頂点。描画時に UploadRing へ積む
-        std::vector<TextVertex> vertices_;
+        /// CPU 側の頂点（em 単位）。描画時にレンダラーのバッチへ積む
+        std::vector<TextGlyphVertex> glyphVertices_;
 
-        std::unique_ptr<TextMaterialInstance> material_;
+        /// 色・縁取り・太さ。頂点へ焼き込まれる
+        TextDrawStyle style_;
 
         bool geometryDirty_ = false;
         /// グリフ数上限の警告を 1 回だけ出すためのフラグ

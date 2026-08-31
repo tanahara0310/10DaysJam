@@ -59,6 +59,8 @@ namespace MsdfTextTest
         CoreEngine::UIText* dynamicText_ = nullptr;
         /// アトラスの登録数・待ち件数・使用量を出す
         CoreEngine::UIText* statusText_ = nullptr;
+        /// バッチングの効き（ドローコール数）を出す
+        CoreEngine::UIText* batchText_ = nullptr;
 
         float elapsedSeconds_ = 0.0f;
         uint64_t frameCount_ = 0;

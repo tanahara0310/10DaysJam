@@ -707,7 +707,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Text\MsdfFontCache.cpp" />
     <ClCompile Include="Engine\Src\Text\MsdfAtlasAllocator.cpp" />
     <ClCompile Include="Engine\Src\Text\FontManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Material\TextMaterialInstance.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp" />
     <ClCompile Include="Engine\Src\UI\UIText.cpp" />
     <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp" />
@@ -1216,13 +1215,13 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h" />
     <ClInclude Include="Engine\Src\Text\MsdfFontTypes.h" />
     <ClInclude Include="Engine\Src\Text\TextEncoding.h" />
+    <ClInclude Include="Engine\Src\Text\TextLineBreak.h" />
     <ClInclude Include="Engine\Src\Text\DirectWriteFontFace.h" />
     <ClInclude Include="Engine\Src\Text\MsdfFontBaker.h" />
     <ClInclude Include="Engine\Src\Text\MsdfFont.h" />
     <ClInclude Include="Engine\Src\Text\MsdfFontCache.h" />
     <ClInclude Include="Engine\Src\Text\MsdfAtlasAllocator.h" />
     <ClInclude Include="Engine\Src\Text\FontManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\Material\TextMaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h" />
     <ClInclude Include="Engine\Src\UI\UIText.h" />
     <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h" />

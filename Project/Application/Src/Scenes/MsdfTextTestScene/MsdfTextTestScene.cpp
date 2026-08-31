@@ -6,6 +6,8 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Render/RenderManager.h"
+#include "Graphics/Render/UI/TextRenderer.h"
 #include "Text/FontManager.h"
 #include "UI/UIImage.h"
 #include "UI/UIText.h"
@@ -62,7 +64,19 @@ namespace MsdfTextTest
         constexpr float kDynamicSwitchSeconds = 3.0f;
 
         /// 実行時ベイクの見出し（こちらは焼いておく）
-        constexpr const char* kDynamicLabelCharset = "実行時ベイク 登録済み 待ち 使用量 枚 ％";
+        constexpr const char* kDynamicLabelCharset = "実行時ベイク 登録済み 待ち 使用量 枚 ％ 描画 回 文字";
+
+        /// @brief 折り返し + 禁則処理の確認用
+        /// @details 句読点・閉じ括弧・小書き仮名が行頭へ落ちない位置で折れているかを見る。
+        ///          欧文は空白でのみ折れる（単語の途中で切らない）
+        constexpr const char* kWrapText =
+            "折り返しの確認。長い文章を指定した幅で折ります（禁則処理つき）。"
+            "句読点や閉じ括弧、小書き仮名「っ」「ゃ」が行頭に落ちないこと。"
+            " Latin words wrap at spaces only.";
+        constexpr float kWrapWidthPx = 430.0f;
+
+        /// 縁取りの見出し
+        constexpr const char* kOutlineText = "縁取り Outline 亜";
 
         /// サイズ階段（px）。全て同じ 1 枚のアトラスから描かれる
         constexpr float kLadderSizes[] = { 12.0f, 16.0f, 22.0f, 30.0f, 42.0f, 58.0f };
@@ -165,6 +179,34 @@ namespace MsdfTextTest
         dynamicText_ = CreateText(kDynamicSamples[0], 32.0f, { 40.0f, 590.0f },
             accent, "DynamicText");
         statusText_ = CreateText("", 15.0f, { 40.0f, 636.0f }, dim, "AtlasStatus");
+        batchText_ = CreateText("", 15.0f, { 40.0f, 658.0f }, accent, "BatchStatus");
+
+        // ── ②-e 縁取り ──────────────────────────────────────────
+        // 距離場のしきい値をずらすだけで作れる。ビットマップフォントなら
+        // 縁取り用のアトラスを別に焼く必要がある
+        {
+            auto* plain = CreateText(kOutlineText, 44.0f, { 740.0f, 120.0f }, white, "OutlinePlain");
+            if (plain) { plain->SetOutline({ 0.0f, 0.0f, 0.0f, 0.0f }, 0.0f); }
+
+            auto* outlined = CreateText(kOutlineText, 44.0f, { 740.0f, 180.0f }, accent, "OutlineThin");
+            if (outlined) { outlined->SetOutline({ 0.05f, 0.05f, 0.08f, 1.0f }, 0.03f); }
+
+            auto* thick = CreateText(kOutlineText, 44.0f, { 740.0f, 240.0f },
+                { 0.35f, 0.85f, 0.95f, 1.0f }, "OutlineThick");
+            if (thick) { thick->SetOutline({ 0.05f, 0.05f, 0.08f, 1.0f }, 0.06f); }
+
+            auto* bold = CreateText(kOutlineText, 44.0f, { 740.0f, 300.0f }, white, "OutlineBold");
+            if (bold) {
+                bold->SetWeight(0.012f); // 太さもしきい値をずらすだけ
+                bold->SetOutline({ 0.9f, 0.35f, 0.3f, 1.0f }, 0.045f);
+            }
+        }
+
+        // ── ②-f 折り返し + 禁則処理 ────────────────────────────
+        {
+            auto* wrapped = CreateText(kWrapText, 20.0f, { 740.0f, 380.0f }, white, "WrapText");
+            if (wrapped) { wrapped->SetWrapWidth(kWrapWidthPx); }
+        }
 
         // ── ③拡大縮小アニメーション（要件の直接検証）──────────────
         scalingText_ = CreateText(
@@ -211,12 +253,16 @@ namespace MsdfTextTest
         desc.charsetUtf8 =
             std::string(kTitleText) + kLadderText + kScalingText + kRotatingText + kCornerText
             + kNotdefCharset + kCounterCharset + kDynamicLabelCharset
+            + kWrapText + kOutlineText
             + "px 拡大しても輪郭が鋭いまま／縮小しても消えないことを確認する"
             + "font atlas pxRange";
         desc.includeAscii = true;
 
         desc.bake.glyphPixelSize = 40; // 和文の推奨値
-        desc.bake.pxRange = 4.0f;      // 40px 焼きでの安全圏
+        // 縁取りの太さは距離場が持つ情報量（pxRange/2）で頭打ちになる。
+        // 4 だと 0.05em までしか太らせられないので、縁取りを使うなら少し広げる。
+        // 広げすぎると画数の多い漢字でストローク同士の距離場が干渉するため 6 で止める
+        desc.bake.pxRange = 6.0f;
         // 1 枚あたりを小さくして、枚をまたぐ経路を実際に通す。
         // 総面積は 1024x1024 x1枚 と同じ（実運用では 1024x1024 x4枚 あたりが目安）
         desc.bake.atlasWidth = 512;
@@ -299,6 +345,21 @@ namespace MsdfTextTest
                 + " / 使用量 " + std::to_string(static_cast<int>(font_->GetAtlasOccupancy() * 100.0f))
                 + " ％ / " + std::to_string(font_->GetUsedPageCount())
                 + " / " + std::to_string(font_->GetPageCount()) + " 枚");
+        }
+
+        // バッチングの効きを画面に出す。
+        // シーンには 20 個以上の UIText があるが、まとめて 1 回で描かれる
+        if (batchText_ && engine_) {
+            if (auto* renderManager = engine_->GetService<RenderManager>()) {
+                auto* textRenderer = dynamic_cast<TextRenderer*>(
+                    renderManager->GetRenderer(RenderPassType::UIText));
+                if (textRenderer) {
+                    batchText_->SetText(
+                        "描画 " + std::to_string(textRenderer->GetLastFrameDrawCallCount())
+                        + " 回 / " + std::to_string(textRenderer->GetLastFrameGlyphCount())
+                        + " 文字");
+                }
+            }
         }
 
         // ── 回転：MSDF は回転にも強い（ビットマップ方式だと斜めでジャギる）──

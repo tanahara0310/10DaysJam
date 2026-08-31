@@ -140,6 +140,10 @@ namespace CoreEngine
         /// @brief 距離場の有効範囲（px。シェーダーへそのまま渡す）
         float GetPxRange() const { return pxRange_; }
 
+        /// @brief 焼いた解像度（1em あたりのピクセル数）
+        /// @note 縁取り幅を em 単位で指定するための換算に要る
+        int GetGlyphPixelSize() const { return bakeSettings_.glyphPixelSize; }
+
         /// @brief メトリクスの供給元になったフォント名（ログ・デバッグ表示用）
         const std::wstring& GetResolvedFontName() const { return resolvedFontName_; }
 

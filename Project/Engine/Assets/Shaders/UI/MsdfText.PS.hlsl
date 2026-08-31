@@ -1,6 +1,6 @@
 #include "MsdfText.hlsli"
 
-ConstantBuffer<TextMaterial> gMaterial : register(b0);
+ConstantBuffer<TextBatch> gBatch : register(b0);
 
 // アトラスは Texture2DArray。1 枚が埋まったら次の枚へ送るので、
 // 文字列が複数枚にまたがっても 1 ドローコールで描ける
@@ -19,9 +19,6 @@ struct PixelShaderOutput
 // 辺の途中では 3ch のうち 2 つが同じ正しい距離を持ち、コーナーでは 2 本の
 // エッジの距離場が交差する。中央値を取ると、辺では正しい距離が、
 // コーナーではその交点＝鋭い角が復元される。
-// （A チャンネルには真の SDF が入っている。縁取り・グロー用の予約枠で、
-//   ここでは使わない。median は角の復元には正しいが距離としては不正確なので、
-//   正確な距離が要る効果は A を使うこと）
 // ------------------------------------------------------------
 float Median(float r, float g, float b)
 {
@@ -39,7 +36,7 @@ float Median(float r, float g, float b)
 // ------------------------------------------------------------
 float ScreenPxRange(float2 uv)
 {
-    float2 unitRange     = gMaterial.pxRange / float2(gMaterial.atlasWidth, gMaterial.atlasHeight);
+    float2 unitRange     = gBatch.pxRange / float2(gBatch.atlasWidth, gBatch.atlasHeight);
     float2 screenTexSize = 1.0f / fwidth(uv);
 
     // 1.0 でクランプしないと、縮小時に AA 幅が 1px を割って文字が消える
@@ -53,12 +50,45 @@ PixelShaderOutput main(VertexShaderOutput input)
 
     // 0.5 が輪郭。これより大きければ字の内側
     float signedDistance = Median(msd.r, msd.g, msd.b);
+    float screenPxRange  = ScreenPxRange(input.texcoord.xy);
 
-    // 画面ピクセル単位の符号付き距離へ直し、±0.5px で 1px 幅の AA を作る
-    float screenPxDistance = ScreenPxRange(input.texcoord.xy) * (signedDistance - 0.5f);
-    float alpha = saturate(screenPxDistance + 0.5f);
+    // ------------------------------------------------------------
+    // 縁取りと太さ調整は「しきい値をずらす」だけで作れる。
+    // これが距離場を持っていることの効きどころで、
+    // ビットマップフォントなら縁取り用のアトラスを別に焼く必要がある。
+    //
+    // 距離場は輪郭の外側 pxRange/2 px ぶんしか情報を持たないので、
+    // ずらせる量には上限がある（0.45 で頭打ちにしている）。
+    // 太い縁取りが要るならベイク時の pxRange を上げること。
+    //
+    // 幅と太さは頂点から来る（テキストごとに違ってよい）。
+    // 定数バッファに置くとテキストごとにドローコールが要るため。
+    // ------------------------------------------------------------
+    float outlineWidthEm = input.style.x;
+    float weightEm       = input.style.y;
+
+    float weightSd  = clamp(weightEm       * gBatch.sdUnitsPerEm, -0.45f, 0.45f);
+    float outlineSd = clamp(outlineWidthEm * gBatch.sdUnitsPerEm,  0.0f,  0.45f);
+
+    float fillEdge    = 0.5f - weightSd;
+    float outlineEdge = fillEdge - outlineSd;
+
+    float fillAlpha    = saturate(screenPxRange * (signedDistance - fillEdge)    + 0.5f);
+    float outlineAlpha = saturate(screenPxRange * (signedDistance - outlineEdge) + 0.5f);
+
+    // 幅 0 のときに縁取りを完全に無効化する。
+    // 残しておくと、しきい値が塗りと同一になって輪郭の α が二重に乗る
+    outlineAlpha *= step(0.0001f, outlineSd);
+
+    float4 fill    = float4(input.color.rgb,        input.color.a        * fillAlpha);
+    float4 outline = float4(input.outlineColor.rgb, input.outlineColor.a * outlineAlpha);
+
+    // 塗りを縁取りの上へ source-over で合成する
+    float  alpha = fill.a + outline.a * (1.0f - fill.a);
+    float3 rgb   = (fill.rgb * fill.a + outline.rgb * outline.a * (1.0f - fill.a))
+                 / max(alpha, 1e-5f);
 
     PixelShaderOutput output;
-    output.color = float4(gMaterial.color.rgb, gMaterial.color.a * alpha);
+    output.color = float4(rgb, alpha);
     return output;
 }

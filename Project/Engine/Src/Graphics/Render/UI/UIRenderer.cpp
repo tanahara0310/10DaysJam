@@ -70,12 +70,13 @@ namespace CoreEngine
             auto& matData = materialDataPool_[frameIndex];
             auto& tfData = transformDataPool_[frameIndex];
 
-            matResources.resize(kMaxUICount);
-            tfResources.resize(kMaxUICount);
-            matData.resize(kMaxUICount);
-            tfData.resize(kMaxUICount);
+            const size_t poolCount = GetConstantBufferPoolCount();
+            matResources.resize(poolCount);
+            tfResources.resize(poolCount);
+            matData.resize(poolCount);
+            tfData.resize(poolCount);
 
-            for (size_t i = 0; i < kMaxUICount; ++i) {
+            for (size_t i = 0; i < poolCount; ++i) {
                 // マテリアル定数バッファ（永続マッピング）
                 matResources[i] = resourceFactory_->CreateBufferResource(dxCommon_->GetDevice(), sizeof(UIMaterial));
                 matResources[i]->Map(0, nullptr, reinterpret_cast<void**>(&matData[i]));
@@ -141,6 +142,15 @@ namespace CoreEngine
         return { w, h };
     }
 
+    Matrix4x4 UIRenderer::CalculateProjectionMatrix() const {
+        // 左上原点 (0,0) → 右下 (screenW, screenH) のスクリーン座標系
+        Vector2 screen = GetScreenSize();
+        return MathCore::Rendering::Orthographic(
+            0.0f, 0.0f,
+            screen.x, screen.y,
+            0.0f, 100.0f);
+    }
+
     Matrix4x4 UIRenderer::CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation) const {
         // ローカル変換
         Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(scale, rotation, position);
@@ -148,13 +158,6 @@ namespace CoreEngine
         // ビューは単位行列（UI はカメラ非依存）
         Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
 
-        // 投影：左上原点 (0,0) → 右下 (screenW, screenH) のスクリーン座標系
-        Vector2 screen = GetScreenSize();
-        Matrix4x4 projectionMatrix = MathCore::Rendering::Orthographic(
-            0.0f, 0.0f,
-            screen.x, screen.y,
-            0.0f, 100.0f);
-
-        return worldMatrix * viewMatrix * projectionMatrix;
+        return worldMatrix * viewMatrix * CalculateProjectionMatrix();
     }
 }

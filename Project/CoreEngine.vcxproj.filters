@@ -1210,9 +1210,6 @@
     <ClCompile Include="Engine\Src\Text\FontManager.cpp">
       <Filter>Engine\Src\Text</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Material\TextMaterialInstance.cpp">
-      <Filter>Engine\Src\Graphics\Material</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
     </ClCompile>
@@ -2733,6 +2730,9 @@
     <ClInclude Include="Engine\Src\Text\TextEncoding.h">
       <Filter>Engine\Src\Text</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Text\TextLineBreak.h">
+      <Filter>Engine\Src\Text</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Text\DirectWriteFontFace.h">
       <Filter>Engine\Src\Text</Filter>
     </ClInclude>
@@ -2750,9 +2750,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Text\FontManager.h">
       <Filter>Engine\Src\Text</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Material\TextMaterialInstance.h">
-      <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h">
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
