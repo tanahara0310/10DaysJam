@@ -180,6 +180,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
@@ -697,6 +700,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\UI\UIText.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h" />
+    <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h" />
+    <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />

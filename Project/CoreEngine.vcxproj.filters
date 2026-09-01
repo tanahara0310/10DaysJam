@@ -1,6 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\MyGame.cpp">
+      <Filter>Application\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
     </ClCompile>
@@ -1168,10 +1183,20 @@
     <ClCompile Include="Engine\Src\UI\UIText.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
-    <ClCompile Include="Application\Src\MyGame.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
@@ -2651,7 +2676,6 @@
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Application\Assets\Models\human\walk.bin">
@@ -2680,6 +2704,12 @@
     <Filter Include="Application\Src">
       <UniqueIdentifier>{8C016CA9-9773-40DE-8792-E8B53FB9372C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Components">
+      <UniqueIdentifier>{1F8549F9-EB33-40BB-9CE1-331111AE4495}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Rail">
+      <UniqueIdentifier>{2B2D684B-9E7E-438C-9345-388EEF35B52B}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\GameObjects">
       <UniqueIdentifier>{2762868A-A4D7-448F-BAAD-024F9AF8F891}</UniqueIdentifier>
     </Filter>
@@ -2692,26 +2722,8 @@
     <Filter Include="Application\Src\Scenes">
       <UniqueIdentifier>{E0897678-58CC-4A82-AA9F-47042D9CD67B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Src\Scenes\CollisionTestScene">
-      <UniqueIdentifier>{2C8F41A6-5B7D-4E93-9C10-6A4D2F8B7E51}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\MsdfTextTestScene">
-      <UniqueIdentifier>{15CA7471-23C7-4DAE-A320-F49B83CF292A}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\SampleGameScene">
-      <UniqueIdentifier>{296989A0-B084-4643-ABA9-184DA0DDC6E3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\ShootingSampleScene">
-      <UniqueIdentifier>{65B4BE20-1815-46C3-91A4-0099398D063C}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\Sprite2DSampleScene">
-      <UniqueIdentifier>{0594C199-08F3-4021-B85A-4EC3C966081F}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\TestScene">
-      <UniqueIdentifier>{04EE1DAA-02F5-4253-9DBB-A28737391E46}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\WaterTestScene">
-      <UniqueIdentifier>{BA0CCBB8-F2BE-4C5C-95A3-D52C8433C8F5}</UniqueIdentifier>
+    <Filter Include="Application\Src\Scenes\GameScene">
+      <UniqueIdentifier>{0FE1078A-F1FE-4786-B0EE-9C36C376D1FC}</UniqueIdentifier>
     </Filter>
     <Filter Include="Build">
       <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>

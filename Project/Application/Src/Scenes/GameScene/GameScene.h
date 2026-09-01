@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Camera/CameraManager.h"
 #include "Scene/BaseScene.h"
 
 #include <memory>
