@@ -477,6 +477,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\ScreenCapture.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Tween\Tween.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp" />
     <ClCompile Include="Engine\Src\Utility\Event\EventBus.cpp" />
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderTarget\SceneDepth.cpp" />
@@ -1095,6 +1097,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\Wrappers\ImGuiScope.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\LivePPAgent.h" />
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h" />
+    <ClInclude Include="Engine\Src\Utility\Tween\Tween.h" />
+    <ClInclude Include="Engine\Src\Utility\Tween\TweenManager.h" />
     <ClInclude Include="Engine\Src\Utility\Event\EventBus.h" />
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h" />
@@ -1144,6 +1148,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h" />
     <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.h" />
     <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h" />
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingEvents.h" />
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ScoreHudComponent.h" />
     <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h" />
     <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShipControllerComponent.h" />
     <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.h" />

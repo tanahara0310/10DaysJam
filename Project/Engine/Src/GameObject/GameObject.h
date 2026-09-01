@@ -335,6 +335,19 @@ namespace CoreEngine
         /// @param cb SceneDebugEditor が設定する Undo/Redo 記録用コールバック
         void SetEditCommitCallback(EditCommitCallback cb);
 
+#ifdef USE_IMGUI
+        /// @brief インスペクタでの編集確定を Undo/Redo へ通知する
+        /// @param beforeTranslate 編集前の位置
+        /// @param beforeRotate 編集前の回転
+        /// @param beforeScale 編集前のスケール
+        /// @param beforeActive 編集前のアクティブ状態
+        /// @note コンポーネントのインスペクタ（TransformComponent など）から呼ぶ。
+        ///       onEditCommitted_ は protected なので、非派生のコンポーネントには
+        ///       この入口が必要になる。
+        void NotifyEditCommitted(const Vector3& beforeTranslate, const Vector3& beforeRotate,
+            const Vector3& beforeScale, bool beforeActive);
+#endif
+
         /// @brief 個別保存リクエストコールバックの型
         using SaveRequestCallback = std::function<void(GameObject*)>;
 
@@ -358,6 +371,21 @@ namespace CoreEngine
         SaveRequestCallback onSaveRequested_;   ///< 個別保存ボタン用コールバック
 
         int inspectorTab_ = 0;  ///< 現在選択中のインスペクタータブインデックス
+
+        /// @brief アタッチされているコンポーネントからインスペクタのタブを組み立てる
+        /// @param outTabs 出力先
+        /// @param maxTabs 出力先の要素数
+        /// @return タブ数（コンポーネント数。maxTabs で頭打ち）
+        /// @note `GetInspectorTabs()` を実装していないオブジェクト（＝ CreateObject +
+        ///       AddComponent で組んだもの）に、レガシークラスと同じアイコンタブを
+        ///       与えるための代替。これが無いとインスペクタが名前と Active だけになる。
+        int BuildComponentTabs(InspectorTabDef* outTabs, int maxTabs) const;
+
+        /// @brief コンポーネントタブの中身を描画する
+        /// @param tabIndex `BuildComponentTabs` が並べた順のインデックス
+        /// @return 値が変更されたら true
+        /// @note `IComponent::DrawInspector()` を呼ぶ唯一の場所。
+        bool DrawComponentTabContent(int tabIndex);
 
         /// @brief Active チェックボックス変更時に呼び出されるフック
         /// @param prevActive 変更前のアクティブ状態

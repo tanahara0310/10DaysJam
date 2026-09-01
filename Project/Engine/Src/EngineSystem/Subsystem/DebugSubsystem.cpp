@@ -10,6 +10,7 @@
 #include "Editor/ImGui/EditorSettingsPanel.h"
 #include "Utility/CVar/CVarRegistry.h"
 #include "Utility/Event/EventBus.h"
+#include "Utility/Tween/TweenManager.h"
 
 #include "WinApp/WinApp.h"
 #include "Utility/Logger/Logger.h"
@@ -302,6 +303,13 @@ namespace CoreEngine
         // 型ごとの購読者数・発行回数と直近に流れたイベントを常に見えるようにしておく。
         gameDebugUI_->RegisterEngineDebugPanel("Event Bus", []() {
             EventBus::GetInstance().DrawImGui();
+            }, EnginePanelGroup::Analysis);
+
+        // トゥイーンのデバッグパネル（Debug メニュー > Tween）
+        // 再生中の本数・進捗・link 先を並べる。link 無しの行は警告色にしてある
+        // （対象が破棄されたときに解放済みメモリを踏む唯一の経路がそれのため）。
+        gameDebugUI_->RegisterEngineDebugPanel("Tween", []() {
+            TweenManager::GetInstance().DrawImGui();
             }, EnginePanelGroup::Analysis);
 
         // その他の固定ウィンドウをドッキングシステムに登録

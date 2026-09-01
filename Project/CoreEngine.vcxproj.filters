@@ -883,6 +883,12 @@
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Tween\Tween.cpp">
+      <Filter>Engine\Src\Utility\Tween</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp">
+      <Filter>Engine\Src\Utility\Tween</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Event\EventBus.cpp">
       <Filter>Engine\Src\Utility\Event</Filter>
     </ClCompile>
@@ -2370,6 +2376,12 @@
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h">
       <Filter>Engine\Src\Utility\FileErrorDialog</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Tween\Tween.h">
+      <Filter>Engine\Src\Utility\Tween</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Tween\TweenManager.h">
+      <Filter>Engine\Src\Utility\Tween</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Event\EventBus.h">
       <Filter>Engine\Src\Utility\Event</Filter>
     </ClInclude>
@@ -2515,6 +2527,12 @@
       <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h">
+      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingEvents.h">
+      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ScoreHudComponent.h">
       <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h">
@@ -3276,6 +3294,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Profiler">
       <UniqueIdentifier>{EB718086-7172-4261-9E65-2364207C9F96}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Tween">
+      <UniqueIdentifier>{2F84D3B9-7C15-4E60-A8D2-5B913E07C4F8}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Event">
       <UniqueIdentifier>{6B0E4A17-2C93-4D58-9F0A-1E7D3C82B4A6}</UniqueIdentifier>
