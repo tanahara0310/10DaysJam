@@ -56,10 +56,6 @@ namespace CoreEngine
             entry.feature->Initialize(featureContext_);
         }
         featuresInitialized_ = true;
-
-        // 既定ディレクショナルライトを従来の protected メンバーとして派生クラスへ公開する
-        auto* lighting = GetFeature<LightingFeature>();
-        directionalLight_ = lighting ? lighting->GetDirectionalLight() : nullptr;
     }
 
     void BaseScene::RunPostSceneInitialize()
@@ -196,7 +192,6 @@ namespace CoreEngine
         // Feature を破棄（GetFeature<T>() は以降 nullptr を返す）。
         // カメラ一式の実体もここで消えるので、キャッシュを先に落としておく
         cameraManager_ = nullptr;
-        directionalLight_ = nullptr;
         features_.clear();
         featuresInitialized_ = false;
     }
@@ -315,6 +310,12 @@ namespace CoreEngine
         if (auto* collision = GetFeature<CollisionFeature>()) {
             collision->SetCollisionEnabled(a, b, enable);
         }
+    }
+
+    Light* BaseScene::GetDirectionalLight() const
+    {
+        auto* lighting = GetFeature<LightingFeature>();
+        return lighting ? lighting->GetDirectionalLight() : nullptr;
     }
 
     CollisionWorld* BaseScene::GetCollisionWorld()
