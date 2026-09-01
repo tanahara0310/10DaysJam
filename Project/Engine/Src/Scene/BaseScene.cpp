@@ -20,6 +20,7 @@
 #include "Scene/Feature/GridFeature.h"
 #include "Scene/Feature/DebugEditorFeature.h"
 #include "Scene/Feature/SceneBGMFeature.h"
+#include "Utility/Event/EventBus.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
 
@@ -189,6 +190,12 @@ namespace CoreEngine
         // GameObject 更新後の Feature 更新（コリジョン収集 → 判定など）
         DispatchUpdate(SceneUpdatePhase::PostObjectUpdate);
 
+        // 積まれたイベントをまとめて配信する。
+        // 衝突判定より後・LateUpdate より前に置くことで、Queue されたイベントへの反応が
+        // 同じフレームの LateUpdate と描画に間に合う。
+        // ここから先で Queue された分は次フレームに回る。
+        EventBus::GetInstance().DispatchQueued();
+
         // 派生クラスの後処理（クリーンアップ前）
         OnLateUpdate();
 
@@ -258,6 +265,12 @@ namespace CoreEngine
 
         // ゲームオブジェクトをクリア（新システム）
         gameObjectManager_.Clear();
+
+        // 取り残された購読と未配信イベントを畳む。
+        // GameObject / Feature が持つ Subscription は上の破棄で個別に解除済みだが、
+        // シーン自身やその他が握っていた分をここで確実に断ち切る
+        // （次のシーンへ前のシードのハンドラを持ち越さない）。
+        EventBus::GetInstance().Clear();
 
         // Feature を破棄（委譲先ポインタも無効化）
         features_.clear();

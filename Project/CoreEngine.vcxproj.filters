@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp">
@@ -882,6 +882,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Event\EventBus.cpp">
+      <Filter>Engine\Src\Utility\Event</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp">
       <Filter>Engine\Src\Utility\Random</Filter>
@@ -2367,6 +2370,9 @@
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h">
       <Filter>Engine\Src\Utility\FileErrorDialog</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Event\EventBus.h">
+      <Filter>Engine\Src\Utility\Event</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h">
       <Filter>Engine\Src\Utility\Random</Filter>
     </ClInclude>
@@ -3270,6 +3276,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Profiler">
       <UniqueIdentifier>{EB718086-7172-4261-9E65-2364207C9F96}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Event">
+      <UniqueIdentifier>{6B0E4A17-2C93-4D58-9F0A-1E7D3C82B4A6}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Random">
       <UniqueIdentifier>{CE13D7F5-57F4-4CDF-BDA2-D844D244356B}</UniqueIdentifier>
