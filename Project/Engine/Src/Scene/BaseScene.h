@@ -38,11 +38,8 @@ namespace CoreEngine
         /// @note このメソッドはfinalです。派生クラスはOnUpdate()をオーバーライドしてください
         virtual void Update() override final;
 
-        /// @brief 描画処理（共通処理 + 派生クラスの描画）
+        /// @brief 描画キューの構築（全 GameObject を RenderManager へ登録する）
         virtual void PrepareRender() override;
-
-        /// @brief 描画処理（共通処理 + 派生クラスの描画）
-        virtual void Draw() override;
 
         /// @brief 解放（共通処理 + 派生クラスの解放）
         /// @note このメソッドはfinalです。派生クラスはOnFinalize()をオーバーライドしてください

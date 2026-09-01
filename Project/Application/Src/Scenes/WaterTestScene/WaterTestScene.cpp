@@ -91,10 +91,6 @@ void WaterTestScene::OnUpdate() {
     cameraShowcase_.Update(CoreEngine::Time::UnscaledDeltaTime());
 }
 
-void WaterTestScene::Draw() {
-    BaseScene::Draw();
-}
-
 void WaterTestScene::OnFinalize() {
     // シーン遷移中はフェードの主導権が SceneTransition にあるので触らない
     // （暗転しているはずの画が 1 フレーム戻ってしまう）

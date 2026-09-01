@@ -47,9 +47,8 @@ public:
 
     /// @brief 毎フレームのロジック更新
     virtual void Update() = 0;
+    /// @brief 描画キューの構築（実際の描画は RenderGraph の各パスが行う）
     virtual void PrepareRender() {}
-    /// @brief 描画コマンドの発行
-    virtual void Draw() = 0;
     /// @brief シーン終了時の後始末
     virtual void Finalize() = 0;
 

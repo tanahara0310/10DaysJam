@@ -52,10 +52,9 @@ public:
     /// @brief 更新処理
     void Update();
 
-    /// @brief 描画処理
-    void Draw();
-
-    /// @brief 描画前準備（描画キュー構築など）
+    /// @brief 描画前準備（描画キュー構築）
+    /// @note 実際の描画は EngineSystem::ExecuteRenderPipeline() 側で
+    ///       RenderGraph の各パスが行う。
     void PrepareRender();
 
     /// @brief フレーム描画終了時の後処理（描画キュー破棄・削除オブジェクト cleanup）

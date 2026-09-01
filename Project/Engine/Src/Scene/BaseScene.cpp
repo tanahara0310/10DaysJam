@@ -158,22 +158,6 @@ namespace CoreEngine
         gameObjectManager_.RegisterAllToRender(renderManager);
     }
 
-    void BaseScene::Draw()
-    {
-        auto* renderManager = engine_->GetService<RenderManager>();
-        auto* dxCommon = engine_->GetService<GraphicsCore>();
-        if (!renderManager || !dxCommon) {
-            return;
-        }
-
-        // RenderGraph を経由しないレガシー描画経路。
-        // 描画に使うビューは EngineSystem がフレーム先頭で確定済み（FrameViews）なので、
-        // ここでアクティブカメラを差し替えない（ギズモ／ピッキングが別カメラを見てズレるため）。
-        // RenderContext が無いので、このシーン描画自体がコマンドリストの供給点になる。
-        renderManager->SetDebugLineRenderingEnabled(true);
-        renderManager->DrawGeometryPass(dxCommon->GetCommandList());
-    }
-
     Camera* BaseScene::GetGameViewCamera3D() const
     {
         // 覗いているカメラの決定は CameraManager に一本化されている（Scene / Game の役割 + フラグ）。
