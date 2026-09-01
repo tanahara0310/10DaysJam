@@ -8,6 +8,7 @@
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Rail/RailViewComponent.h"
+#include "Components/Train/TrainMovementComponent.h"
 
 GameScene::GameScene::~GameScene() = default;
 
@@ -46,6 +47,15 @@ void GameScene::GameScene::OnInitialize() {
         railPath->GetComponent<GameComponents::RailPathComponent>());
 
     railBuilder->AddComponent< CoreEngine::MeshRendererComponent>("box.obj");
+
+    // 列車の移動ロジックを持つオブジェクト。描画とアニメーションは別コンポーネントで追加する。
+    auto* train = CreateObject("Train");
+    train->AddComponent<CoreEngine::TransformComponent>();
+    train->AddComponent<GameComponents::TrainMovementComponent>(
+        gridSize, 0.5f, initialBuilderPosX, initialBuilderPosZ,
+        railPath->GetComponent<GameComponents::RailPathComponent>());
+
+    train->AddComponent< CoreEngine::MeshRendererComponent>("box.obj");
 }
 
 void GameScene::GameScene::OnUpdate() {

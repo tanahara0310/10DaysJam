@@ -2,6 +2,11 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <utility>
+#include <vector>
+
 namespace GameComponents
 {
     // レールの配置、撤去を管理するコンポーネント
@@ -31,6 +36,11 @@ namespace GameComponents
 
         // キューにあるレールの先頭を確定する
         bool ConfirmNextRailPlacement();
+
+        // 次に列車が進む未確定レールを取得する。存在しなければ false
+        bool TryGetNextUnconfirmedRail(std::pair<int32_t, int32_t>& destination) const;
+        // 未確定レールの数を取得する
+        std::size_t GetUnconfirmedRailCount() const;
 
         // レールマップを取得する
         std::vector<std::pair<int32_t, int32_t>>& GetRailMap();

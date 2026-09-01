@@ -92,6 +92,20 @@ bool GameComponents::RailPathComponent::ConfirmNextRailPlacement() {
     }
 }
 
+bool GameComponents::RailPathComponent::TryGetNextUnconfirmedRail(
+    std::pair<int32_t, int32_t>& destination) const {
+    if (railUndoStack_.empty()) {
+        return false;
+    }
+
+    destination = railUndoStack_.front();
+    return true;
+}
+
+std::size_t GameComponents::RailPathComponent::GetUnconfirmedRailCount() const {
+    return railUndoStack_.size();
+}
+
 std::vector<std::pair<int32_t, int32_t>>& GameComponents::RailPathComponent::GetRailMap() {
     return railMap_;
 }

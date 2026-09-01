@@ -10,6 +10,9 @@
     <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp">
+      <Filter>Application\Src\Components\Train</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\MyGame.cpp">
       <Filter>Application\Src</Filter>
     </ClCompile>
@@ -2676,6 +2679,9 @@
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h">
+      <Filter>Application\Src\Components\Train</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Application\Assets\Models\human\walk.bin">
@@ -2709,6 +2715,9 @@
     </Filter>
     <Filter Include="Application\Src\Components\Rail">
       <UniqueIdentifier>{2B2D684B-9E7E-438C-9345-388EEF35B52B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Train">
+      <UniqueIdentifier>{C09FEA33-AEF5-4CA2-B9C0-F4C548E5673D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\GameObjects">
       <UniqueIdentifier>{2762868A-A4D7-448F-BAAD-024F9AF8F891}</UniqueIdentifier>
