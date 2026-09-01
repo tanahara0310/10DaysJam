@@ -28,7 +28,6 @@ void GameComponents::TrainMovementComponent::Start() {
 
     // 初期位置が RailPathComponent の範囲外であればエラーを出して無効化する
     if (gridX_ < 0 || gridZ_ < 0 ||
-        gridX_ >= static_cast<int32_t>(railPath_->GetMapSizeX()) ||
         gridZ_ >= static_cast<int32_t>(railPath_->GetMapSizeZ())) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
@@ -166,6 +165,8 @@ void GameComponents::TrainMovementComponent::SyncTransformToProgress() {
         startX + (destinationX - startX) * movementProgress_;
     transform_->Get().translate.z =
         startZ + (destinationZ - startZ) * movementProgress_;
+
+    transform_->Get().translate.y = 1.0f;
 }
 
 void GameComponents::TrainMovementComponent::UpdateRotation() {

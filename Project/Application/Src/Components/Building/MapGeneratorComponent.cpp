@@ -27,18 +27,15 @@ void GameComponents::MapGeneratorComponent::Update() {
     
 }
 
-void GameComponents::MapGeneratorComponent::CreateToZ(uint32_t z) {
-    if (z <= mapChips_.size()) {
-        Logger::GetInstance().Warnf(
-            LogCategory::Game,
-            "MapGeneratorComponent: CreateToZ: z={} は既に生成済みです", z);
+void GameComponents::MapGeneratorComponent::CreateToX(std::size_t xCount) {
+    if (xCount <= mapChips_.size()) {
         return;
     }
-    AddMapChips(z - static_cast<uint32_t>(mapChips_.size()));
+    AddMapChips(xCount - mapChips_.size());
 }
 
-void GameComponents::MapGeneratorComponent::AddMapChips(uint32_t count) {
-    for (uint32_t i = 0; i < count; ++i) {
+void GameComponents::MapGeneratorComponent::AddMapChips(std::size_t count) {
+    for (std::size_t i = 0; i < count; ++i) {
         std::vector<MapChipType> newRow(mapSizeZ_, MapChipType::Ground);
         mapChips_.push_back(newRow);
     }

@@ -45,7 +45,7 @@ void GameComponents::RailViewComponent::Update() {
         float nextZ = static_cast<float>(railMap[i + 1].second) * gridSize_;
 
         // ラインを描画する
-        lines.DrawLine({ x, 0.0f, z }, { nextX, 0.0f, nextZ }, { 1.0f, 0.0f, 0.0f }, 1.0f, true);
+        lines.DrawLine({ x, 1.0f, z }, { nextX, 1.0f, nextZ }, { 1.0f, 0.0f, 0.0f }, 1.0f, true);
     }
 
     // 確定していないレールの座標を取得する
@@ -58,7 +58,7 @@ void GameComponents::RailViewComponent::Update() {
         float nextZ = static_cast<float>(railUndoStack[i + 1].second) * gridSize_;
 
         // ラインを描画する
-        lines.DrawLine({ x, 0.0f, z }, { nextX, 0.0f, nextZ }, { 1.0f, 1.0f, 1.0f }, 1.0f, true);
+        lines.DrawLine({ x, 1.0f, z }, { nextX, 1.0f, nextZ }, { 1.0f, 1.0f, 1.0f }, 1.0f, true);
     }
 
     // 確定したレールと確定していないレールの間のラインを描画する
@@ -68,7 +68,7 @@ void GameComponents::RailViewComponent::Update() {
         float nextX = static_cast<float>(railUndoStack.front().first) * gridSize_;
         float nextZ = static_cast<float>(railUndoStack.front().second) * gridSize_;
         // ラインを描画する
-        lines.DrawLine({ x, 0.0f, z }, { nextX, 0.0f, nextZ }, { 1.0f, 1.0f, 0.0f }, 1.0f, true);
+        lines.DrawLine({ x, 1.0f, z }, { nextX, 1.0f, nextZ }, { 1.0f, 1.0f, 0.0f }, 1.0f, true);
     }
 }
 

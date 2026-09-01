@@ -14,7 +14,7 @@ namespace GameComponents
         : public CoreEngine::IComponent {
     public:
         explicit RailPathComponent(
-            uint32_t mapSizeX = 30, uint32_t mapSizeZ = 10,
+            uint32_t mapSizeZ = 10,
             uint32_t startX = 0, uint32_t startZ = 0);
 
         // コンポーネントを識別する名前。必須
@@ -44,15 +44,13 @@ namespace GameComponents
 
         // レールマップを取得する
         std::vector<std::pair<int32_t, int32_t>>& GetRailMap();
-        // マップサイズを取得する
-        uint32_t GetMapSizeX() const;
+        // Z方向のマップサイズを取得する。X正方向には上限を設けない
         uint32_t GetMapSizeZ() const;
 
         // Undoスタックを取得する
         const std::vector<std::pair<int32_t, int32_t>>& GetRailUndoStack() const;
 
     private:
-        uint32_t mapSizeX_ = 30;
         uint32_t mapSizeZ_ = 10;
 
         // 確定したレールの座標を保持するマップ（2D配列）

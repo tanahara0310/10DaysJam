@@ -9,6 +9,7 @@
 namespace GameComponents {
     class MapGeneratorComponent;
     class ModelRenderPoolComponent;
+    class CameraManagerComponent;
 }
 
 namespace GameComponents
@@ -19,9 +20,10 @@ namespace GameComponents
     public:
         explicit MapViewComponent(
             MapGeneratorComponent* mapGenerator, ModelRenderPoolComponent* groundRenderPool,
-            float gridSize = 5.0f, uint32_t mapViewCenterX = 0, uint32_t viewDistanceX = 10)
-            : gridSize_(gridSize), mapViewCenterX_(mapViewCenterX), viewDistanceX_(viewDistanceX),
-            mapGenerator_(mapGenerator), groundRenderPool_(groundRenderPool) {}
+            CameraManagerComponent* cameraManager,
+            float gridSize = 1.0f, uint32_t viewDistanceX = 30)
+            : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
+            mapGenerator_(mapGenerator), groundRenderPool_(groundRenderPool), cameraManager_(cameraManager) {}
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
@@ -39,13 +41,14 @@ namespace GameComponents
         void SetViewDistanceX(uint32_t distanceX) { viewDistanceX_ = distanceX; }
 
     private:
-        float gridSize_ = 5.0f;
+        float gridSize_ = 1.0f;
 
         uint32_t mapViewCenterX_ = 0;
-        uint32_t viewDistanceX_ = 10;
+        uint32_t viewDistanceX_ = 30;
 
         MapGeneratorComponent* mapGenerator_ = nullptr;
         ModelRenderPoolComponent* groundRenderPool_ = nullptr;
+        CameraManagerComponent* cameraManager_ = nullptr;
 
     };
 }

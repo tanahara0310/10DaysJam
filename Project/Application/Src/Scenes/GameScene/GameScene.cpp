@@ -26,27 +26,27 @@ void GameScene::GameScene::OnInitialize() {
 
     // ========== ゲームルールの設定 ==========
     float gridSize = 1.0f; // グリッドサイズを設定
-    uint32_t mapSizeX = 30; // マップのX方向のサイズを設定
-    uint32_t mapSizeZ = 10; // マップのZ方向のサイズを設定
+    uint32_t mapSizeZ = 9; // マップのZ方向のサイズを設定
 
     uint32_t railResourceCount = 15; // 初期のレールリソース数を設定
     uint32_t initialBuilderPosX = 3; // 初期のビルダーのX座標を設定
     uint32_t initialBuilderPosZ = mapSizeZ / 2; // 初期のビルダーのZ座標を設定
 
     uint32_t initialGenerateMapSizeX = 30; // 初期生成マップのX方向のサイズを設定
+    uint32_t renderWorldDistance = 20; // 描画するワールドの距離を設定
 
     // ========== オブジェクトの生成 ==========
     // 床のオブジェクトプールを生成
     auto* groundPoolManager = CreateObject("GroundPoolManager");
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "box.obj", 100);
+        "box.obj", 600,false);
     
     // レールの配置を管理するコンポーネントを追加
     auto* railPath = CreateObject("RailPath");
     railPath->AddComponent<CoreEngine::TransformComponent>();
     railPath->AddComponent<GameComponents::RailPathComponent>(
-        mapSizeX, mapSizeZ, initialBuilderPosX, initialBuilderPosZ);
+        mapSizeZ, initialBuilderPosX, initialBuilderPosZ);
 
     // レールを表示するコンポーネントを追加
     auto* railView = CreateObject("RailView");
@@ -94,7 +94,9 @@ void GameScene::GameScene::OnInitialize() {
     mapRenderer->AddComponent<CoreEngine::TransformComponent>();
     mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
-        groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),gridSize);
+        groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
+        gridSize, renderWorldDistance);
 }
 
 void GameScene::GameScene::OnUpdate() {

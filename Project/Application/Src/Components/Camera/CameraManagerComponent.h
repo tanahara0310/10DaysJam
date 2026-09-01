@@ -20,9 +20,9 @@ namespace GameComponents
             CoreEngine::TransformComponent* trainTransform,
             CoreEngine::TransformComponent* builderTransform,
             float focusRatio = 0.5f,
-            const CoreEngine::Vector3& cameraOffset = { 0.0f, 30.0f, -25.0f },
+            const CoreEngine::Vector3& cameraOffset = { 0.0f, 20.0f, -18.0f },
             float minTargetDistance = 5.0f,
-            float maxTargetDistance = 50.0f,
+            float maxTargetDistance = 30.0f,
             float minFovDegrees = 35.0f,
             float maxFovDegrees = 70.0f,
             float followSpeed = 3.0f)
@@ -55,6 +55,9 @@ namespace GameComponents
         // カメラのX位置を寄せる割合（0.0 = 列車側、0.5 = 中間、1.0 = ビルダー側）
         void SetFocusRatio(float ratio);
         float GetFocusRatio() const { return focusRatio_; }
+
+        CoreEngine::Vector3 GetFocusPosition() const { return smoothedFocusPosition_; }
+        float GetCurrentFovDegrees() const { return currentFovDegrees_; }
 
     private:
         CoreEngine::Camera* camera_ = nullptr;

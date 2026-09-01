@@ -13,10 +13,10 @@
 
 using namespace CoreEngine;
 
-GameComponents::RailPathComponent::RailPathComponent(uint32_t mapSizeX, uint32_t mapSizeZ,uint32_t startX, uint32_t startZ) :
-    mapSizeX_(mapSizeX), mapSizeZ_(mapSizeZ) {
+GameComponents::RailPathComponent::RailPathComponent(uint32_t mapSizeZ, uint32_t startX, uint32_t startZ) :
+    mapSizeZ_(mapSizeZ) {
     // 初期位置もビルダーが通ったマスとしてレールへ登録する
-    if (startX < mapSizeX_ && startZ < mapSizeZ_) {
+    if (startZ < mapSizeZ_) {
         railMap_.emplace_back(startX, startZ);
     } else {
         Logger::GetInstance().Warnf(
@@ -33,7 +33,7 @@ void GameComponents::RailPathComponent::Update() {
 }
 
 void GameComponents::RailPathComponent::PlaceRail(int32_t x, int32_t z) {
-    if (x >= 0 && x < static_cast<int32_t>(mapSizeX_) && z >= 0 && z < static_cast<int32_t>(mapSizeZ_)) {
+    if (x >= 0 && z >= 0 && z < static_cast<int32_t>(mapSizeZ_)) {
         // レールを設置する際に、Undoスタックに追加する
         railUndoStack_.emplace_back(x, z);
     } else {
@@ -44,7 +44,7 @@ void GameComponents::RailPathComponent::PlaceRail(int32_t x, int32_t z) {
 }
 
 void GameComponents::RailPathComponent::RemoveRail(int32_t x, int32_t z) {
-    if (x >= 0 && x < static_cast<int32_t>(mapSizeX_) && z >= 0 && z < static_cast<int32_t>(mapSizeZ_)) {
+    if (x >= 0 && z >= 0 && z < static_cast<int32_t>(mapSizeZ_)) {
         // Undoスタックから該当するレールの座標を削除する
         railUndoStack_.erase(std::remove_if(railUndoStack_.begin(), railUndoStack_.end(), [x, z](const std::pair<int32_t, int32_t>& rail) {
             return rail.first == x && rail.second == z;
@@ -108,10 +108,6 @@ std::size_t GameComponents::RailPathComponent::GetUnconfirmedRailCount() const {
 
 std::vector<std::pair<int32_t, int32_t>>& GameComponents::RailPathComponent::GetRailMap() {
     return railMap_;
-}
-
-uint32_t GameComponents::RailPathComponent::GetMapSizeX() const {
-    return mapSizeX_;
 }
 
 uint32_t GameComponents::RailPathComponent::GetMapSizeZ() const {

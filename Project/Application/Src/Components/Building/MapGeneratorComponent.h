@@ -2,6 +2,7 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 
+#include <cstddef>
 #include <cstdint>
 
 #include "MapChipData.h"
@@ -24,10 +25,10 @@ namespace GameComponents
         // 毎フレーム呼ばれる
         void Update() override;
 
-        // マップをXまで生成する
-        void CreateToZ(uint32_t x);
+        // X方向に指定された列数までマップを生成する
+        void CreateToX(std::size_t xCount);
         // 追加でマップを生成する
-        void AddMapChips(uint32_t count);
+        void AddMapChips(std::size_t count);
 
         // マップチップの2D配列を取得する
         const std::vector<std::vector<GameComponents::MapChipType>>& GetMapChips();

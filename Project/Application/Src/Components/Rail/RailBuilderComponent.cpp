@@ -26,7 +26,6 @@ void GameComponents::RailBuilderComponent::Start() {
     }
 
     if (gridPosX_ < 0 || gridPosZ_ < 0 ||
-        gridPosX_ >= static_cast<int32_t>(railPath_->GetMapSizeX()) ||
         gridPosZ_ >= static_cast<int32_t>(railPath_->GetMapSizeZ())) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
@@ -191,6 +190,8 @@ void GameComponents::RailBuilderComponent::SyncTransformToGrid() {
 
     transform_->Get().translate.x = static_cast<float>(gridPosX_) * gridSize_;
     transform_->Get().translate.z = static_cast<float>(gridPosZ_) * gridSize_;
+
+    transform_->Get().translate.y = 1.0f;
 }
 
 void GameComponents::RailBuilderComponent::SetGridSize(float size) {
