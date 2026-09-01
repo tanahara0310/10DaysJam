@@ -1,5 +1,7 @@
 #pragma once
 
+#include "EnemyObject.h"
+
 #include "Collision/ColliderComponent.h"
 #include "Collision/CollisionInfo.h"
 #include "Collision/CollisionLayer.h"
@@ -23,14 +25,23 @@ namespace ShootingSample
 
         void SetVelocity(const CoreEngine::Vector3& velocity) { velocity_ = velocity; }
 
-        /// @brief 命中時に相手と自分を消すコールバックを購読する
+        /// @brief 命中時の処理を購読する
         void Start() override
         {
             transform_ = Sibling<CoreEngine::TransformComponent>();
 
             GetOwner()->GetColliders().SetOnEnter(
                 [this](const CoreEngine::CollisionInfo& info) {
-                    if (info.other) { info.other->Destroy(); }
+                    // 「弾が敵に当たった」は物理的に直接の関係なので、ここは素直に呼ぶ。
+                    // その先に続く スコア・HUD・SE・エフェクト は敵側が
+                    // イベントとして投げるので、弾はそれらを一切知らない
+                    if (info.other) {
+                        if (auto* enemy = info.other->GetComponent<EnemyComponent>()) {
+                            enemy->Die(true);
+                        } else {
+                            info.other->Destroy();
+                        }
+                    }
                     GetOwner()->Destroy();
                 });
         }

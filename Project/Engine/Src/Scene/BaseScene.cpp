@@ -12,6 +12,7 @@
 #include "Particle/Gpu/GpuParticleSystem.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Scene/SceneManager.h"
+#include "UI/UIText.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Scene/Feature/LightingFeature.h"
 #include "Scene/Feature/EnvironmentFeature.h"
@@ -20,6 +21,8 @@
 #include "Scene/Feature/GridFeature.h"
 #include "Scene/Feature/DebugEditorFeature.h"
 #include "Scene/Feature/SceneBGMFeature.h"
+#include "Utility/Event/EventBus.h"
+#include "Utility/Tween/TweenManager.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
 
@@ -183,11 +186,22 @@ namespace CoreEngine
         // GameObject 更新前の Feature 更新（床のカメラ追従など位置の事前確定）
         DispatchUpdate(SceneUpdatePhase::PreObjectUpdate);
 
+        // トゥイーンを進める。
+        // GameObject の更新より前に置くことで、コンポーネントが同じフレームで
+        // トゥイーン後の値を読める（追従処理が 1 フレーム遅れない）。
+        TweenManager::GetInstance().Update();
+
         // ゲームオブジェクトの更新
         gameObjectManager_.UpdateAll();
 
         // GameObject 更新後の Feature 更新（コリジョン収集 → 判定など）
         DispatchUpdate(SceneUpdatePhase::PostObjectUpdate);
+
+        // 積まれたイベントをまとめて配信する。
+        // 衝突判定より後・LateUpdate より前に置くことで、Queue されたイベントへの反応が
+        // 同じフレームの LateUpdate と描画に間に合う。
+        // ここから先で Queue された分は次フレームに回る。
+        EventBus::GetInstance().DispatchQueued();
 
         // 派生クラスの後処理（クリーンアップ前）
         OnLateUpdate();
@@ -259,6 +273,16 @@ namespace CoreEngine
         // ゲームオブジェクトをクリア（新システム）
         gameObjectManager_.Clear();
 
+        // 取り残された購読と未配信イベントを畳む。
+        // GameObject / Feature が持つ Subscription は上の破棄で個別に解除済みだが、
+        // シーン自身やその他が握っていた分をここで確実に断ち切る
+        // （次のシーンへ前のシードのハンドラを持ち越さない）。
+        EventBus::GetInstance().Clear();
+
+        // 再生途中のトゥイーンも畳む。対象の GameObject はすでに解放されているので、
+        // 値の書き戻しは行わずに実体だけを捨てる。
+        TweenManager::GetInstance().Clear();
+
         // Feature を破棄（委譲先ポインタも無効化）
         features_.clear();
         featuresInitialized_ = false;
@@ -275,6 +299,28 @@ namespace CoreEngine
         auto obj = std::make_unique<GameObject>();
         obj->SetName(name);
         return gameObjectManager_.AddObject(std::move(obj));
+    }
+
+    UIText* BaseScene::CreateText(const std::string& textUtf8, float fontSize,
+        UIAnchor anchor, const Vector2& anchoredPos, const Vector4& color,
+        const std::string& name)
+    {
+        // CreateObject<T> の中で Initialize() まで走るので、ここへ来た時点で
+        // レンダラーの解決と既定フォントの取得は済んでいる
+        auto* text = CreateObject<UIText>();
+        if (!text) { return nullptr; }
+
+        if (!name.empty()) {
+            text->SetName(name);
+        }
+
+        text->SetText(textUtf8);
+        text->SetFontSize(fontSize);
+        text->SetAnchor(anchor);
+        text->SetAnchoredPosition(anchoredPos);
+        text->SetColor(color);
+
+        return text;
     }
 
     ISceneFeature* BaseScene::AddFeature(std::unique_ptr<ISceneFeature> feature, int priority)
