@@ -127,7 +127,6 @@ namespace CoreEngine
         // カメラ一式の所有は CameraFeature。ここはホットパス用の非所有キャッシュで、
         // Feature の Initialize 後に解決され、Finalize で無効化される
         CameraManager* cameraManager_ = nullptr;
-        Light* directionalLight_ = nullptr;
 
         // ゲームオブジェクト管理（新システム）
         GameObjectManager gameObjectManager_;
@@ -195,6 +194,14 @@ namespace CoreEngine
         /// @param b レイヤーB
         /// @param enable true:衝突判定有効 / false:衝突判定無効
         void SetCollisionEnabled(CollisionLayer a, CollisionLayer b, bool enable = true);
+
+        /// @brief 既定ディレクショナルライト（太陽）を取得する
+        /// @return Feature 未登録・ライト削除済みなら nullptr
+        /// @details LightManager は世代付きハンドルでライトを管理しており、削除されると
+        ///          世代が進んで参照が無効化される。呼ぶたびに引き直すこと。
+        ///          戻り値を保持すると、その無効化をすり抜けて
+        ///          「削除済みスロット」や「再利用された別のライト」を掴んだままになる。
+        Light* GetDirectionalLight() const;
 
         /// @brief 衝突ワールドを取得する（レイキャスト・オーバーラップの問い合わせ用）
         /// @return Feature 未登録なら nullptr

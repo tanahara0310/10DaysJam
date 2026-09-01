@@ -36,17 +36,17 @@ void WaterTestScene::OnInitialize() {
     SetDefaultGroundEnabled(false);
 
     // ===== 太陽ライト =====
-    // BaseScene::SetupLight() の既定値（天頂・intensity=1）は通常の直接光用の目安であり、
-    // 大気散乱が期待する輝度スケール（AtmosphereEditorSunSettings 既定値は intensity=20）とは
-    // 整合しない。既定背景が大気散乱モードになったため、AtmosphereTestScene と同じ考え方で
-    // 見栄えの良い太陽高度・強度に調整し、水面反射／コースティクスが参照する太陽と
-    // 空に映る太陽を一致させる。
-    if (directionalLight_) {
-        directionalLight_->direction = ComputeSunLightDirection(35.0f, 25.0f);
+    // LightingFeature の既定値（天頂・シェーダー単位 intensity=1 相当）は通常の直接光用の
+    // 目安であり、大気散乱が期待する輝度スケール（AtmosphereEditorSunSettings 既定値は
+    // intensity=20）とは整合しない。既定背景が大気散乱モードになったため、
+    // AtmosphereTestScene と同じ考え方で見栄えの良い太陽高度・強度に調整し、
+    // 水面反射／コースティクスが参照する太陽と空に映る太陽を一致させる。
+    if (Light* sun = GetDirectionalLight()) {
+        sun->direction = ComputeSunLightDirection(35.0f, 25.0f);
         // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える。
         // 両方に 20 を入れると床のような明るいアルベドが ACES の飽和域に入り真っ白になる。
-        directionalLight_->atmosphereIntensity = 20.0f;
-        directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
+        sun->atmosphereIntensity = 20.0f;
+        sun->intensity = kAtmosphereSunIlluminanceLux;
     }
 
     // 水面一式（水面オブジェクト・波シミュレーション・リソース結線）は Feature が持つ。

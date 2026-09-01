@@ -47,13 +47,13 @@ namespace CoreEngine
         // 空は BaseScene が既定で大気散乱モードの SkyBox（＋雲）を自動生成するため、
         // 以前の静的 HDR キューブマップ＋IBL セットアップは廃止した。
         // 球体の環境反射は大気の空キューブマップ（スペキュラIBL）が担う。
-        // BaseScene::SetupLight() の既定値（天頂・intensity=1）は大気散乱が期待する
-        // 輝度スケールと整合しないため明示的に上書きする（他の大気シーンと同じ定石）。
-        if (directionalLight_) {
-            directionalLight_->direction = AtmosphereEditor::ComputeSunLightDirection(35.0f, 25.0f);
+        // LightingFeature の既定値（天頂・シェーダー単位 intensity=1 相当）は大気散乱が
+        // 期待する輝度スケールと整合しないため明示的に上書きする（他の大気シーンと同じ定石）。
+        if (Light* sun = GetDirectionalLight()) {
+            sun->direction = AtmosphereEditor::ComputeSunLightDirection(35.0f, 25.0f);
             // 空（大気・雲）の輝度スケールと、サーフェスの直接光は単位系が別なので分離して与える
-            directionalLight_->atmosphereIntensity = 20.0f;
-            directionalLight_->intensity = kAtmosphereSunIlluminanceLux;
+            sun->atmosphereIntensity = 20.0f;
+            sun->intensity = kAtmosphereSunIlluminanceLux;
         }
 
         // ===== PBR パラメータテスト用球体グリッド =====
