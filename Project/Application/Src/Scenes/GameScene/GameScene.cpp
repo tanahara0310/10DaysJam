@@ -4,6 +4,10 @@
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
+#include "EngineSystem/EngineSystem.h"
+#include "Text/FontManager.h"
+#include "UI/UIText.h"
+#include "Utility/Logger/Logger.h"
 
 #include "Components/Utility/ModelRenderPoolComponent.h"
 
@@ -15,6 +19,7 @@
 #include "Components/Rail/RailViewComponent.h"
 #include "Components/Rail/RailResourceManagerComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
+#include "Components/UI/RailResourceUIComponent.h"
 
 GameScene::GameScene::~GameScene() = default;
 
@@ -127,6 +132,35 @@ void GameScene::GameScene::OnInitialize() {
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
         gridSize, renderWorldDistance);
+
+    // 残りレール数を画面左上へ表示するHUD
+    auto* fontManager = engine_->GetService<CoreEngine::FontManager>();
+    if (fontManager) {
+        CoreEngine::MsdfFontDesc fontDesc;
+        fontDesc.filePath = L"Engine/Assets/font/851Gkktt_005.ttf";
+        fontDesc.systemFamilyNames = {
+            L"Yu Gothic UI", L"Meiryo", L"Segoe UI"
+        };
+        fontDesc.charsetUtf8 = "残りレール: 0123456789";
+
+        if (auto* font = fontManager->Acquire(fontDesc)) {
+            auto* railResourceText = CreateObject<CoreEngine::UIText>();
+            railResourceText->Initialize(font, "残りレール: 0", "RailResourceText");
+            railResourceText->SetAnchor(CoreEngine::UIAnchor::TopLeft);
+            railResourceText->SetAnchoredPosition({ 32.0f, 32.0f });
+            railResourceText->SetPivot({ 0.0f, 0.0f });
+            railResourceText->SetFontSize(36.0f*3.0f);
+            railResourceText->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
+            railResourceText->SetOutline({ 0.0f, 0.0f, 0.0f, 1.0f }, 0.035f);
+            railResourceText->SetSortOrder(1000);
+            railResourceText->AddComponent<GameComponents::RailResourceUIComponent>(
+                railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>());
+        }
+    } else {
+        CoreEngine::Logger::GetInstance().Errorf(
+            CoreEngine::LogCategory::Game,
+            "GameScene: FontManager が取得できないためレール数UIを生成できません");
+    }
 }
 
 void GameScene::GameScene::OnUpdate() {

@@ -25,6 +25,9 @@
     <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp">
       <Filter>Application\Src\Components\Train</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\RailResourceUIComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp">
       <Filter>Application\Src\Components\Utility</Filter>
     </ClCompile>
@@ -1229,6 +1232,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h">
       <Filter>Application\Src\Components\Train</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\RailResourceUIComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h">
       <Filter>Application\Src\Components\Utility</Filter>
@@ -2745,6 +2751,9 @@
     </Filter>
     <Filter Include="Application\Src\Components\Train">
       <UniqueIdentifier>{C09FEA33-AEF5-4CA2-B9C0-F4C548E5673D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\UI">
+      <UniqueIdentifier>{A5CE7724-3120-4F27-9D83-4F3F50E876A2}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Components\Utility">
       <UniqueIdentifier>{B56A6474-40F3-4A87-9128-F98DEC3E39BE}</UniqueIdentifier>

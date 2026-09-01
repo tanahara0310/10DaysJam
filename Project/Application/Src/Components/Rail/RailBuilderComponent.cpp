@@ -250,8 +250,11 @@ uint32_t GameComponents::RailBuilderComponent::CalculateSpeedReward(
     const float speedRatio = trainMovement_
         ? std::max(trainMovement_->GetSpeedRatio(), 1.0f)
         : 1.0f;
+
+    float speedRatioClamped = std::clamp(speedRatio, 1.0f, 2.0f);
+
     return static_cast<uint32_t>(
-        std::floor(static_cast<float>(baseAmount) * speedRatio));
+        std::floor(static_cast<float>(baseAmount) * speedRatioClamped));
 }
 
 void GameComponents::RailBuilderComponent::SyncTransformToGrid() {
