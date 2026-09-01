@@ -46,11 +46,15 @@ void GameComponents::MapViewComponent::Update() {
         for (size_t z = 0; z < mapChips[x].size(); ++z) {
             const auto& chipType = mapChips[x][z];
             // チップの種類に応じて描画する
-            if (chipType == MapChipType::Ground) {
+            if (chipType != MapChipType::Void) {
                 // グラウンドチップの表示
                 groundRenderPool_->Draw({ x * gridSize_, 0.0f, z * gridSize_ });
             }
-            
+
+            // 駅チップの表示
+            if(stationRenderPool_ && chipType == MapChipType::Station) {
+                stationRenderPool_->Draw({ x * gridSize_, 1.0f, z * gridSize_ });
+            }
         }
     }
 }

@@ -40,6 +40,12 @@ namespace GameComponents
         // 発車後に進めるレールがなくなったか
         bool IsGameOver() const;
 
+        float GetMoveSpeed() const { return moveSpeed_; }
+        float GetMinMoveSpeed() const { return minMoveSpeed_; }
+        float GetSpeedRatio() const {
+            return minMoveSpeed_ > 0.0f ? moveSpeed_ / minMoveSpeed_ : 1.0f;
+        }
+
         // グリッドサイズを設定する
         void SetGridSize(float size);
 

@@ -19,11 +19,16 @@ namespace GameComponents
         : public CoreEngine::IComponent {
     public:
         explicit MapViewComponent(
-            MapGeneratorComponent* mapGenerator, ModelRenderPoolComponent* groundRenderPool,
+            MapGeneratorComponent* mapGenerator,
+            ModelRenderPoolComponent* groundRenderPool,
+            ModelRenderPoolComponent* stationRenderPool,
             CameraManagerComponent* cameraManager,
             float gridSize = 1.0f, uint32_t viewDistanceX = 30)
             : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
-            mapGenerator_(mapGenerator), groundRenderPool_(groundRenderPool), cameraManager_(cameraManager) {}
+            mapGenerator_(mapGenerator),
+            groundRenderPool_(groundRenderPool),
+            stationRenderPool_(stationRenderPool),
+            cameraManager_(cameraManager) {}
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
@@ -48,6 +53,7 @@ namespace GameComponents
 
         MapGeneratorComponent* mapGenerator_ = nullptr;
         ModelRenderPoolComponent* groundRenderPool_ = nullptr;
+        ModelRenderPoolComponent* stationRenderPool_ = nullptr;
         CameraManagerComponent* cameraManager_ = nullptr;
 
     };

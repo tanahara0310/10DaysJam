@@ -41,6 +41,32 @@ void GameScene::GameScene::OnInitialize() {
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "box.obj", 600,false);
+    // 駅のオブジェクトプールを生成
+    auto* stationPoolManager = CreateObject("StationPoolManager");
+    stationPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    stationPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "box.obj", 10, false);
+    // レールのオブジェクトプールを生成
+    auto* railPoolManager = CreateObject("RailPoolManager");
+    railPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    railPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "rail.obj", 100, false);
+    // レール左のオブジェクトプールを生成
+    auto* railLeftPoolManager = CreateObject("RailLeftPoolManager");
+    railLeftPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    railLeftPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "rail_l.obj", 50, false);
+    // レール右のオブジェクトプールを生成
+    auto* railRightPoolManager = CreateObject("RailRightPoolManager");
+    railRightPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    railRightPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "rail_r.obj", 50, false);
+
+    // マップを生成するコンポーネントを追加
+    auto* mapGenerator = CreateObject("MapGenerator");
+    mapGenerator->AddComponent<CoreEngine::TransformComponent>();
+    mapGenerator->AddComponent<GameComponents::MapGeneratorComponent>(
+        mapSizeZ, initialGenerateMapSizeX);
     
     // レールの配置を管理するコンポーネントを追加
     auto* railPath = CreateObject("RailPath");
@@ -51,20 +77,11 @@ void GameScene::GameScene::OnInitialize() {
     // レールを表示するコンポーネントを追加
     auto* railView = CreateObject("RailView");
     railView->AddComponent<CoreEngine::TransformComponent>();
-    railView->AddComponent<GameComponents::RailViewComponent>(
-        gridSize, railPath->GetComponent<GameComponents::RailPathComponent>());
-    railView;
 
     // レールを配置するオブジェクトを生成
     auto* railBuilder = CreateObject("RailBuilder");
     railBuilder->AddComponent<CoreEngine::TransformComponent>();
     railBuilder->AddComponent<GameComponents::RailResourceManagerComponent>(railResourceCount);
-    railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
-        gridSize, initialBuilderPosX, initialBuilderPosZ,
-        railPath->GetComponent<GameComponents::RailPathComponent>(),
-        railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>());
-
-    railBuilder->AddComponent< CoreEngine::MeshRendererComponent>("box.obj");
 
     // 列車の移動ロジックを持つオブジェクト。描画とアニメーションは別コンポーネントで追加する。
     auto* train = CreateObject("Train");
@@ -73,7 +90,16 @@ void GameScene::GameScene::OnInitialize() {
         gridSize, 0.5f, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>());
 
-    train->AddComponent< CoreEngine::MeshRendererComponent>("box.obj");
+    train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
+
+    railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
+        gridSize, initialBuilderPosX, initialBuilderPosZ,
+        railPath->GetComponent<GameComponents::RailPathComponent>(),
+        railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>(),
+        mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
+        train->GetComponent<GameComponents::TrainMovementComponent>());
+
+    railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
 
     // 列車とビルダーの中間を捉え、距離に応じて視野角を変えるゲームカメラ。
     auto* cameraController = CreateObject("CameraManager");
@@ -83,11 +109,14 @@ void GameScene::GameScene::OnInitialize() {
         railBuilder->GetComponent<CoreEngine::TransformComponent>(),
         0.4f); // カメラX位置: 0.0 = 列車側、0.5 = 中間、1.0 = ビルダー側
 
-    // マップを生成するコンポーネントを追加
-    auto* mapGenerator = CreateObject("MapGenerator");
-    mapGenerator->AddComponent<CoreEngine::TransformComponent>();
-    mapGenerator->AddComponent<GameComponents::MapGeneratorComponent>(
-        mapSizeZ, initialGenerateMapSizeX);
+    railView->AddComponent<GameComponents::RailViewComponent>(
+        gridSize,
+        railPath->GetComponent<GameComponents::RailPathComponent>(),
+        railPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        railLeftPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        railRightPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
+        renderWorldDistance);
 
     // マップを描画するオブジェクトを追加
     auto* mapRenderer = CreateObject("MapRenderer");
@@ -95,6 +124,7 @@ void GameScene::GameScene::OnInitialize() {
     mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
         gridSize, renderWorldDistance);
 }

@@ -5,11 +5,15 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "RailPathComponent.h"
+#include "RailResourceManagerComponent.h"
+#include "Components/Building/MapGeneratorComponent.h"
+#include "Components/Train/TrainMovementComponent.h"
 #include "Input/InputAction.h"
 #include "Input/InputManager.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
+#include <algorithm>
 #include <cmath>
 
 using namespace CoreEngine;
@@ -17,10 +21,11 @@ using namespace CoreEngine;
 void GameComponents::RailBuilderComponent::Start() {
     transform_ = Sibling<TransformComponent>();
 
-    if (!transform_ || !railPath_) {
+    if (!transform_ || !railPath_ || !resourceManager_ ||
+        !mapGenerator_ || !trainMovement_) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
-            "RailBuilderComponent: Transform または RailPath が未設定です");
+            "RailBuilderComponent: 必要なコンポーネントが未設定です");
         SetEnabled(false);
         return;
     }
@@ -69,17 +74,7 @@ void GameComponents::RailBuilderComponent::Update() {
 
     // レールを撤去する（Undo）。移動入力とは同じフレームに処理しない
     if (input.IsActionTriggered(InputAction::Interact)) {
-        const auto lastRail = railPath_->UndoLastRailPlacement();
-        if (lastRail.first >= 0 && lastRail.second >= 0) {
-            gridPosX_ = lastRail.first;
-            gridPosZ_ = lastRail.second;
-            SyncTransformToGrid();
-
-            Logger::GetInstance().Infof(
-                LogCategory::Game,
-                "Rail removed; builder returned to ({}, {})",
-                gridPosX_, gridPosZ_);
-        }
+        TryUndoLastRail();
         return;
     }
     // 連続削除のためのタイマー処理
@@ -89,16 +84,7 @@ void GameComponents::RailBuilderComponent::Update() {
         if (undoPushTimer_ >= undoPushMaxTime_) {
             // 連続削除の間隔タイマーを更新する
             if (undoIntervalTimer_ <= 0.0f) {
-                const auto lastRail = railPath_->UndoLastRailPlacement();
-                if (lastRail.first >= 0 && lastRail.second >= 0) {
-                    gridPosX_ = lastRail.first;
-                    gridPosZ_ = lastRail.second;
-                    SyncTransformToGrid();
-                    Logger::GetInstance().Infof(
-                        LogCategory::Game,
-                        "Rail removed; builder returned to ({}, {})",
-                        gridPosX_, gridPosZ_);
-                }
+                TryUndoLastRail();
                 undoIntervalTimer_ = undoInterval_;
                 // 移動入力とは同じフレームに処理しない
                 return;
@@ -172,15 +158,100 @@ void GameComponents::RailBuilderComponent::Update() {
         }
     }
 
+    // レールが0本なら、報酬マスであっても新しいレールは設置できない。
+    if (resourceManager_->GetResourceCount() == 0) {
+        Logger::GetInstance().Warnf(
+            LogCategory::Game,
+            "RailBuilder: レールがありません");
+        return;
+    }
+
+    mapGenerator_->CreateToX(static_cast<std::size_t>(nextX) + 1);
+    const MapChipType mapChip = mapGenerator_->GetMapChip(
+        static_cast<std::size_t>(nextX), static_cast<std::size_t>(nextZ));
+
+    uint32_t resourceCost = 0;
+    if (mapChip == MapChipType::Ground) {
+        resourceCost = 1;
+    } else if (mapChip == MapChipType::Void) {
+        resourceCost = 2;
+    }
+
+    if (!resourceManager_->HasEnoughResource(resourceCost)) {
+        Logger::GetInstance().Warnf(
+            LogCategory::Game,
+            "RailBuilder: レールが不足しています (必要={}, 所持={})",
+            resourceCost, resourceManager_->GetResourceCount());
+        return;
+    }
+
+    if (!resourceManager_->UseResource(resourceCost)) {
+        return;
+    }
+
+    if (!railPath_->PlaceRail(nextX, nextZ, resourceCost)) {
+        resourceManager_->AddResource(resourceCost);
+        return;
+    }
+
     gridPosX_ = nextX;
     gridPosZ_ = nextZ;
-    railPath_->PlaceRail(gridPosX_, gridPosZ_);
     SyncTransformToGrid();
+
+    if (mapChip == MapChipType::Station) {
+        const uint32_t reward = CalculateSpeedReward(15);
+        resourceManager_->AddResource(reward);
+        railPath_->ConfirmAllPendingRailPlacements();
+        Logger::GetInstance().Infof(
+            LogCategory::Game,
+            "RailBuilder: 駅に到達しました (報酬={}, 駅までのレールを確定)",
+            reward);
+    } else if (mapChip == MapChipType::Resource) {
+        const uint32_t reward = CalculateSpeedReward(5);
+        resourceManager_->AddResource(reward);
+        // リソース床は一度だけ取得できるよう、通常のGroundへ戻す。
+        mapGenerator_->SetMapChip(
+            static_cast<std::size_t>(gridPosX_),
+            static_cast<std::size_t>(gridPosZ_),
+            MapChipType::Ground);
+        Logger::GetInstance().Infof(
+            LogCategory::Game,
+            "RailBuilder: リソースを取得しました (報酬={})",
+            reward);
+    }
 
     Logger::GetInstance().Infof(
         LogCategory::Game,
         "Rail placed at ({}, {})",
         gridPosX_, gridPosZ_);
+}
+
+bool GameComponents::RailBuilderComponent::TryUndoLastRail() {
+    const RailUndoResult undo = railPath_->UndoLastRailPlacement();
+    if (!undo.succeeded) {
+        return false;
+    }
+
+    resourceManager_->AddResource(undo.refundAmount);
+    gridPosX_ = undo.builderPosition.first;
+    gridPosZ_ = undo.builderPosition.second;
+    SyncTransformToGrid();
+
+    Logger::GetInstance().Infof(
+        LogCategory::Game,
+        "Rail removed at ({}, {}); builder returned to ({}, {}), refund={}",
+        undo.removedPosition.first, undo.removedPosition.second,
+        gridPosX_, gridPosZ_, undo.refundAmount);
+    return true;
+}
+
+uint32_t GameComponents::RailBuilderComponent::CalculateSpeedReward(
+    uint32_t baseAmount) const {
+    const float speedRatio = trainMovement_
+        ? std::max(trainMovement_->GetSpeedRatio(), 1.0f)
+        : 1.0f;
+    return static_cast<uint32_t>(
+        std::floor(static_cast<float>(baseAmount) * speedRatio));
 }
 
 void GameComponents::RailBuilderComponent::SyncTransformToGrid() {

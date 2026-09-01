@@ -9,6 +9,7 @@
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
+#include <algorithm>
 #include <cmath>
 
 using namespace CoreEngine;
@@ -32,78 +33,96 @@ void GameComponents::RailPathComponent::Start() {
 void GameComponents::RailPathComponent::Update() {
 }
 
-void GameComponents::RailPathComponent::PlaceRail(int32_t x, int32_t z) {
+bool GameComponents::RailPathComponent::PlaceRail(
+    int32_t x, int32_t z, uint32_t resourceCost) {
     if (x >= 0 && z >= 0 && z < static_cast<int32_t>(mapSizeZ_)) {
-        // レールを設置する際に、Undoスタックに追加する
         railUndoStack_.emplace_back(x, z);
+        railUndoCosts_.push_back(resourceCost);
+        trainRouteQueue_.emplace_back(x, z);
+        return true;
     } else {
         Logger::GetInstance().Warnf(
             LogCategory::Game,
             "PlaceRail: out of bounds");
+        return false;
     }
 }
 
-void GameComponents::RailPathComponent::RemoveRail(int32_t x, int32_t z) {
-    if (x >= 0 && z >= 0 && z < static_cast<int32_t>(mapSizeZ_)) {
-        // Undoスタックから該当するレールの座標を削除する
-        railUndoStack_.erase(std::remove_if(railUndoStack_.begin(), railUndoStack_.end(), [x, z](const std::pair<int32_t, int32_t>& rail) {
-            return rail.first == x && rail.second == z;
-        }), railUndoStack_.end());
-    } else {
-        // out of bounds の場合は警告ログを出力する
-        Logger::GetInstance().Warnf(
-            LogCategory::Game,
-            "RemoveRail: out of bounds");
-    }
-}
-
-std::pair<int32_t, int32_t> GameComponents::RailPathComponent::UndoLastRailPlacement() {
-    if (railUndoStack_.size() > 1) {
-        auto [x, z] = railUndoStack_.back();
-        railUndoStack_.pop_back();
-        RemoveRail(x, z);
-
-        // Undo後の最新のレールの座標を返す
-        if (railUndoStack_.empty()) {
-            return { -1, -1 };
-        } else {
-            return railUndoStack_.back();
-        }
-
-    } else {
+GameComponents::RailUndoResult GameComponents::RailPathComponent::UndoLastRailPlacement() {
+    if (railUndoStack_.empty() || railUndoCosts_.empty()) {
         Logger::GetInstance().Warnf(
             LogCategory::Game,
             "UndoLastRailPlacement: no rail to undo");
-        return { -1, -1 };
+        return {};
     }
+
+    RailUndoResult result;
+    result.succeeded = true;
+    result.removedPosition = railUndoStack_.back();
+    result.refundAmount = railUndoCosts_.back();
+
+    railUndoStack_.pop_back();
+    railUndoCosts_.pop_back();
+
+    if (!trainRouteQueue_.empty() &&
+        trainRouteQueue_.back() == result.removedPosition) {
+        trainRouteQueue_.pop_back();
+    }
+
+    result.builderPosition = !railUndoStack_.empty()
+        ? railUndoStack_.back()
+        : railMap_.back();
+    return result;
 }
 
 bool GameComponents::RailPathComponent::ConfirmNextRailPlacement() {
-    if (!railUndoStack_.empty()) {
-        auto [x, z] = railUndoStack_.front();
-        railUndoStack_.erase(railUndoStack_.begin());
-        railMap_.emplace_back(x, z);
-        return true;
-    } else {
+    if (trainRouteQueue_.empty()) {
         Logger::GetInstance().Warnf(
             LogCategory::Game,
             "ConfirmNextRailPlacement: no rail to confirm");
         return false;
     }
+
+    const auto position = trainRouteQueue_.front();
+
+    // 駅によって既に確定済みなら、列車用キューだけを進める。
+    const bool alreadyConfirmed =
+        std::find(railMap_.begin(), railMap_.end(), position) != railMap_.end();
+    if (!alreadyConfirmed) {
+        if (railUndoStack_.empty() || railUndoStack_.front() != position) {
+            Logger::GetInstance().Errorf(
+                LogCategory::Game,
+                "ConfirmNextRailPlacement: rail queues are inconsistent");
+            return false;
+        }
+        railMap_.push_back(position);
+        railUndoStack_.erase(railUndoStack_.begin());
+        railUndoCosts_.erase(railUndoCosts_.begin());
+    }
+
+    trainRouteQueue_.erase(trainRouteQueue_.begin());
+    return true;
+}
+
+void GameComponents::RailPathComponent::ConfirmAllPendingRailPlacements() {
+    railMap_.insert(
+        railMap_.end(), railUndoStack_.begin(), railUndoStack_.end());
+    railUndoStack_.clear();
+    railUndoCosts_.clear();
 }
 
 bool GameComponents::RailPathComponent::TryGetNextUnconfirmedRail(
     std::pair<int32_t, int32_t>& destination) const {
-    if (railUndoStack_.empty()) {
+    if (trainRouteQueue_.empty()) {
         return false;
     }
 
-    destination = railUndoStack_.front();
+    destination = trainRouteQueue_.front();
     return true;
 }
 
 std::size_t GameComponents::RailPathComponent::GetUnconfirmedRailCount() const {
-    return railUndoStack_.size();
+    return trainRouteQueue_.size();
 }
 
 std::vector<std::pair<int32_t, int32_t>>& GameComponents::RailPathComponent::GetRailMap() {

@@ -9,6 +9,13 @@
 
 namespace GameComponents
 {
+    struct RailUndoResult {
+        bool succeeded = false;
+        std::pair<int32_t, int32_t> removedPosition = { -1, -1 };
+        std::pair<int32_t, int32_t> builderPosition = { -1, -1 };
+        uint32_t refundAmount = 0;
+    };
+
     // レールの配置、撤去を管理するコンポーネント
     class RailPathComponent final
         : public CoreEngine::IComponent {
@@ -28,18 +35,18 @@ namespace GameComponents
         void Update() override;
 
         // レールを設置する
-        void PlaceRail(int32_t x, int32_t z);
-        // レールを撤去する
-        void RemoveRail(int32_t x, int32_t z);
-        // 最後に設置したレールを撤去する（Undo）。消去後の最新座標を返し、残っていなければ {-1, -1} を返す
-        std::pair<int32_t, int32_t> UndoLastRailPlacement();
+        bool PlaceRail(int32_t x, int32_t z, uint32_t resourceCost);
+        // 最後のUndo可能なレールを撤去し、設置時に消費したレール数を返す
+        RailUndoResult UndoLastRailPlacement();
 
         // キューにあるレールの先頭を確定する
         bool ConfirmNextRailPlacement();
+        // 現在設置済みの未確定レールをすべて確定する。列車の走行経路は保持する
+        void ConfirmAllPendingRailPlacements();
 
         // 次に列車が進む未確定レールを取得する。存在しなければ false
         bool TryGetNextUnconfirmedRail(std::pair<int32_t, int32_t>& destination) const;
-        // 未確定レールの数を取得する
+        // 列車がこれから走るレールの数を取得する
         std::size_t GetUnconfirmedRailCount() const;
 
         // レールマップを取得する
@@ -58,5 +65,9 @@ namespace GameComponents
 
         // Undo/Redo スタック
         std::vector<std::pair<int32_t, int32_t>> railUndoStack_;
+        std::vector<uint32_t> railUndoCosts_;
+
+        // 駅でレールが確定された後も、列車が走行できるよう経路を独立して保持する
+        std::vector<std::pair<int32_t, int32_t>> trainRouteQueue_;
     };
 }

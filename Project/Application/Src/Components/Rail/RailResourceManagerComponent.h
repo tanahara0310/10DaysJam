@@ -30,9 +30,11 @@ namespace GameComponents
         // リソースの現在数を取得する
         void AddResource(uint32_t amount);
         // リソースを消費する
-        void UseResource(uint32_t amount);
+        bool UseResource(uint32_t amount);
         // リソースが指定量以上あるかを確認する
         bool HasEnoughResource(uint32_t amount) const;
+        // 現在のレール数を取得する
+        uint32_t GetResourceCount() const { return resourceCount_; }
 
     private:
         uint32_t resourceCount_ = 15; // 初期リソース数

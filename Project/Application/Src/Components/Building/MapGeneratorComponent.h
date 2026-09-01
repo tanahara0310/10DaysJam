@@ -30,12 +30,18 @@ namespace GameComponents
         // 追加でマップを生成する
         void AddMapChips(std::size_t count);
 
+        // 指定マスの種類を取得・変更する
+        MapChipType GetMapChip(std::size_t x, std::size_t z) const;
+        bool SetMapChip(std::size_t x, std::size_t z, MapChipType type);
+
         // マップチップの2D配列を取得する
-        const std::vector<std::vector<GameComponents::MapChipType>>& GetMapChips();
+        const std::vector<std::vector<GameComponents::MapChipType>>& GetMapChips() const;
 
     private:
         uint32_t mapSizeZ_ = 10;
         float gridSize_ = 5.0f;
+
+        uint32_t stationBuildInterval_ = 5; // 駅を建設する間隔（X方向のマス数）
 
         std::vector<std::vector<GameComponents::MapChipType>> mapChips_;
     };
