@@ -139,7 +139,6 @@ void GameComponents::RailBuilderComponent::Update() {
     const int32_t nextZ = gridPosZ_ + static_cast<int32_t>(moveZ);
 
     if (nextX < 0 || nextZ < 0 ||
-        nextX >= static_cast<int32_t>(railPath_->GetMapSizeX()) ||
         nextZ >= static_cast<int32_t>(railPath_->GetMapSizeZ())) {
         Logger::GetInstance().Warnf(
             LogCategory::Game,

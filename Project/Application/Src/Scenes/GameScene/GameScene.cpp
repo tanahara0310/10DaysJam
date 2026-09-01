@@ -5,6 +5,7 @@
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 
+#include "Components/Camera/CameraManagerComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Rail/RailViewComponent.h"
@@ -42,6 +43,7 @@ void GameScene::GameScene::OnInitialize() {
 
     // レールを配置するオブジェクトを生成
     auto* railBuilder = CreateObject("RailBuilder");
+    railBuilder->AddComponent<CoreEngine::TransformComponent>();
     railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
         gridSize, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>());
@@ -56,6 +58,14 @@ void GameScene::GameScene::OnInitialize() {
         railPath->GetComponent<GameComponents::RailPathComponent>());
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("box.obj");
+
+    // 列車とビルダーの中間を捉え、距離に応じて視野角を変えるゲームカメラ。
+    auto* cameraController = CreateObject("CameraManager");
+    cameraController->AddComponent<GameComponents::CameraManagerComponent>(
+        cameraManager_->GetCamera(CoreEngine::CameraNames::Game),
+        train->GetComponent<CoreEngine::TransformComponent>(),
+        railBuilder->GetComponent<CoreEngine::TransformComponent>(),
+        0.4f); // カメラX位置: 0.0 = 列車側、0.5 = 中間、1.0 = ビルダー側
 }
 
 void GameScene::GameScene::OnUpdate() {

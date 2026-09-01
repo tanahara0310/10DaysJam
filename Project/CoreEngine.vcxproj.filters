@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp">
+      <Filter>Application\Src\Components\Camera</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
@@ -1188,6 +1191,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h">
+      <Filter>Application\Src\Components\Camera</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClInclude>
@@ -1196,6 +1202,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h">
+      <Filter>Application\Src\Components\Train</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
@@ -2679,14 +2688,8 @@
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h">
-      <Filter>Application\Src\Components\Train</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Application\Assets\Models\human\walk.bin">
-      <Filter>Application\Assets\Models\human</Filter>
-    </None>
     <None Include="Build\Scripts\SyncFilters.ps1">
       <Filter>Build\Scripts</Filter>
     </None>
@@ -2698,20 +2701,14 @@
     <Filter Include="Application">
       <UniqueIdentifier>{a6d9c513-d1e3-44be-a485-2950bd8c02a7}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Assets">
-      <UniqueIdentifier>{E38AC559-8E3B-462C-A939-BAA5AA622FDA}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models">
-      <UniqueIdentifier>{4AD6DADC-83B6-46FB-9BA2-06F83BD35CD0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Assets\Models\human">
-      <UniqueIdentifier>{426FC420-35FD-4168-B68A-5AEF6441C635}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application\Src">
       <UniqueIdentifier>{8C016CA9-9773-40DE-8792-E8B53FB9372C}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Components">
       <UniqueIdentifier>{1F8549F9-EB33-40BB-9CE1-331111AE4495}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Camera">
+      <UniqueIdentifier>{6D25A498-BF55-4F62-B98B-76B73C71455B}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Components\Rail">
       <UniqueIdentifier>{2B2D684B-9E7E-438C-9345-388EEF35B52B}</UniqueIdentifier>
