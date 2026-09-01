@@ -27,6 +27,7 @@
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
 #include "Graphics/Render/Particle/GpuParticleRenderer.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
+#include "Graphics/Render/Line/GridRenderer.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
@@ -242,6 +243,14 @@ namespace CoreEngine
 
             // LineManager の初期化（シングルトン、RenderManager 登録後に実行）
             LineManager::GetInstance().Initialize(state->lineRenderer);
+        });
+
+        sequence.Add("レンダラー: グリッド", [state] {
+            // 解析グリッド（フルスクリーン三角形 1 枚をピクセルシェーダーで評価する床グリッド）。
+            // 既定は非表示で、エディタの GridFeature が表示を切り替える。
+            auto gridRenderer = std::make_unique<GridRenderer>();
+            gridRenderer->Initialize(state->dx);
+            state->renderManager->RegisterRenderer(RenderPassType::Grid, std::move(gridRenderer));
         });
 
         // ──────────────────────────────────────────────────────────
