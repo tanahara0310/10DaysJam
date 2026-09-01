@@ -385,6 +385,14 @@ namespace CoreEngine
         lineKick.passType = RenderPassType::Line;
         lineKick.blendMode = BlendMode::kBlendModeNormal;
         AddRenderItem(lineKick);
+
+        // グリッドも同じくアイテムを持たないパス（描画は GridRenderer::EndPass が 1 ドロー出すだけ）。
+        // これが無いとパスが起動せず、グリッドが一切描かれない。
+        RenderItem gridKick{};
+        gridKick.object = nullptr;
+        gridKick.passType = RenderPassType::Grid;
+        gridKick.blendMode = BlendMode::kBlendModeNormal;
+        AddRenderItem(gridKick);
         waterDrawQueue_.clear();
         registrationCounter_ = 0;
         isQueueSorted_ = false;
@@ -410,6 +418,7 @@ namespace CoreEngine
         passTypePriorities_[RenderPassType::SkyBox] = 300;
         passTypePriorities_[RenderPassType::WaterSurface] = 350;
         passTypePriorities_[RenderPassType::ModelParticle] = 400;
+        passTypePriorities_[RenderPassType::Grid] = 450;      // 不透明の後・デバッグラインの下
         passTypePriorities_[RenderPassType::Line] = 500;
         passTypePriorities_[RenderPassType::Particle] = 600;
         passTypePriorities_[RenderPassType::GpuParticle] = 650;
