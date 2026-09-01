@@ -40,9 +40,6 @@ namespace CoreEngine
         /// @brief シーン固有の初期化
         void OnInitialize() override;
 
-        /// @brief 描画処理
-        void Draw() override;
-
     protected:
         /// @brief 更新処理（BaseSceneのOnUpdate()をオーバーライド）
         void OnUpdate() override;

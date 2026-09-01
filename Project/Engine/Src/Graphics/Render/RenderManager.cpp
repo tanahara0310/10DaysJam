@@ -180,19 +180,6 @@ namespace CoreEngine
         }
     }
 
-    void RenderManager::DrawGeometryPass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
-        if ((drawQueue_.empty() && skyDrawQueue_.empty() && transparentDrawQueue_.empty() && waterDrawQueue_.empty()) || !cmdList) {
-            return;
-        }
-
-        EnsureQueueSorted();
-
-        DrawMainQueuePass(cmdList, viewType);
-        DrawSkyQueuePass(cmdList, viewType);
-        DrawTransparentQueuePass(cmdList, viewType);
-        DrawWaterQueuePass(cmdList, viewType);
-    }
-
     void RenderManager::DrawMainQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
         if ((drawQueue_.empty() && (deferredLightingActive_ || opaqueDrawQueue_.empty())) || !cmdList) {
             return;
@@ -211,8 +198,7 @@ namespace CoreEngine
     void RenderManager::DrawWaterQueuePass(ID3D12GraphicsCommandList* cmdList, RenderViewType viewType) {
         // 水面は GameView 限定。反射ビューで描くと水面が自分の平面反射に
         // 描き込まれる（夜の大きな明暗斑バグの原因）。WaterSurfacePass 側の
-        // IsEnabledForView と同じ制約をキュー層でも二重に守る
-        // （DrawGeometryPass 経由など、パスを通らない呼び出し経路への防壁）。
+        // IsEnabledForView と同じ制約を、キュー層でも二重に守っておく。
         if (viewType != RenderViewType::GameView) {
             return;
         }

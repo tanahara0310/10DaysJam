@@ -766,6 +766,18 @@
     <ClCompile Include="Engine\Src\Scene\Feature\SceneBGMFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\EventDispatchFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\CameraFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClCompile>
@@ -2236,6 +2248,18 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\SceneBGMFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\EventDispatchFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\CameraFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h">

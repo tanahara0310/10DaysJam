@@ -438,6 +438,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\SceneBGMFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\EventDispatchFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\CameraFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
@@ -1051,6 +1055,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\SceneBGMFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\EventDispatchFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\CameraFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />

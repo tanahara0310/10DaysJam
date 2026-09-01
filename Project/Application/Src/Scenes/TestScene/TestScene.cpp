@@ -127,10 +127,6 @@ namespace CoreEngine
         }
     }
 
-    void TestScene::Draw()
-    {
-        BaseScene::Draw();
-    }
 }
 
 

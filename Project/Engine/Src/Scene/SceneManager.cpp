@@ -72,12 +72,6 @@ namespace CoreEngine
         }
     }
 
-    void SceneManager::Draw() {
-        if (currentScene_) {
-            currentScene_->Draw();
-        }
-    }
-
     void SceneManager::PrepareRender() {
         if (currentScene_) {
             currentScene_->PrepareRender();
