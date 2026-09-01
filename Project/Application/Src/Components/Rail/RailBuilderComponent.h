@@ -12,6 +12,7 @@ namespace CoreEngine
 namespace GameComponents
 {
     class RailPathComponent;
+    class RailResourceManagerComponent;
 }   
 
 namespace GameComponents
@@ -21,9 +22,10 @@ namespace GameComponents
         : public CoreEngine::IComponent {
     public:
         explicit RailBuilderComponent(
-            float gridSize = 5.0f, int32_t gridPosX = 0,
-            int32_t gridPosZ = 0, GameComponents::RailPathComponent* railPath = nullptr)
-            : gridSize_(gridSize), gridPosX_(gridPosX), gridPosZ_(gridPosZ), railPath_(railPath) {
+            float gridSize = 5.0f, int32_t gridPosX = 0,int32_t gridPosZ = 0,
+            GameComponents::RailPathComponent* railPath = nullptr,
+            GameComponents::RailResourceManagerComponent* resourceManager = nullptr)
+            : gridSize_(gridSize), gridPosX_(gridPosX), gridPosZ_(gridPosZ), railPath_(railPath), resourceManager_(resourceManager) {
         }
 
         // コンポーネントを識別する名前。必須
@@ -47,6 +49,7 @@ namespace GameComponents
 
         CoreEngine::TransformComponent* transform_ = nullptr;
         GameComponents::RailPathComponent* railPath_ = nullptr;
+        GameComponents::RailResourceManagerComponent* resourceManager_ = nullptr;
 
         // 左・後ろ方向へ移動したときの符号なし整数アンダーフローを避ける
         int32_t gridPosX_ = 0;

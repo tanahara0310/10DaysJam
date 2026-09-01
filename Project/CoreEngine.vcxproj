@@ -44,8 +44,10 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings"></ImportGroup>
-  <ImportGroup Label="Shared"></ImportGroup>
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -178,11 +180,15 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Rail\RailResourceManagerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
@@ -700,11 +706,16 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\UI\UIText.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Application\Src\Components\Building\MapChipData.h" />
+    <ClInclude Include="Application\Src\Components\Building\MapGeneratorComponent.h" />
+    <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h" />
+    <ClInclude Include="Application\Src\Components\Rail\RailResourceManagerComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h" />
     <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h" />
+    <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />

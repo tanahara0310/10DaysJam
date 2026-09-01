@@ -48,6 +48,10 @@ void GameComponents::RailBuilderComponent::Update() {
     if (!railPath_) {
         return;
     }
+    // RailResourceManagerComponent がアタッチされていない場合は処理を中断する
+    if (!resourceManager_) {
+        return;
+    }
 
     // ゲームオブジェクトのオーナーからエンジンシステムを取得し、入力マネージャーを取得する
     GameObject* owner = GetOwner();

@@ -1,10 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Rail\RailResourceManagerComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp">
@@ -15,6 +24,9 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp">
       <Filter>Application\Src\Components\Train</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp">
+      <Filter>Application\Src\Components\Utility</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\MyGame.cpp">
       <Filter>Application\Src</Filter>
@@ -1191,10 +1203,22 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Application\Src\Components\Building\MapChipData.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Building\MapGeneratorComponent.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
+      <Filter>Application\Src\Components\Rail</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Rail\RailResourceManagerComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h">
@@ -1205,6 +1229,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h">
       <Filter>Application\Src\Components\Train</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h">
+      <Filter>Application\Src\Components\Utility</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
@@ -2707,6 +2734,9 @@
     <Filter Include="Application\Src\Components">
       <UniqueIdentifier>{1F8549F9-EB33-40BB-9CE1-331111AE4495}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Components\Building">
+      <UniqueIdentifier>{2067C75D-7380-4BA4-9141-4E9008F022CA}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Components\Camera">
       <UniqueIdentifier>{6D25A498-BF55-4F62-B98B-76B73C71455B}</UniqueIdentifier>
     </Filter>
@@ -2715,6 +2745,9 @@
     </Filter>
     <Filter Include="Application\Src\Components\Train">
       <UniqueIdentifier>{C09FEA33-AEF5-4CA2-B9C0-F4C548E5673D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Utility">
+      <UniqueIdentifier>{B56A6474-40F3-4A87-9128-F98DEC3E39BE}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\GameObjects">
       <UniqueIdentifier>{2762868A-A4D7-448F-BAAD-024F9AF8F891}</UniqueIdentifier>

@@ -5,10 +5,15 @@
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 
+#include "Components/Utility/ModelRenderPoolComponent.h"
+
+#include "Components/Building/MapGeneratorComponent.h"
+#include "Components/Building/MapViewComponent.h"
 #include "Components/Camera/CameraManagerComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Rail/RailViewComponent.h"
+#include "Components/Rail/RailResourceManagerComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 
 GameScene::GameScene::~GameScene() = default;
@@ -20,14 +25,23 @@ void GameScene::GameScene::OnInitialize() {
     SetReleaseCameraTransform({ 0.0f, 2.0f, 0.0f }, { 0.3f, 0.0f, 0.0f });
 
     // ========== ゲームルールの設定 ==========
-    float gridSize = 5.0f; // グリッドサイズを設定
+    float gridSize = 1.0f; // グリッドサイズを設定
     uint32_t mapSizeX = 30; // マップのX方向のサイズを設定
     uint32_t mapSizeZ = 10; // マップのZ方向のサイズを設定
 
+    uint32_t railResourceCount = 15; // 初期のレールリソース数を設定
     uint32_t initialBuilderPosX = 3; // 初期のビルダーのX座標を設定
     uint32_t initialBuilderPosZ = mapSizeZ / 2; // 初期のビルダーのZ座標を設定
 
+    uint32_t initialGenerateMapSizeX = 30; // 初期生成マップのX方向のサイズを設定
+
     // ========== オブジェクトの生成 ==========
+    // 床のオブジェクトプールを生成
+    auto* groundPoolManager = CreateObject("GroundPoolManager");
+    groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "box.obj", 100);
+    
     // レールの配置を管理するコンポーネントを追加
     auto* railPath = CreateObject("RailPath");
     railPath->AddComponent<CoreEngine::TransformComponent>();
@@ -44,9 +58,11 @@ void GameScene::GameScene::OnInitialize() {
     // レールを配置するオブジェクトを生成
     auto* railBuilder = CreateObject("RailBuilder");
     railBuilder->AddComponent<CoreEngine::TransformComponent>();
+    railBuilder->AddComponent<GameComponents::RailResourceManagerComponent>(railResourceCount);
     railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
         gridSize, initialBuilderPosX, initialBuilderPosZ,
-        railPath->GetComponent<GameComponents::RailPathComponent>());
+        railPath->GetComponent<GameComponents::RailPathComponent>(),
+        railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>());
 
     railBuilder->AddComponent< CoreEngine::MeshRendererComponent>("box.obj");
 
@@ -66,6 +82,19 @@ void GameScene::GameScene::OnInitialize() {
         train->GetComponent<CoreEngine::TransformComponent>(),
         railBuilder->GetComponent<CoreEngine::TransformComponent>(),
         0.4f); // カメラX位置: 0.0 = 列車側、0.5 = 中間、1.0 = ビルダー側
+
+    // マップを生成するコンポーネントを追加
+    auto* mapGenerator = CreateObject("MapGenerator");
+    mapGenerator->AddComponent<CoreEngine::TransformComponent>();
+    mapGenerator->AddComponent<GameComponents::MapGeneratorComponent>(
+        mapSizeZ, initialGenerateMapSizeX);
+
+    // マップを描画するオブジェクトを追加
+    auto* mapRenderer = CreateObject("MapRenderer");
+    mapRenderer->AddComponent<CoreEngine::TransformComponent>();
+    mapRenderer->AddComponent<GameComponents::MapViewComponent>(
+        mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
+        groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),gridSize);
 }
 
 void GameScene::GameScene::OnUpdate() {
