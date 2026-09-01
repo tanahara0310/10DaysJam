@@ -1,24 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
     </ClCompile>
@@ -192,15 +174,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\pch.cpp">
       <Filter>Engine\Src</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp">
       <Filter>Application\Src\GameObjects\Effect</Filter>
@@ -676,12 +649,6 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeEvents.cpp">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClCompile>
@@ -789,18 +756,6 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp">
       <Filter>Engine\Src\Graphics\Model</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
-      <Filter>Application\Src\Scenes\TestScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp">
-      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.cpp">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.cpp">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
@@ -1039,9 +994,6 @@
     <ClCompile Include="Engine\Src\Utility\Debug\GameDebugUI.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\MyGame.cpp">
-      <Filter>Application\Src</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\main.cpp">
       <Filter>Application\Src</Filter>
     </ClCompile>
@@ -1216,35 +1168,10 @@
     <ClCompile Include="Engine\Src\UI\UIText.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp">
-      <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
-    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
+    <ClCompile Include="Application\Src\MyGame.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
@@ -2118,9 +2045,6 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.h">
-      <Filter>Application\Src\Scenes\CollisionTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h">
       <Filter>Engine\Src\GameObject\Component\Animation</Filter>
     </ClInclude>
@@ -2496,36 +2420,6 @@
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h">
       <Filter>Engine\Src\Particle\Modules</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
-      <Filter>Application\Src\Scenes\TestScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h">
-      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h">
-      <Filter>Application\Src\Scenes\SampleGameScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShipControllerComponent.h">
-      <Filter>Application\Src\Scenes\ShootingSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.h">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\PaddleComponent.h">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\FallingItemComponent.h">
-      <Filter>Application\Src\Scenes\Sprite2DSampleScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -2685,9 +2579,6 @@
     <ClInclude Include="Application\Src\MyGame.h">
       <Filter>Application\Src</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h">
-      <Filter>Application\Src\Scenes\WaterTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Externals\imgui\imconfig.h">
       <Filter>Externals\imgui</Filter>
     </ClInclude>
@@ -2757,12 +2648,10 @@
     <ClInclude Include="Engine\Src\UI\UIText.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h">
-      <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Application\Assets\Models\human\walk.bin">
