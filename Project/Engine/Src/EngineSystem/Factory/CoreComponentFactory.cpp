@@ -11,6 +11,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
+#include "Graphics/Render/Particle/ModelParticleRenderer.h"
 
 namespace CoreEngine
 {
@@ -61,6 +62,13 @@ namespace CoreEngine
                 if (auto* r = dynamic_cast<BaseModelRenderer*>(renderManager->GetRenderer(passType))) {
                     r->SetLightManager(lightManagerPtr);
                 }
+            }
+
+            // モデルパーティクルは形状由来の法線を持つのでライティングする
+            // （板ポリパーティクルは常にカメラを向くため対象外）
+            if (auto* r = dynamic_cast<ModelParticleRenderer*>(
+                    renderManager->GetRenderer(RenderPassType::ModelParticle))) {
+                r->SetLightManager(lightManagerPtr);
             }
         }
     }

@@ -717,6 +717,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp" />
     <ClCompile Include="Engine\Src\UI\UIText.cpp" />
     <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\ModelParticleTestScene\ModelParticleTestScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h" />
@@ -1241,6 +1242,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h" />
     <ClInclude Include="Engine\Src\UI\UIText.h" />
     <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h" />
+    <ClInclude Include="Application\Src\Scenes\ModelParticleTestScene\ModelParticleTestScene.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp">
@@ -1239,6 +1239,9 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp">
       <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\ModelParticleTestScene\ModelParticleTestScene.cpp">
+      <Filter>Application\Src\Scenes\ModelParticleTestScene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -2808,6 +2811,9 @@
     <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h">
       <Filter>Application\Src\Scenes\MsdfTextTestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ModelParticleTestScene\ModelParticleTestScene.h">
+      <Filter>Application\Src\Scenes\ModelParticleTestScene</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
@@ -2853,6 +2859,9 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\CollisionTestScene">
       <UniqueIdentifier>{2C8F41A6-5B7D-4E93-9C10-6A4D2F8B7E51}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\ModelParticleTestScene">
+      <UniqueIdentifier>{F96EC41F-4983-450F-A9F0-4842DCD50114}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\MsdfTextTestScene">
       <UniqueIdentifier>{15CA7471-23C7-4DAE-A320-F49B83CF292A}</UniqueIdentifier>
@@ -3304,6 +3313,9 @@
     <Filter Include="Engine\Src\Utility\Debug">
       <UniqueIdentifier>{8A2D5BE0-0975-4A68-995C-266173813571}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Utility\Event">
+      <UniqueIdentifier>{6B0E4A17-2C93-4D58-9F0A-1E7D3C82B4A6}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Utility\FileErrorDialog">
       <UniqueIdentifier>{F75A418E-5312-4734-8D71-95704517A093}</UniqueIdentifier>
     </Filter>
@@ -3319,17 +3331,14 @@
     <Filter Include="Engine\Src\Utility\Profiler">
       <UniqueIdentifier>{EB718086-7172-4261-9E65-2364207C9F96}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Utility\Tween">
-      <UniqueIdentifier>{2F84D3B9-7C15-4E60-A8D2-5B913E07C4F8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Utility\Event">
-      <UniqueIdentifier>{6B0E4A17-2C93-4D58-9F0A-1E7D3C82B4A6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Utility\Random">
       <UniqueIdentifier>{CE13D7F5-57F4-4CDF-BDA2-D844D244356B}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Timer">
       <UniqueIdentifier>{139020EE-B17F-427B-AB95-76D25BBBABD6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Tween">
+      <UniqueIdentifier>{2F84D3B9-7C15-4E60-A8D2-5B913E07C4F8}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\WinApp">
       <UniqueIdentifier>{CB050433-E22F-4066-94C2-E908D6F2BCF4}</UniqueIdentifier>
