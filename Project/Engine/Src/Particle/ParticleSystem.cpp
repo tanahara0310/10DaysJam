@@ -4,6 +4,8 @@
 #include "Camera/Camera.h"
 #include "Camera/CameraManager.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Utility/FrameRate/Time.h"
 #include <iostream>
