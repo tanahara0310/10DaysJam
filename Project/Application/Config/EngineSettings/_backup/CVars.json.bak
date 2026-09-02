@@ -1,4 +1,10 @@
 {
+    "Title.UI.HintFontSize": 35.54899978637695,
+    "Title.UI.HintPosition": [
+        0.0,
+        285.7139892578125
+    ],
+    "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
         -0.9268882870674133,
