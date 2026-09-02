@@ -88,5 +88,22 @@ protected:
 
     /// @brief BeginPassでの追加処理（派生クラスでオーバーライド可能）
     virtual void OnBeginPass() {}
+
+    // ──────────────────────────────────────────────────────────
+    // ルートシグネチャの元になるシェーダー
+    // ──────────────────────────────────────────────────────────
+
+    /// @brief ルートシグネチャ構築に使う頂点シェーダーのパス
+    /// @details CreateRootSignature がこれをコンパイルしてリフレクションを取る。
+    ///          自前のシェーダーを持つ派生クラスはここを差し替えることで、
+    ///          そのシェーダーが宣言したリソースだけを含む RS が組まれる。
+    virtual const wchar_t* GetVertexShaderPath() const {
+        return L"Engine/Assets/Shaders/Particle/Particle.VS.hlsl";
+    }
+
+    /// @brief ルートシグネチャ構築に使うピクセルシェーダーのパス
+    virtual const wchar_t* GetPixelShaderPath() const {
+        return L"Engine/Assets/Shaders/Particle/Particle.PS.hlsl";
+    }
 };
 }

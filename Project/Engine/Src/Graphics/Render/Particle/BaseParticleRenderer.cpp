@@ -52,14 +52,16 @@ namespace CoreEngine
 
     void BaseParticleRenderer::CreateRootSignature() {
         // パーティクル用シェーダーをコンパイルしてリフレクション
-        auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Particle/Particle.VS.hlsl", L"vs_6_0");
+        // （自前のシェーダーを持つ派生クラスではそちらが使われる）
+        auto vertexShaderBlob = shaderCompiler_->CompileShader(GetVertexShaderPath(), L"vs_6_0");
         assert(vertexShaderBlob != nullptr);
 
-        auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Particle/Particle.PS.hlsl", L"ps_6_0");
+        auto pixelShaderBlob = shaderCompiler_->CompileShader(GetPixelShaderPath(), L"ps_6_0");
         assert(pixelShaderBlob != nullptr);
 
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob, pixelShaderBlob, "ParticleRenderer");
+        reflectionData_ = reflectionBuilder_->BuildFromShaders(
+            vertexShaderBlob, pixelShaderBlob, RenderPassTypeToString(GetRenderPassType()));
 
         // シンプルな設定でRootSignatureを構築
         RootSignatureConfig config;

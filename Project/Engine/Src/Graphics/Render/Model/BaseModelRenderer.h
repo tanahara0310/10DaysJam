@@ -90,9 +90,6 @@ namespace CoreEngine
             ID3D12GraphicsCommandList* cmdList,
             const CustomShaderPipeline* customPipeline);
 
-        /// @brief カメラ CBV の GPU 仮想アドレスを取得（DeferredLightingPass 連携用）
-        D3D12_GPU_VIRTUAL_ADDRESS GetCameraCBVAddress() const { return cameraCBV_; }
-
         /// @brief インスタンシングバッチマネージャーを設定（ModelManager から注入）
         void SetInstanceBatchManager(InstanceBatchManager* manager) { instanceBatchManager_ = manager; }
 
