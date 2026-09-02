@@ -550,6 +550,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.cpp">
       <Filter>Engine\Src\Graphics\Render\Culling</Filter>
     </ClCompile>
@@ -557,9 +560,6 @@
       <Filter>Engine\Src\Graphics\Render\Culling</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp">
-      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\HiZOcclusionPass.cpp">
@@ -1758,6 +1758,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -1771,9 +1774,6 @@
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h">
-      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\HiZOcclusionPass.h">
@@ -2823,6 +2823,9 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\GameScene">
       <UniqueIdentifier>{0FE1078A-F1FE-4786-B0EE-9C36C376D1FC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\TestScene">
+      <UniqueIdentifier>{C3EF8D01-1900-4CD2-9829-0D485B1DCB80}</UniqueIdentifier>
     </Filter>
     <Filter Include="Build">
       <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>

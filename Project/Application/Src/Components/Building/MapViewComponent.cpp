@@ -39,6 +39,10 @@ void GameComponents::MapViewComponent::Update() {
     // カメラの先に必要な分だけ、X正方向へマップを延長する
     mapGenerator_->CreateToX(endX);
 
+    Vector3 rotate{ 0.0f, 0.0f, 0.0f };
+    Vector3 stationScale{ 0.5f, 0.5f, 0.5f };
+    Vector3 rockScale{ 0.7f, 0.7f, 0.7f };
+
     // マップチップの2D配列を取得する
     const auto& mapChips = mapGenerator_->GetMapChips();
     // 描画範囲内のマップチップを描画する
@@ -53,7 +57,12 @@ void GameComponents::MapViewComponent::Update() {
 
             // 駅チップの表示
             if(stationRenderPool_ && chipType == MapChipType::Station) {
-                stationRenderPool_->Draw({ x * gridSize_, 1.0f, z * gridSize_ });
+                stationRenderPool_->Draw({ x * gridSize_, 0.7f, z * gridSize_ }, rotate, stationScale);
+            }
+
+            // 岩チップの表示
+            if (rockRenderPool_ && chipType == MapChipType::Resource) {
+                rockRenderPool_->Draw({ x * gridSize_, 0.7f, z * gridSize_ }, rotate, rockScale);
             }
         }
     }

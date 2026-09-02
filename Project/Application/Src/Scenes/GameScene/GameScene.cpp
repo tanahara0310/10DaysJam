@@ -50,7 +50,12 @@ void GameScene::GameScene::OnInitialize() {
     auto* stationPoolManager = CreateObject("StationPoolManager");
     stationPoolManager->AddComponent<CoreEngine::TransformComponent>();
     stationPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "box.obj", 10, false);
+        "station.obj", 10, false);
+    // 岩のオブジェクトプールを生成
+    auto* rockPoolManager = CreateObject("RockPoolManager");
+    rockPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    rockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "rock.obj", 50, false);
     // レールのオブジェクトプールを生成
     auto* railPoolManager = CreateObject("RailPoolManager");
     railPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -130,6 +135,7 @@ void GameScene::GameScene::OnInitialize() {
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
         gridSize, renderWorldDistance);
 

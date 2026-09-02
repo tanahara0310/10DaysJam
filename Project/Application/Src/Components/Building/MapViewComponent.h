@@ -22,12 +22,14 @@ namespace GameComponents
             MapGeneratorComponent* mapGenerator,
             ModelRenderPoolComponent* groundRenderPool,
             ModelRenderPoolComponent* stationRenderPool,
+            ModelRenderPoolComponent* rockRenderPool,
             CameraManagerComponent* cameraManager,
             float gridSize = 1.0f, uint32_t viewDistanceX = 30)
             : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
             mapGenerator_(mapGenerator),
             groundRenderPool_(groundRenderPool),
             stationRenderPool_(stationRenderPool),
+            rockRenderPool_(rockRenderPool),
             cameraManager_(cameraManager) {}
 
         // コンポーネントを識別する名前。必須
@@ -54,6 +56,7 @@ namespace GameComponents
         MapGeneratorComponent* mapGenerator_ = nullptr;
         ModelRenderPoolComponent* groundRenderPool_ = nullptr;
         ModelRenderPoolComponent* stationRenderPool_ = nullptr;
+        ModelRenderPoolComponent* rockRenderPool_ = nullptr;
         CameraManagerComponent* cameraManager_ = nullptr;
 
     };
