@@ -258,6 +258,27 @@ void ParticleSystem::SetTexture(const std::string& texturePath)
     texture_ = TextureManager::GetInstance().Load(texturePath);
 }
 
+uint32_t ParticleSystem::CollectWorldMatrices(Matrix4x4* outMatrices, uint32_t maxCount) const
+{
+    if (!outMatrices || maxCount == 0 || renderMode_ != ParticleRenderMode::Model) {
+        return 0;
+    }
+
+    // 描画側（ParticleRenderDataBuilder::BuildRenderData）と同じ打ち切り方をする。
+    // ここがずれると、影だけ出る粒／影だけ消える粒が生まれる。
+    const uint32_t limit = (std::min)(maxCount, GetMaxParticleCount());
+
+    uint32_t count = 0;
+    for (const auto& particle : particles_) {
+        if (count >= limit) {
+            break;
+        }
+        outMatrices[count] = ParticleRenderDataBuilder::MakeModelParticleWorldMatrix(particle);
+        ++count;
+    }
+    return count;
+}
+
 void ParticleSystem::SetModelResource(ModelResource* modelResource)
 {
     modelResource_ = modelResource;

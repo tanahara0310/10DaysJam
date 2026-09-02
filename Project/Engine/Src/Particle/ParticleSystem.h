@@ -212,6 +212,15 @@ public:
         return resourceManager_->GetSrvHandleGPU();
     }
 
+    /// @brief 生存中パーティクルのワールド行列を書き出す
+    /// @param outMatrices 書き出し先
+    /// @param maxCount    書き出せる上限
+    /// @return 書き出した数
+    /// @note DXR の TLAS インスタンスを組むために CPU 側の行列が要る（GPU の
+    ///       インスタンシングバッファは読み戻せない）。描画と同じ個数・同じ式で
+    ///       出すので、影と見た目がずれない。モデルパーティクル以外は 0 を返す。
+    uint32_t CollectWorldMatrices(Matrix4x4* outMatrices, uint32_t maxCount) const;
+
     // ──────────────────────────────────────────────────────────
     // モジュールアクセッサ
     // ──────────────────────────────────────────────────────────
