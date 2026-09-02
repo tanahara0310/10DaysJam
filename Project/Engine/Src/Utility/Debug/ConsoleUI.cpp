@@ -3,6 +3,10 @@
 
 #ifdef USE_IMGUI
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Light/LightManager.h"
+#include "Input/InputManager.h"
+#include "Audio/SoundManager.h"
 #include "Particle/ParticleSystem.h"
 
 // コンポーネントのインクルード

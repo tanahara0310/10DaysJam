@@ -21,7 +21,9 @@ namespace CoreEngine
     class FFTOceanManager;
     class AtmosphereManager;
     class VolumetricCloudManager;
+    class LightManager;
     struct WaterSurfaceData;
+    struct RenderContext;
 
     /// @brief 描画ドメイン固有マネージャーの所有・初期化クラス
     /// @note シーン深度 / GBuffer / レイトレーシング等、
@@ -46,6 +48,23 @@ namespace CoreEngine
         /// @param width 新しい幅
         /// @param height 新しい高さ
         void OnWindowResize(int32_t width, int32_t height) override;
+
+        // ===== フレーム =====
+
+        /// @brief 所有するマネージャ群を今フレームの RenderContext へ注入する
+        /// @param context 注入先。該当フィールドのみ上書きする
+        /// @details ドメインマネージャを 1 つ増やしたときに EngineSystem を編集せず済ませるための
+        ///          唯一の注入点。以前は EngineSystem::ExecuteRenderPipeline に
+        ///          `context.x = ctx ? ctx->GetX() : nullptr` が 12 行並んでいた。
+        /// @note nullptr ガードは不要（RenderContext の各フィールドは nullptr 初期化済みで、
+        ///       未生成のマネージャは .get() がそのまま nullptr を返す）
+        void PopulateRenderContext(RenderContext& context);
+
+        /// @brief 全 View の描画完了後に、所有するマネージャのフレーム状態を後始末する
+        /// @param lightManager 大気の透過率変調の解除先（nullptr 可）
+        /// @details フレーム有効化フラグを持つマネージャを増やしたときに、
+        ///          EngineSystem 側へ機能名の分岐を書き足さずに済ませるための集約点。
+        void EndFrame(LightManager* lightManager);
 
         // アクセッサ
         /// @brief メインシーンの深度（GBuffer が書き、各パスが読む。OffscreenRenderTarget の共有 DSV）
