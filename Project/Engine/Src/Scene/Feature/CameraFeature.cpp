@@ -6,6 +6,7 @@
 #include "Camera/Debug/DebugCameraCVars.h"
 #include "Editor/Camera/EditorCameraInput.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Input/InputManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/FrameRate/Time.h"
 

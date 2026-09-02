@@ -18,6 +18,11 @@
 #include "Graphics/Asset/AssetDatabase.h"
 
 // EngineSystem が直接使う型
+// （EngineSystem.h はサービス型ヘッダを配らないので、使う型は自分で include する）
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Render/RenderManager.h"
+#include "Graphics/Light/LightManager.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/Render/Render.h"

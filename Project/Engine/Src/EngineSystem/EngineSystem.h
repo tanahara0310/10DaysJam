@@ -16,19 +16,16 @@
 namespace CoreEngine { class WinApp; }
 
 // ──────────────────────────────────────────────────────────
-// サービスアクセス利便インクルード
-// GetService<T>() の呼び出し元が完全型を必要とするため、
-// 主要サービス型のヘッダをここでまとめて提供している。
-// 非推奨: 各呼び出し元ファイルで必要な型を直接インクルードすることを推奨。
+// このヘッダはサービス型のヘッダを一切 include しない。
+//
+// GetService<T>() / HasService<T>() は ComponentManager 経由で typeid(T) を使うため
+// 「呼び出し元の翻訳単位で T が完全型であること」を要求する。
+// かつてはその利便のため主要サービス型 8 本をここでまとめて配っていたが、
+// EngineSystem.h は 49 ファイルから include されており、配った型のヘッダを 1 つ
+// 触るだけで全ファイルが再コンパイル対象になっていた。
+//
+// GetService<T>() を呼ぶファイルは、T のヘッダを自分で include すること。
 // ──────────────────────────────────────────────────────────
-#include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/Render/RenderManager.h"
-#include "Graphics/Render/RenderDomainContext.h"
-#include "Graphics/Light/LightManager.h"
-#include "Graphics/Texture/TextureManager.h"
-#include "Input/InputManager.h"
-#include "Audio/SoundManager.h"
-#include "Utility/FrameRate/FrameRateController.h"
 
 
 /// @file
