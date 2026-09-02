@@ -50,9 +50,17 @@ void GameComponents::MapViewComponent::Update() {
         for (size_t z = 0; z < mapChips[x].size(); ++z) {
             const auto& chipType = mapChips[x][z];
             // チップの種類に応じて描画する
-            if (chipType != MapChipType::Void) {
+            if (chipType != MapChipType::Void && chipType != MapChipType::Water) {
                 // グラウンドチップの表示
                 groundRenderPool_->Draw({ x * gridSize_, 0.0f, z * gridSize_ });
+            }
+
+            // 水場チップの表示
+            if (waterRenderPool_ && chipType == MapChipType::Water) {
+                waterRenderPool_->Draw(
+                    { x * gridSize_, 0.0f, z * gridSize_ },
+                    rotate,
+                    { 1.0f, 0.3f, 1.0f });
             }
 
             // 駅チップの表示

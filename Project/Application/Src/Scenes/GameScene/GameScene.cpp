@@ -46,6 +46,12 @@ void GameScene::GameScene::OnInitialize() {
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "box.obj", 600,false);
+    // 水場のオブジェクトプールを生成
+    auto* waterPoolManager = CreateObject("WaterPoolManager");
+    waterPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    waterPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "box.obj", 100, false,
+        CoreEngine::Vector4{ 0.0f, 0.35f, 0.65f, 1.0f });
     // 駅のオブジェクトプールを生成
     auto* stationPoolManager = CreateObject("StationPoolManager");
     stationPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -134,6 +140,7 @@ void GameScene::GameScene::OnInitialize() {
     mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        waterPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),

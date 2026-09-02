@@ -158,6 +158,19 @@ void GameComponents::RailBuilderComponent::Update() {
         }
     }
 
+    mapGenerator_->CreateToX(static_cast<std::size_t>(nextX) + 1);
+    const MapChipType mapChip = mapGenerator_->GetMapChip(
+        static_cast<std::size_t>(nextX), static_cast<std::size_t>(nextZ));
+
+    // Void はマップ外も含む非建設マスとして扱う。
+    if (mapChip == MapChipType::Void) {
+        Logger::GetInstance().Infof(
+            LogCategory::Game,
+            "RailBuilder: Voidチップのためレールを設置できません ({}, {})",
+            nextX, nextZ);
+        return;
+    }
+
     // レールが0本なら、報酬マスであっても新しいレールは設置できない。
     if (resourceManager_->GetResourceCount() == 0) {
         Logger::GetInstance().Warnf(
@@ -166,14 +179,10 @@ void GameComponents::RailBuilderComponent::Update() {
         return;
     }
 
-    mapGenerator_->CreateToX(static_cast<std::size_t>(nextX) + 1);
-    const MapChipType mapChip = mapGenerator_->GetMapChip(
-        static_cast<std::size_t>(nextX), static_cast<std::size_t>(nextZ));
-
     uint32_t resourceCost = 0;
     if (mapChip == MapChipType::Ground) {
         resourceCost = 1;
-    } else if (mapChip == MapChipType::Void) {
+    } else if (mapChip == MapChipType::Water) {
         resourceCost = 2;
     }
 

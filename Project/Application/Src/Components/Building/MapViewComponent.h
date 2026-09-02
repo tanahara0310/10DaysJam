@@ -21,6 +21,7 @@ namespace GameComponents
         explicit MapViewComponent(
             MapGeneratorComponent* mapGenerator,
             ModelRenderPoolComponent* groundRenderPool,
+            ModelRenderPoolComponent* waterRenderPool,
             ModelRenderPoolComponent* stationRenderPool,
             ModelRenderPoolComponent* rockRenderPool,
             CameraManagerComponent* cameraManager,
@@ -28,6 +29,7 @@ namespace GameComponents
             : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
             mapGenerator_(mapGenerator),
             groundRenderPool_(groundRenderPool),
+            waterRenderPool_(waterRenderPool),
             stationRenderPool_(stationRenderPool),
             rockRenderPool_(rockRenderPool),
             cameraManager_(cameraManager) {}
@@ -55,6 +57,7 @@ namespace GameComponents
 
         MapGeneratorComponent* mapGenerator_ = nullptr;
         ModelRenderPoolComponent* groundRenderPool_ = nullptr;
+        ModelRenderPoolComponent* waterRenderPool_ = nullptr;
         ModelRenderPoolComponent* stationRenderPool_ = nullptr;
         ModelRenderPoolComponent* rockRenderPool_ = nullptr;
         CameraManagerComponent* cameraManager_ = nullptr;

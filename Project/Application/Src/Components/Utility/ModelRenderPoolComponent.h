@@ -2,10 +2,12 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 #include "Math/Vector/Vector3.h"
+#include "Math/Vector/Vector4.h"
 
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,10 +27,12 @@ namespace GameComponents
         explicit ModelRenderPoolComponent(
             std::string modelPath,
             std::size_t initialCapacity = 32,
-            bool allowGrowth = true)
+            bool allowGrowth = true,
+            std::optional<CoreEngine::Vector4> color = std::nullopt)
             : modelPath_(std::move(modelPath)),
               initialCapacity_(initialCapacity),
-              allowGrowth_(allowGrowth) {
+              allowGrowth_(allowGrowth),
+              color_(color) {
         }
 
         const char* GetTypeName() const override {
@@ -69,6 +73,7 @@ namespace GameComponents
         std::string modelPath_;
         std::size_t initialCapacity_ = 32;
         bool allowGrowth_ = true;
+        std::optional<CoreEngine::Vector4> color_;
         std::uint64_t allocationFrame_ =
             (std::numeric_limits<std::uint64_t>::max)();
         std::size_t nextEntryIndex_ = 0;

@@ -3,6 +3,7 @@
 
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
@@ -117,6 +118,11 @@ GameComponents::ModelRenderPoolComponent::CreateEntry() {
 
     TransformComponent* transform = object->AddComponent<TransformComponent>();
     object->AddComponent<MeshRendererComponent>(modelPath_);
+    if (color_) {
+        auto* material = object->AddComponent<MaterialComponent>();
+        material->SetColor(*color_);
+        material->SetPBR(0.0f, 0.15f);
+    }
     object->SetActive(false);
 
     entries_.push_back({ object, transform });
