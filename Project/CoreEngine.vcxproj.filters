@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp">
@@ -769,6 +769,18 @@
     <ClCompile Include="Engine\Src\Scene\Feature\SceneBGMFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\EventDispatchFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\CameraFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClCompile>
@@ -873,6 +885,15 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Tween\Tween.cpp">
+      <Filter>Engine\Src\Utility\Tween</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp">
+      <Filter>Engine\Src\Utility\Tween</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Event\EventBus.cpp">
+      <Filter>Engine\Src\Utility\Event</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp">
       <Filter>Engine\Src\Utility\Random</Filter>
@@ -2223,6 +2244,18 @@
     <ClInclude Include="Engine\Src\Scene\Feature\SceneBGMFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\EventDispatchFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\CameraFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClInclude>
@@ -2361,6 +2394,15 @@
     <ClInclude Include="Engine\Src\Utility\FileErrorDialog\FileErrorDialog.h">
       <Filter>Engine\Src\Utility\FileErrorDialog</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Tween\Tween.h">
+      <Filter>Engine\Src\Utility\Tween</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Tween\TweenManager.h">
+      <Filter>Engine\Src\Utility\Tween</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Event\EventBus.h">
+      <Filter>Engine\Src\Utility\Event</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h">
       <Filter>Engine\Src\Utility\Random</Filter>
     </ClInclude>
@@ -2489,6 +2531,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h">
       <Filter>Engine\Src\Particle\Modules</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
+      <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
@@ -3219,6 +3264,12 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Profiler">
       <UniqueIdentifier>{EB718086-7172-4261-9E65-2364207C9F96}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Tween">
+      <UniqueIdentifier>{2F84D3B9-7C15-4E60-A8D2-5B913E07C4F8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Event">
+      <UniqueIdentifier>{6B0E4A17-2C93-4D58-9F0A-1E7D3C82B4A6}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Random">
       <UniqueIdentifier>{CE13D7F5-57F4-4CDF-BDA2-D844D244356B}</UniqueIdentifier>

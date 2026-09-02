@@ -10,12 +10,14 @@ namespace CoreEngine
     class GridRenderer;
 
     /// @brief エディタ用グリッド床を管理する Feature（デバッグビルド専用）。
-    /// @details GridRenderer（ILineSource）を所有して Line パスへ登録し、
-    ///          DockingUI の表示トグルを毎フレーム反映する。
+    /// @details GridRenderer の実体は RenderManager が Grid パスとして所有する。
+    ///          この Feature はそれを引いてきて表示を有効にし、DockingUI の
+    ///          表示トグルを毎フレーム反映する。あわせて Y 軸ライン供給元として
+    ///          Line パスへ登録する（垂直な軸だけは解析グリッドでは描けないため）。
     class GridFeature : public ISceneFeature {
     public:
         GridFeature();
-        ~GridFeature() override;   // unique_ptr<GridRenderer> のため .cpp で定義（前方宣言のみで足りる）
+        ~GridFeature() override;
 
         const char* GetName() const override { return "Grid"; }
 
@@ -24,8 +26,8 @@ namespace CoreEngine
         void Finalize(SceneContext& ctx) override;
 
     private:
-        /// グリッド本体（この Feature が所有。Line パスにはポインタ登録するだけ）
-        std::unique_ptr<GridRenderer> gridRenderer_;
+        /// グリッド本体（所有者は RenderManager。ここは参照するだけ）
+        GridRenderer* gridRenderer_ = nullptr;
     };
 }
 

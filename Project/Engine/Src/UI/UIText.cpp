@@ -3,12 +3,17 @@
 
 #include "Graphics/Render/RenderManager.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Text/FontManager.h"
 #include "Text/MsdfFont.h"
 #include "Text/TextEncoding.h"
 #include "Text/TextLineBreak.h"
+#include "Scene/SceneSaveSystem.h"
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <array>
+#include <cstring>
 #include <limits>
 
 #ifdef USE_IMGUI
@@ -31,23 +36,91 @@ namespace CoreEngine
         constexpr float kMaxOutlineSd = 0.45f;
     }
 
+#ifdef USE_IMGUI
+    namespace
+    {
+        /// @brief 入力欄の作業バッファへ文字列を写す
+        /// @details 入りきらない分は捨てる。ただし UTF-8 の途中で切ると
+        ///          文字化けするので、多バイト文字の境界まで戻して切る
+        template <size_t N>
+        void CopyToEditBuffer(std::array<char, N>& buffer, const std::string& source)
+        {
+            size_t length = (std::min)(source.size(), N - 1);
+            while (length > 0 &&
+                (static_cast<unsigned char>(source[length]) & 0xC0) == 0x80) {
+                --length; // 継続バイトの上にいる間は先頭バイトまで戻す
+            }
+            std::memcpy(buffer.data(), source.data(), length);
+            buffer[length] = '\0';
+        }
+    }
+#endif // USE_IMGUI
+
+    namespace
+    {
+        /// @brief シーン JSON から UIText を復元できるように型を登録する
+        /// @note 静的初期化で 1 度だけ走る。エディタ上で追加したテキストが
+        ///       次回起動時に復活するのはこの登録があるため
+        const bool kUITextTypeRegistered = [] {
+            SceneSaveSystem::RegisterObjectType("UIText",
+                [] { return std::make_unique<UIText>(); });
+            return true;
+            }();
+    }
+
+    void UIText::Initialize()
+    {
+        auto* engine = GetEngineSystem();
+        if (!engine) { return; }
+
+        if (auto* renderManager = engine->GetService<RenderManager>()) {
+            renderer_ = dynamic_cast<TextRenderer*>(
+                renderManager->GetRenderer(RenderPassType::UIText));
+        }
+
+        // フォントがまだ無いなら既定フォントを取る。
+        // エディタ上で追加したテキストは指定が無い状態で生まれるため
+        if (!font_) {
+            if (auto* fontManager = engine->GetService<FontManager>()) {
+                fontName_ = FontManager::kDefaultFontName;
+                font_ = fontManager->AcquireNamed(fontName_);
+            }
+        }
+
+        // 文字の左上を基準にしたほうが HUD の配置は考えやすい
+        layout_.pivot = { 0.0f, 0.0f };
+
+        RebuildGeometry();
+    }
+
     void UIText::Initialize(MsdfFont* font, const std::string& textUtf8, const std::string& name)
     {
         if (!name.empty()) {
             SetName(name);
         }
 
-        auto* engine = GetEngineSystem();
-        auto* renderManager = engine->GetService<RenderManager>();
-        renderer_ = dynamic_cast<TextRenderer*>(renderManager->GetRenderer(RenderPassType::UIText));
-
         font_ = font;
         textUtf8_ = textUtf8;
 
-        // 文字の左上を基準にしたほうが HUD の配置は考えやすい
-        layout_.pivot = { 0.0f, 0.0f };
+        // 共通の初期化（レンダラー解決・pivot・頂点の構築）へ合流する。
+        // font_ を先に入れてあるので既定フォントの取得はスキップされる
+        Initialize();
+    }
 
-        RebuildGeometry();
+    void UIText::SetFontByName(const std::string& fontName)
+    {
+        auto* engine = GetEngineSystem();
+        if (!engine) { return; }
+
+        auto* fontManager = engine->GetService<FontManager>();
+        if (!fontManager) { return; }
+
+        MsdfFont* resolved = fontManager->AcquireNamed(fontName);
+        if (!resolved) { return; }
+
+        fontName_ = fontName;
+        font_ = resolved;
+        geometryDirty_ = true;
     }
 
     void UIText::SetText(const std::string& textUtf8)
@@ -62,11 +135,40 @@ namespace CoreEngine
         if (fontSize_ == pixelSize) { return; }
         fontSize_ = pixelSize;
 
-        // 折り返し幅は px 指定なので、フォントサイズが変わると折り位置が変わる。
-        // 折り返しを使っていなければ頂点は em 単位のまま使い回せる
-        if (wrapWidthPx_ > 0.0f) {
+        // 折り返し幅もフィールドの大きさも px 指定なので、
+        // フォントサイズが変わると折り位置と枠内での揃え位置が変わる。
+        // どちらも使っていなければ頂点は em 単位のまま使い回せる
+        if (wrapWidthPx_ > 0.0f || !fieldAutoFit_) {
             geometryDirty_ = true;
+            return;
         }
+        // 自動調整なら、見た目の大きさだけ更新すれば足りる
+        layout_.size = GetMeasuredSize();
+    }
+
+    void UIText::SetFieldSize(const Vector2& sizePx)
+    {
+        // 大きさを明示した以上、文字列に合わせて縮められては困る
+        fieldAutoFit_ = false;
+
+        if (layout_.size.x == sizePx.x && layout_.size.y == sizePx.y) { return; }
+        layout_.size = sizePx;
+        geometryDirty_ = true; // 幅が変われば折り位置が変わる
+    }
+
+    void UIText::SetFieldAutoFit(bool enable)
+    {
+        if (fieldAutoFit_ == enable) { return; }
+        fieldAutoFit_ = enable;
+        geometryDirty_ = true;
+    }
+
+    void UIText::SetAlign(TextAlignH horizontal, TextAlignV vertical)
+    {
+        if (alignH_ == horizontal && alignV_ == vertical) { return; }
+        alignH_ = horizontal;
+        alignV_ = vertical;
+        geometryDirty_ = true;
     }
 
     void UIText::SetWrapWidth(float pixelWidth)
@@ -208,8 +310,11 @@ namespace CoreEngine
         const float lineAdvance = metrics.lineHeight * lineSpacing_;
 
         // ── ①行に分ける（折り返し + 禁則処理）──────────────────
-        const float wrapWidthEm = (wrapWidthPx_ > 0.0f && fontSize_ > 0.0f)
-            ? wrapWidthPx_ / fontSize_
+        // フィールドを固定しているならその幅で折る。
+        // 折り返し幅を別に持たせると「枠の幅」と食い違って直感に反するため
+        const float wrapWidthPx = fieldAutoFit_ ? wrapWidthPx_ : layout_.size.x;
+        const float wrapWidthEm = (wrapWidthPx > 0.0f && fontSize_ > 0.0f)
+            ? wrapWidthPx / fontSize_
             : 0.0f;
 
         std::vector<LineRange> lines;
@@ -233,6 +338,17 @@ namespace CoreEngine
         // （中央寄せ等で「指定した箱」を基準にできるようにする）
         measuredSizeEm_ = { (wrapWidthEm > 0.0f) ? wrapWidthEm : maxWidth, totalHeight };
 
+        // 自動調整ならフィールドを文字列の大きさへ合わせる。
+        // 固定しているなら layout_.size がそのままフィールドの大きさ
+        if (fieldAutoFit_) {
+            layout_.size = GetMeasuredSize();
+        }
+
+        // 文字を流し込む枠（em 単位）。頂点は em で組むのでここも em に揃える
+        const Vector2 fieldEm = fieldAutoFit_ || fontSize_ <= 0.0f
+            ? measuredSizeEm_
+            : Vector2{ layout_.size.x / fontSize_, layout_.size.y / fontSize_ };
+
         if (drawableGlyphCount == 0) { return; }
 
         // 共有インデックスバッファの長さが上限。超えた分は切り捨てる
@@ -247,9 +363,26 @@ namespace CoreEngine
         }
 
         // ── ②クワッドを組む ──────────────────────────────────────
-        // 全て em 単位。フォントサイズ・位置・回転は描画時にまとめて掛ける
-        const float originX = -layout_.pivot.x * measuredSizeEm_.x;
-        const float originY = -layout_.pivot.y * totalHeight;
+        // 全て em 単位。フォントサイズ・位置・回転は描画時にまとめて掛ける。
+        // 原点はフィールドの左上（ピボット基準）
+        const float originX = -layout_.pivot.x * fieldEm.x;
+
+        // 縦揃え：文字列全体の高さとフィールドの高さの差を配る
+        const float verticalSlack = fieldEm.y - totalHeight;
+        const float alignOffsetY =
+            (alignV_ == TextAlignV::Middle) ? verticalSlack * 0.5f :
+            (alignV_ == TextAlignV::Bottom) ? verticalSlack : 0.0f;
+
+        const float originY = -layout_.pivot.y * fieldEm.y + alignOffsetY;
+
+        // 横揃え：行ごとに幅が違うので、行単位で書き出し位置をずらす
+        const auto alignOffsetX = [this, &fieldEm](float lineWidth) {
+            switch (alignH_) {
+            case TextAlignH::Center: return (fieldEm.x - lineWidth) * 0.5f;
+            case TextAlignH::Right:  return  fieldEm.x - lineWidth;
+            default:                 return 0.0f;
+            }
+            };
 
         glyphVertices_.reserve(drawableGlyphCount * 4);
 
@@ -258,7 +391,7 @@ namespace CoreEngine
             const float baselineY =
                 originY + metrics.ascender + static_cast<float>(lineIndex) * lineAdvance;
 
-            float penX = 0.0f;
+            float penX = alignOffsetX(line.width);
             for (size_t i = line.begin; i < line.end; ++i) {
                 const MsdfGlyph& glyph = glyphs[i];
 
@@ -318,6 +451,92 @@ namespace CoreEngine
         renderer_->Submit(font_, glyphVertices_.data(), glyphVertices_.size(), world, style_);
     }
 
+    json UIText::OnSerialize() const
+    {
+        json j;
+        j["active"] = IsActive();
+
+        // フォントは名前だけ。実体の指定は FontManager 側に置く
+        j["font"] = fontName_;
+        j["text"] = textUtf8_;
+        j["fontSize"] = fontSize_;
+        j["lineSpacing"] = lineSpacing_;
+        j["wrapWidth"] = wrapWidthPx_;
+
+        j["fieldAutoFit"] = fieldAutoFit_;
+        j["fieldSize"]["x"] = layout_.size.x;
+        j["fieldSize"]["y"] = layout_.size.y;
+        j["alignH"] = static_cast<int>(alignH_);
+        j["alignV"] = static_cast<int>(alignV_);
+
+        j["color"] = JsonManager::Vector4ToJson(style_.color);
+        j["outlineColor"] = JsonManager::Vector4ToJson(style_.outlineColor);
+        j["outlineWidth"] = style_.outlineWidthEm;
+        j["weight"] = style_.weightEm;
+
+        j["anchor"] = static_cast<int>(layout_.anchor);
+        j["anchoredPos"]["x"] = layout_.anchoredPos.x;
+        j["anchoredPos"]["y"] = layout_.anchoredPos.y;
+        j["pivot"]["x"] = layout_.pivot.x;
+        j["pivot"]["y"] = layout_.pivot.y;
+        j["rotation"] = layout_.rotation;
+        j["sortOrder"] = layout_.sortOrder;
+
+        return j;
+    }
+
+    void UIText::OnDeserialize(const json& j)
+    {
+        if (j.contains("active")) { SetActive(j["active"].get<bool>()); }
+
+        // フォントを先に解決する（メトリクスが決まらないとレイアウトが組めない）
+        if (j.contains("font") && j["font"].is_string()) {
+            SetFontByName(j["font"].get<std::string>());
+        }
+
+        textUtf8_ = JsonManager::SafeGet<std::string>(j, "text", textUtf8_);
+        fontSize_ = JsonManager::SafeGet<float>(j, "fontSize", fontSize_);
+        lineSpacing_ = JsonManager::SafeGet<float>(j, "lineSpacing", lineSpacing_);
+        wrapWidthPx_ = JsonManager::SafeGet<float>(j, "wrapWidth", wrapWidthPx_);
+
+        fieldAutoFit_ = JsonManager::SafeGet<bool>(j, "fieldAutoFit", fieldAutoFit_);
+        if (j.contains("fieldSize")) {
+            layout_.size.x = JsonManager::SafeGet<float>(j["fieldSize"], "x", layout_.size.x);
+            layout_.size.y = JsonManager::SafeGet<float>(j["fieldSize"], "y", layout_.size.y);
+        }
+        const int alignHIndex = JsonManager::SafeGet<int>(j, "alignH", static_cast<int>(alignH_));
+        if (alignHIndex >= 0 && alignHIndex <= static_cast<int>(TextAlignH::Right)) {
+            alignH_ = static_cast<TextAlignH>(alignHIndex);
+        }
+        const int alignVIndex = JsonManager::SafeGet<int>(j, "alignV", static_cast<int>(alignV_));
+        if (alignVIndex >= 0 && alignVIndex <= static_cast<int>(TextAlignV::Bottom)) {
+            alignV_ = static_cast<TextAlignV>(alignVIndex);
+        }
+
+        style_.color = JsonManager::SafeGetVector4(j, "color", style_.color);
+        style_.outlineColor = JsonManager::SafeGetVector4(j, "outlineColor", style_.outlineColor);
+        style_.outlineWidthEm = JsonManager::SafeGet<float>(j, "outlineWidth", style_.outlineWidthEm);
+        style_.weightEm = JsonManager::SafeGet<float>(j, "weight", style_.weightEm);
+
+        const int anchorIndex = JsonManager::SafeGet<int>(j, "anchor",
+            static_cast<int>(layout_.anchor));
+        if (anchorIndex >= 0 && anchorIndex <= static_cast<int>(UIAnchor::BottomRight)) {
+            layout_.anchor = static_cast<UIAnchor>(anchorIndex);
+        }
+        if (j.contains("anchoredPos")) {
+            layout_.anchoredPos.x = JsonManager::SafeGet<float>(j["anchoredPos"], "x", layout_.anchoredPos.x);
+            layout_.anchoredPos.y = JsonManager::SafeGet<float>(j["anchoredPos"], "y", layout_.anchoredPos.y);
+        }
+        if (j.contains("pivot")) {
+            layout_.pivot.x = JsonManager::SafeGet<float>(j["pivot"], "x", layout_.pivot.x);
+            layout_.pivot.y = JsonManager::SafeGet<float>(j["pivot"], "y", layout_.pivot.y);
+        }
+        layout_.rotation = JsonManager::SafeGet<float>(j, "rotation", layout_.rotation);
+        SetSortOrder(JsonManager::SafeGet<int>(j, "sortOrder", layout_.sortOrder));
+
+        geometryDirty_ = true;
+    }
+
 #ifdef USE_IMGUI
     int UIText::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const
     {
@@ -364,11 +583,43 @@ namespace CoreEngine
                 }
             }
 
-            UI::SectionHeader("折り返し幅");
+            UI::SectionHeader("テキストフィールド");
             {
-                float wrapTmp = wrapWidthPx_;
-                if (UI::DragFloat("px（0 で無効）##wrap", wrapTmp, 1.0f, 0.0f, 4096.0f)) {
-                    SetWrapWidth(wrapTmp);
+                bool autoFit = fieldAutoFit_;
+                if (ImGui::Checkbox("文字に合わせる##fieldAutoFit", &autoFit)) {
+                    SetFieldAutoFit(autoFit);
+                    changed = true;
+                }
+
+                if (fieldAutoFit_) {
+                    // 枠が文字に追従するので、折り返し幅は別に指定する
+                    float wrapTmp = wrapWidthPx_;
+                    if (UI::DragFloat("折り返し幅 px（0 で無効）##wrap",
+                        wrapTmp, 1.0f, 0.0f, 4096.0f)) {
+                        SetWrapWidth(wrapTmp);
+                        changed = true;
+                    }
+                    ImGui::TextDisabled("枠は文字列を囲む大きさになります");
+                }
+                else {
+                    Vector2 fieldTmp = layout_.size;
+                    if (UI::DragVec2("##fieldSize", fieldTmp, 1.0f, 1.0f, 8192.0f)) {
+                        SetFieldSize(fieldTmp);
+                        changed = true;
+                    }
+                    ImGui::TextDisabled("枠の幅で折り返します");
+                }
+                ImGui::TextDisabled("Canvas の拡縮ギズモでも伸縮できます");
+
+                static const char* kAlignHNames[] = { "左", "中央", "右" };
+                static const char* kAlignVNames[] = { "上", "中央", "下" };
+                int alignHIndex = static_cast<int>(alignH_);
+                int alignVIndex = static_cast<int>(alignV_);
+                bool alignChanged = ImGui::Combo("横揃え##alignH", &alignHIndex, kAlignHNames, 3);
+                alignChanged |= ImGui::Combo("縦揃え##alignV", &alignVIndex, kAlignVNames, 3);
+                if (alignChanged) {
+                    SetAlign(static_cast<TextAlignH>(alignHIndex),
+                        static_cast<TextAlignV>(alignVIndex));
                     changed = true;
                 }
             }
@@ -396,6 +647,63 @@ namespace CoreEngine
         // ── 1: テキスト ────────────────────────────────────────
         case 1:
         {
+            UI::SectionHeader("文字列");
+            {
+                // 入力中は ImGui がバッファを持つので、そうでない間だけ写し直す
+                if (!editTextActive_) { CopyToEditBuffer(editTextBuffer_, textUtf8_); }
+
+                const ImVec2 boxSize(-FLT_MIN, ImGui::GetTextLineHeight() * 4.5f);
+                if (ImGui::InputTextMultiline("##text", editTextBuffer_.data(),
+                    editTextBuffer_.size(), boxSize)) {
+                    // 1 打鍵ごとに反映する。未収録の字はここで焼き足しの要求が出る
+                    SetText(editTextBuffer_.data());
+                    changed = true;
+                }
+                editTextActive_ = ImGui::IsItemActive();
+                ImGui::TextDisabled("Enter で改行。日本語は IME でそのまま入力できます");
+            }
+
+            UI::SectionHeader("フォント");
+            {
+                auto* engine = GetEngineSystem();
+                auto* fontManager = engine ? engine->GetService<FontManager>() : nullptr;
+
+                // Engine/Assets/Font のファイルと、登録済みフォントから選ぶ
+                if (fontManager) {
+                    const std::vector<std::string> names = fontManager->GetSelectableFontNames();
+                    if (!names.empty()) {
+                        if (ImGui::BeginCombo("##fontPreset", fontName_.c_str())) {
+                            for (const std::string& name : names) {
+                                const bool selected = (name == fontName_);
+                                if (ImGui::Selectable(name.c_str(), selected)) {
+                                    SetFontByName(name);
+                                    CopyToEditBuffer(editFontBuffer_, fontName_);
+                                    changed = true;
+                                }
+                                if (selected) { ImGui::SetItemDefaultFocus(); }
+                            }
+                            ImGui::EndCombo();
+                        }
+                    }
+                }
+
+                // 任意のフォント名を直接打ち込む。
+                // 未登録の名前は FontManager がシステムフォント名として解決し、
+                // 見つかればその場で登録するので、保存して開き直しても同じ字体になる
+                if (!editFontActive_) { CopyToEditBuffer(editFontBuffer_, fontName_); }
+                if (ImGui::InputText("##fontName", editFontBuffer_.data(),
+                    editFontBuffer_.size(), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                    SetFontByName(editFontBuffer_.data());
+                    changed = true;
+                }
+                editFontActive_ = ImGui::IsItemActive();
+                ImGui::TextDisabled("フォント名を入力して Enter");
+                // path::string() は ANSI になるので、UTF-8 への変換は Logger を通す
+                ImGui::TextDisabled("%s のファイル名か、インストール済みフォント名",
+                    Logger::GetInstance().PathToUtf8(
+                        FontManager::GetFontDirectory()).c_str());
+            }
+
             UI::SectionHeader("フォントサイズ");
             {
                 float sizeTmp = fontSize_;
@@ -453,7 +761,6 @@ namespace CoreEngine
             UI::SectionHeader("情報");
             {
                 const Vector2 measured = GetMeasuredSize();
-                ImGui::Text("文字列: %s", textUtf8_.c_str());
                 ImGui::Text("実寸: %.1f x %.1f px / %u 行", measured.x, measured.y, lineCount_);
                 ImGui::Text("グリフ数: %u / %u", GetGlyphCount(), TextRenderer::kMaxGlyphsPerText);
                 if (renderer_) {

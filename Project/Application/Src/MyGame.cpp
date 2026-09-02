@@ -147,17 +147,6 @@ void MyGame::Update()
     }
 }
 
-void MyGame::Draw()
-{
-    // ──────────────────────────────────────────────────────────
-    // シーン描画処理を委譲
-    // ──────────────────────────────────────────────────────────
-
-    if (sceneManager_) {
-        sceneManager_->Draw();
-    }
-}
-
 void MyGame::PrepareRender()
 {
     if (sceneManager_) {
