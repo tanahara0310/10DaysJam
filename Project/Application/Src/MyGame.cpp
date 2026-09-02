@@ -9,6 +9,7 @@
 
 #include "Scenes/GameScene/GameScene.h"
 #include "Scenes/TestScene/TestScene.h"
+#include "Scenes/TitleScene/TitleScene.h"
 
 using namespace CoreEngine;
 
@@ -66,6 +67,7 @@ void MyGame::CreateSceneManager()
     GetEngineSystem()->SetSceneManager(sceneManager_.get());
 
     // 全シーンを登録（アプリ層で実装）
+    sceneManager_->RegisterScene<TitleScene::TitleScene>("TitleScene");
     sceneManager_->RegisterScene<GameScene::GameScene>("GameScene");
     sceneManager_->RegisterScene<CoreEngine::TestScene>("TestScene");
 }

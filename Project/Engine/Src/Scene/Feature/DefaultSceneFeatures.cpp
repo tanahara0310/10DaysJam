@@ -2,6 +2,7 @@
 #include "DefaultSceneFeatures.h"
 
 #include "CameraFeature.h"
+#include "CameraShakeFeature.h"
 #include "CollisionFeature.h"
 #include "DebugEditorFeature.h"
 #include "EnvironmentFeature.h"
@@ -68,6 +69,11 @@ namespace CoreEngine
         // EventDispatch → Tween の順に畳まれる。
         AddLate<TweenFeature>(features);          // PreObjectUpdate の最後
         AddLate<EventDispatchFeature>(features);  // PostObjectUpdate の最後
+
+        // カメラシェイクは PostLogic の最後。追従カメラ（OnLateUpdate）が構図を
+        // 決め切ってから揺らさないと、揺れが追従に上書きされて何も起きない。
+        // 同フェーズの大気・雲より後に回るので、それらは揺れる前の姿勢を見る。
+        AddLate<CameraShakeFeature>(features);    // PostLogic の最後
 
         return features;
     }

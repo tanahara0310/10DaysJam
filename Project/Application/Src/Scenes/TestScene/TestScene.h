@@ -26,6 +26,7 @@
 // シーン関連
 #include "Scene/BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Camera/Shake/CameraShakeTypes.h"
 
 // GameObjectのインクルード
 
@@ -35,6 +36,8 @@ using namespace Microsoft::WRL;
 
 namespace CoreEngine
 {
+    class InputQuery;
+
     class TestScene : public BaseScene {
     public:
         /// @brief シーン固有の初期化
@@ -44,35 +47,18 @@ namespace CoreEngine
         /// @brief 更新処理（BaseSceneのOnUpdate()をオーバーライド）
         void OnUpdate() override;
 
-    private: // オーディオ動作確認
+    private: // メンバ関数
 
-        /// @brief 音の読み込みと BGM の再生開始（結果はログに出す）
-        void InitializeAudioTest();
-
-        /// @brief キー入力でのオーディオ操作を受け付ける
-        void UpdateAudioTest();
-
-        /// @brief 現在のオーディオ状態をログへ書き出す
-        void LogAudioState(const char* label) const;
-
-        /// @brief 起動直後の数秒だけ走る自動確認シーケンス
-        /// @details 人がキーを押さなくてもログだけで「重ね再生・フェード進行・
-        ///          スロット自動回収・バス音量」が確認できるようにするためのもの。
-        void RunAudioAutoCheck();
+        /// @brief カメラシェイクの動作確認（数字キーで各プリセットを再生する）
+        /// @details 揺れの見え方はスクリーンショットでは分かりにくいので、
+        ///          プリセットごとに実際に撃って目で確かめるための入口。
+        void UpdateCameraShakeTest(const InputQuery& input);
 
     private: // メンバ変数
 
         Logger& logger = Logger::GetInstance();
 
-        AudioSystem* audio_ = nullptr;
-        SoundClip seClip_;   ///< 単発 SE 用
-        SoundClip bgmClip_;  ///< ループ BGM 用
-
-        /// @brief シーンが所有する BGM。破棄されると自動で止まる
-        ScopedSound bgm_;
-
-        // 自動確認シーケンスの進行状態
-        float audioCheckTimer_ = 0.0f;
-        int audioCheckStep_ = 0;
+        /// @brief 再生中の地震（無限に続くので止めるためにハンドルを持つ）
+        ShakeHandle earthquakeHandle_ = 0;
     };
 }
