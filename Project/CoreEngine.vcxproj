@@ -196,6 +196,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleHintText.cpp" />
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.cpp" />
@@ -453,6 +454,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\EventDispatchFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CameraFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\CameraShakeFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
@@ -525,6 +527,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Shake\CameraShake.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Shake\CameraShaker.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraCVars.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\FreeLookController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\EditorCameraInput.cpp" />
@@ -1077,6 +1081,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\EventDispatchFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CameraFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\CameraShakeFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
@@ -1173,6 +1178,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShake.h" />
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShakeEvent.h" />
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShakePresets.h" />
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShakeTypes.h" />
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShaker.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraCVars.h" />
     <ClInclude Include="Engine\Src\Camera\Control\FreeLookController.h" />
     <ClInclude Include="Engine\Src\Camera\Control\ICameraController.h" />

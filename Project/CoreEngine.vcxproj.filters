@@ -811,6 +811,9 @@
     <ClCompile Include="Engine\Src\Scene\Feature\CameraFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\CameraShakeFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClCompile>
@@ -1026,6 +1029,12 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp">
       <Filter>Engine\Src\Camera\Control</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Shake\CameraShake.cpp">
+      <Filter>Engine\Src\Camera\Shake</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Shake\CameraShaker.cpp">
+      <Filter>Engine\Src\Camera\Shake</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraCVars.cpp">
       <Filter>Engine\Src\Camera\Debug</Filter>
@@ -2316,6 +2325,9 @@
     <ClInclude Include="Engine\Src\Scene\Feature\CameraFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\CameraShakeFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClInclude>
@@ -2595,6 +2607,9 @@
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
       <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClInclude>
+    <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
+      <Filter>Application\Src\Scenes\TestScene</Filter>
+    </ClCompile>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -2603,6 +2618,21 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h">
       <Filter>Engine\Src\Camera\Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShake.h">
+      <Filter>Engine\Src\Camera\Shake</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShakeEvent.h">
+      <Filter>Engine\Src\Camera\Shake</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShakePresets.h">
+      <Filter>Engine\Src\Camera\Shake</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShakeTypes.h">
+      <Filter>Engine\Src\Camera\Shake</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShaker.h">
+      <Filter>Engine\Src\Camera\Shake</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraCVars.h">
       <Filter>Engine\Src\Camera\Debug</Filter>
@@ -2882,6 +2912,7 @@
       <UniqueIdentifier>{0FE1078A-F1FE-4786-B0EE-9C36C376D1FC}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
+      <UniqueIdentifier>{b1d4e0c7-2a58-4f36-8e91-6d3c05af7e42}</UniqueIdentifier>
       <UniqueIdentifier>{BFA03B9A-FA4C-41F0-A1DF-6197D741D11A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TitleScene">
@@ -2907,6 +2938,9 @@
     </Filter>
     <Filter Include="Engine\Src\Camera\Control">
       <UniqueIdentifier>{D99583A0-6A9E-4104-B12D-EFFF3B6DB30F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Camera\Shake">
+      <UniqueIdentifier>{3f7c1a52-8b64-4d19-9a0e-5c2d7e41b8a3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Camera\Debug">
       <UniqueIdentifier>{08318A63-7E81-4992-88CF-85F136FCA598}</UniqueIdentifier>
