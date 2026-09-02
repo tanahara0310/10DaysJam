@@ -11,6 +11,8 @@
 #include "Graphics/Water/FFTOceanManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
+#include "Graphics/Light/LightManager.h"
+#include "Graphics/Render/Pass/RenderPass.h" // RenderContext（PopulateRenderContext の注入先）
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -155,6 +157,37 @@ namespace CoreEngine
 
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext::OnWindowResize: %dx%d にリサイズ完了\n", width, height);
+    }
+
+    void RenderDomainContext::PopulateRenderContext(RenderContext& context)
+    {
+        context.sceneDepth = sceneDepth_.get();
+        context.gBufferManager = gBufferManager_.get();
+        context.accelerationStructureManager = accelerationStructureManager_.get();
+        context.rtShadowManager = rtShadowManager_.get();
+        context.rtWaterCausticsManager = rtWaterCausticsManager_.get();
+        context.rtWaterRefractionManager = rtWaterRefractionManager_.get();
+        context.rtWaterReflectionManager = rtWaterReflectionManager_.get();
+        context.fftOceanManager = fftOceanManager_.get();
+        context.atmosphereManager = atmosphereManager_.get();
+        context.volumetricCloudManager = volumetricCloudManager_.get();
+
+        // 水面状態は WaterRenderFeature が publish する（シーンに水面用の仮想関数を持たせない）
+        context.waterSurfaceState = waterSurfaceState_;
+        context.fftOceanSimulationTime = fftOceanSimulationTime_;
+    }
+
+    void RenderDomainContext::EndFrame(LightManager* lightManager)
+    {
+        // 大気・雲は「Update() を呼んだシーンでのみ有効」というフレーム有効化フラグを持つ。
+        // 全 View の描画（AerialPerspective 合成を含む）が終わったここで落とし、
+        // 他シーンへの漏れ出しを防ぐ。
+        if (atmosphereManager_) {
+            atmosphereManager_->EndFrame(lightManager);
+        }
+        if (volumetricCloudManager_) {
+            volumetricCloudManager_->EndFrame();
+        }
     }
 
 } // namespace CoreEngine

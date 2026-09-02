@@ -48,7 +48,6 @@
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
-#include "Graphics/Cloud/VolumetricCloudManager.h"
 
 #include "GameObject/GameObject.h"
 #include "Scene/SceneManager.h"
@@ -316,22 +315,17 @@ namespace CoreEngine
         context.postEffectManager = GetService<PostEffectManager>();
         context.renderingTechniqueManager = GetService<RenderingTechniqueManager>();
         context.lightManager = GetService<LightManager>();
-        context.gBufferManager = renderDomainContext_ ? renderDomainContext_->GetGBufferManager() : nullptr;
-        context.accelerationStructureManager = renderDomainContext_ ? renderDomainContext_->GetAccelerationStructureManager() : nullptr;
-        context.rtShadowManager = renderDomainContext_ ? renderDomainContext_->GetRayTracingShadowManager() : nullptr;
-        context.rtWaterCausticsManager = renderDomainContext_ ? renderDomainContext_->GetWaterCausticsRayTracingManager() : nullptr;
-        context.rtWaterRefractionManager = renderDomainContext_ ? renderDomainContext_->GetWaterRefractionRayTracingManager() : nullptr;
-        context.rtWaterReflectionManager = renderDomainContext_ ? renderDomainContext_->GetWaterReflectionRayTracingManager() : nullptr;
-        context.fftOceanManager = renderDomainContext_ ? renderDomainContext_->GetFFTOceanManager() : nullptr;
-        context.atmosphereManager = renderDomainContext_ ? renderDomainContext_->GetAtmosphereManager() : nullptr;
-        context.volumetricCloudManager = renderDomainContext_ ? renderDomainContext_->GetVolumetricCloudManager() : nullptr;
-        context.sceneDepth = renderDomainContext_ ? renderDomainContext_->GetSceneDepth() : nullptr;
         context.frameBlackboard = &frameBlackboard;
         context.modelManager = GetService<ModelManager>();
-        // 水面状態は WaterRenderFeature が RenderDomainContext へ publish する
-        // （シーンに水面用の仮想関数を持たせない）
-        context.waterSurfaceState = renderDomainContext_ ? renderDomainContext_->GetWaterSurfaceState() : nullptr;
-        context.fftOceanSimulationTime = renderDomainContext_ ? renderDomainContext_->GetFFTOceanSimulationTime() : 0.0f;
+
+        // ドメイン固有マネージャ（GBuffer / DXR / 水面 / 大気 / 雲 / 深度）は
+        // 所有者である RenderDomainContext 自身に注入させる。
+        // ここへ個別の代入を書き戻すと、ドメインマネージャを 1 つ増やすたびに
+        // EngineSystem の編集が必要になる
+        if (renderDomainContext_) {
+            renderDomainContext_->PopulateRenderContext(context);
+        }
+
         // フレーム番号は FrameSync が単一ソース（EngineSystem 側で別に数えない）
         context.frameNumber = frame.frameNumber;
 #ifdef USE_IMGUI
@@ -438,19 +432,11 @@ namespace CoreEngine
         renderPipeline_->ExecuteView(context);
         hiZOcclusion->SetCollectEnabled(false);
 
-        // 全 View の描画（AerialPerspective 合成を含む）が完了したので大気有効化フラグを落とす。
-        // 次フレームは Update() を呼ぶ大気シーンでのみ再度有効化され、他シーンへの漏れ出しを防ぐ。
-        if (context.atmosphereManager) {
-            // 大気が要求されなかったフレームは太陽ライトの透過率変調も解除する
-            // （大気シーンからキューブマップ空へ切り替えた際に減衰が残らないように。
-            //   大気アクティブ時は AtmosphereManager::Update() が毎フレーム上書きする）
-            if (!context.atmosphereManager->IsAtmosphereActive() && context.lightManager) {
-                context.lightManager->SetAtmosphereSunTransmittance({ 1.0f, 1.0f, 1.0f });
-            }
-            context.atmosphereManager->ResetFrameActivation();
-        }
-        if (context.volumetricCloudManager) {
-            context.volumetricCloudManager->ResetFrameActivation();
+        // 全 View の描画（AerialPerspective 合成を含む）が完了したので、
+        // ドメインマネージャのフレーム状態を後始末させる。
+        // 個別機能（大気・雲）の都合はマネージャ側が持つ。ここへ機能名の分岐を書き戻さないこと
+        if (renderDomainContext_) {
+            renderDomainContext_->EndFrame(context.lightManager);
         }
 
         if (sceneManager) {
