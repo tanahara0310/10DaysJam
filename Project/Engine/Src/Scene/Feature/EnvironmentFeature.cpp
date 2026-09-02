@@ -6,6 +6,7 @@
 #include "GameObjects/SkyBox/SkyBoxObject.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
+#include "Graphics/Fog/FogManager.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
@@ -82,6 +83,8 @@ namespace CoreEngine
             MirrorAtmosphereLightsToCVars(ctx);
             // 大気散乱の更新（全ロジック更新後の最新の太陽・カメラ情報を反映する）
             UpdateAtmosphere(ctx);
+            // フォグは空・大気の有無に依存しないので、大気更新の成否と無関係に呼ぶ
+            UpdateFog(ctx);
             break;
         default:
             break;
@@ -226,5 +229,20 @@ namespace CoreEngine
             cloudManager->Update(cameraPosition, viewMatrix, projMatrix,
                                  atmosphereManager, Time::DeltaTime());
         }
+    }
+
+    void EnvironmentFeature::UpdateFog(SceneContext& ctx)
+    {
+        // フォグは空・大気を必要としないため、UpdateAtmosphere と違って
+        // SkyBox の有無でガードしない（大気非対応シーンでもフォグは使える）。
+        auto* domainContext = ctx.engine ? ctx.engine->GetRenderDomainContext() : nullptr;
+        auto* fogManager = domainContext ? domainContext->GetFogManager() : nullptr;
+        if (!fogManager) {
+            return;
+        }
+
+        // このフレームはフォグを使うと宣言する（実際に合成するかは r.Fog.Enabled 次第）。
+        // 深度復元用の行列とカメラ位置は FrameViews から FogPass が取るのでここでは渡さない。
+        fogManager->Update();
     }
 }

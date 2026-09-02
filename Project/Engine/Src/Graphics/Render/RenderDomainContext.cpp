@@ -11,6 +11,7 @@
 #include "Graphics/Water/FFTOceanManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
+#include "Graphics/Fog/FogManager.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/Pass/RenderPass.h" // RenderContext（PopulateRenderContext の注入先）
 #include "Utility/Logger/Logger.h"
@@ -107,6 +108,12 @@ namespace CoreEngine
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext: VolumetricCloudManager 初期化完了\n");
 
+        fogManager_ = std::make_unique<FogManager>();
+        if (fogManager_->Initialize(dxCommon)) {
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: FogManager 初期化完了\n");
+        }
+
         // ウィンドウリサイズ通知を受ける（シーン深度 / GBuffer / RT シャドウの作り直し）
         dxCommon->RegisterResizable(this);
 
@@ -125,6 +132,7 @@ namespace CoreEngine
         }
 
         // 依存関係を考慮した逆順解放
+        fogManager_.reset();
         volumetricCloudManager_.reset();
         atmosphereManager_.reset();
         rtWaterCausticsManager_.reset();
@@ -171,6 +179,7 @@ namespace CoreEngine
         context.fftOceanManager = fftOceanManager_.get();
         context.atmosphereManager = atmosphereManager_.get();
         context.volumetricCloudManager = volumetricCloudManager_.get();
+        context.fogManager = fogManager_.get();
 
         // 水面状態は WaterRenderFeature が publish する（シーンに水面用の仮想関数を持たせない）
         context.waterSurfaceState = waterSurfaceState_;
@@ -187,6 +196,9 @@ namespace CoreEngine
         }
         if (volumetricCloudManager_) {
             volumetricCloudManager_->EndFrame();
+        }
+        if (fogManager_) {
+            fogManager_->EndFrame();
         }
     }
 
