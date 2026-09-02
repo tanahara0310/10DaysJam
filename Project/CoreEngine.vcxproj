@@ -363,6 +363,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp" />
@@ -891,6 +892,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.h" />
