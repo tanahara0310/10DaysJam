@@ -180,7 +180,7 @@ namespace CoreEngine
         xAudio2_.Reset();
         ShutdownMediaFoundation();
 
-        // 生存トークンを切る。ScopedSound / SoundResource のデストラクタが
+        // 生存トークンを切る。ScopedSound のデストラクタが
         // 破棄済みの AudioSystem を触るのを防ぐ
         lifetimeToken_.reset();
     }
@@ -227,8 +227,7 @@ namespace CoreEngine
 
         const std::filesystem::path resolved = AudioPathResolver::Resolve(filename);
 
-        // 同じファイルは PCM を共有する
-        // （旧実装は CreateSoundResource のたびにデコードして二重に載せていた）
+        // 同じファイルは PCM を共有する（読み込むたびにデコードして二重に載せない）
         if (auto it = clipIdByPath_.find(resolved.native()); it != clipIdByPath_.end()) {
             return SoundClip(it->second);
         }

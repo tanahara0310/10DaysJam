@@ -192,6 +192,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
@@ -542,7 +543,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.cpp" />
-    <ClCompile Include="Engine\Src\Audio\SoundManager.cpp" />
     <ClCompile Include="Engine\Src\Audio\AudioSystem.cpp" />
     <ClCompile Include="Engine\Src\Audio\SoundInstance.cpp" />
     <ClCompile Include="Engine\Src\Audio\Decoder\WavDecoder.cpp" />
@@ -1193,7 +1193,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\TextureManager.h" />
-    <ClInclude Include="Engine\Src\Audio\SoundManager.h" />
     <ClInclude Include="Engine\Src\Audio\AudioSystem.h" />
     <ClInclude Include="Engine\Src\Audio\SoundClip.h" />
     <ClInclude Include="Engine\Src\Audio\AudioBus.h" />
