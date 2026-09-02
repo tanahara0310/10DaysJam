@@ -10,7 +10,6 @@
 #include "GridFeature.h"
 #include "GroundFeature.h"
 #include "LightingFeature.h"
-#include "SceneBGMFeature.h"
 #include "TweenFeature.h"
 
 namespace CoreEngine
@@ -64,8 +63,6 @@ namespace CoreEngine
         // 既定の床。空（Environment）と対になる「必ずある地面」で、
         // 生成はシーンの OnInitialize 完了後（PostSceneInitialize）に行われる
         Add<GroundFeature>(features);
-
-        Add<SceneBGMFeature>(features);
 
         // ここから下は「そのフェーズの全 Feature が終わってから 1 回だけ」動く。
         // 破棄側（PostSceneFinalize）は登録の逆順で呼ばれるため、

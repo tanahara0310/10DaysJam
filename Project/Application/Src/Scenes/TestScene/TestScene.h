@@ -11,7 +11,7 @@
 #include <memory>
 
 // エンジンコア
-#include "Audio/SoundManager.h"
+#include "Audio/AudioSystem.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
 #include "Camera/Camera.h"

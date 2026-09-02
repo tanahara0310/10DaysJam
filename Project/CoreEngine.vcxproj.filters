@@ -49,6 +49,8 @@
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
+      <Filter>Application\Src\Scenes\TestScene</Filter>
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp">
       <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClCompile>
@@ -577,6 +579,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.cpp">
       <Filter>Engine\Src\Graphics\Render\Culling</Filter>
     </ClCompile>
@@ -584,9 +589,6 @@
       <Filter>Engine\Src\Graphics\Render\Culling</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp">
-      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\HiZOcclusionPass.cpp">
@@ -794,9 +796,6 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp">
-      <Filter>Engine\Src\Scene\Feature</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Scene\Feature\SceneBGMFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp">
@@ -1108,8 +1107,23 @@
     <ClCompile Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.cpp">
       <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Audio\SoundManager.cpp">
+    <ClCompile Include="Engine\Src\Audio\AudioSystem.cpp">
       <Filter>Engine\Src\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Audio\SoundInstance.cpp">
+      <Filter>Engine\Src\Audio</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Audio\Decoder\WavDecoder.cpp">
+      <Filter>Engine\Src\Audio\Decoder</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Audio\Decoder\MediaFoundationDecoder.cpp">
+      <Filter>Engine\Src\Audio\Decoder</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Audio\Internal\SoundVoice.cpp">
+      <Filter>Engine\Src\Audio\Internal</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Audio\Path\AudioPathResolver.cpp">
+      <Filter>Engine\Src\Audio\Path</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.cpp">
       <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
@@ -1821,6 +1835,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -1834,9 +1851,6 @@
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GBufferPass.h">
-      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\HiZOcclusionPass.h">
@@ -2310,9 +2324,6 @@
     <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Scene\Feature\SceneBGMFeature.h">
-      <Filter>Engine\Src\Scene\Feature</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
@@ -2736,8 +2747,35 @@
     <ClInclude Include="Engine\Src\Graphics\Texture\TextureManager.h">
       <Filter>Engine\Src\Graphics\Texture</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Audio\SoundManager.h">
+    <ClInclude Include="Engine\Src\Audio\AudioSystem.h">
       <Filter>Engine\Src\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\SoundClip.h">
+      <Filter>Engine\Src\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\AudioBus.h">
+      <Filter>Engine\Src\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\SoundInstance.h">
+      <Filter>Engine\Src\Audio</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\Decoder\AudioData.h">
+      <Filter>Engine\Src\Audio\Decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\Decoder\IAudioDecoder.h">
+      <Filter>Engine\Src\Audio\Decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\Decoder\WavDecoder.h">
+      <Filter>Engine\Src\Audio\Decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\Decoder\MediaFoundationDecoder.h">
+      <Filter>Engine\Src\Audio\Decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\Internal\SoundVoice.h">
+      <Filter>Engine\Src\Audio\Internal</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Audio\Path\AudioPathResolver.h">
+      <Filter>Engine\Src\Audio\Path</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.h">
       <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
@@ -2912,6 +2950,7 @@
       <UniqueIdentifier>{0FE1078A-F1FE-4786-B0EE-9C36C376D1FC}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
+      <UniqueIdentifier>{0F580D97-5827-428A-AF9A-6D974CE04F90}</UniqueIdentifier>
       <UniqueIdentifier>{b1d4e0c7-2a58-4f36-8e91-6d3c05af7e42}</UniqueIdentifier>
       <UniqueIdentifier>{BFA03B9A-FA4C-41F0-A1DF-6197D741D11A}</UniqueIdentifier>
     </Filter>
@@ -2932,6 +2971,15 @@
     </Filter>
     <Filter Include="Engine\Src\Audio">
       <UniqueIdentifier>{1CE42F25-26FD-4B2F-A5A0-6CE7BFE7DFF8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Audio\Decoder">
+      <UniqueIdentifier>{A8B4C21D-3E57-4F09-9C6A-1D2E3F4A5B60}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Audio\Internal">
+      <UniqueIdentifier>{B9C5D32E-4F68-4A1B-8D7B-2E3F4A5B6C71}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Audio\Path">
+      <UniqueIdentifier>{C0D6E43F-5A79-4B2C-9E8C-3F4A5B6C7D82}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Camera">
       <UniqueIdentifier>{00C02E6E-5071-4A1A-86DD-FC5D5CDD2BC7}</UniqueIdentifier>

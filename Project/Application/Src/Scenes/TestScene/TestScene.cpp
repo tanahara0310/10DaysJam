@@ -21,10 +21,22 @@
 #include "Scene/SceneManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Editor/Environment/AtmosphereEditor.h"
+#include "Utility/FrameRate/Time.h"
 
+#include <cstdlib>
+#include <format>
 #include <iostream>
 
 using namespace CoreEngine::MathCore;
+
+namespace
+{
+    // Assets に音を置いていないので Windows 標準の WAV を直接指す。
+    // AudioPathResolver はドライブレター付きのパスをそのまま通すので、
+    // Assets 配下と同じ書き味で絶対パスも渡せる
+    constexpr const char* kSeSoundPath = "C:/Windows/Media/Windows Notify System Generic.wav";
+    constexpr const char* kBgmSoundPath = "C:/Windows/Media/Ring01.wav";
+}
 
 // アプリケーションの初期化
 
@@ -33,6 +45,9 @@ namespace CoreEngine
     void TestScene::OnInitialize()
     {
         SetSceneName("TestScene");
+
+        // オーディオの動作確認（結果はログの Audio カテゴリに出る）
+        InitializeAudioTest();
 
         ///========================================================
         // モデルの読み込みと初期化

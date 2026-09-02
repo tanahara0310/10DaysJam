@@ -449,7 +449,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp" />
-    <ClCompile Include="Engine\Src\Scene\Feature\SceneBGMFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\TweenFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\EventDispatchFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.cpp" />
@@ -556,7 +555,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.cpp" />
-    <ClCompile Include="Engine\Src\Audio\SoundManager.cpp" />
+    <ClCompile Include="Engine\Src\Audio\AudioSystem.cpp" />
+    <ClCompile Include="Engine\Src\Audio\SoundInstance.cpp" />
+    <ClCompile Include="Engine\Src\Audio\Decoder\WavDecoder.cpp" />
+    <ClCompile Include="Engine\Src\Audio\Decoder\MediaFoundationDecoder.cpp" />
+    <ClCompile Include="Engine\Src\Audio\Internal\SoundVoice.cpp" />
+    <ClCompile Include="Engine\Src\Audio\Path\AudioPathResolver.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp" />
@@ -1076,7 +1080,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h" />
-    <ClInclude Include="Engine\Src\Scene\Feature\SceneBGMFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\TweenFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\EventDispatchFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.h" />
@@ -1217,7 +1220,16 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\TextureManager.h" />
-    <ClInclude Include="Engine\Src\Audio\SoundManager.h" />
+    <ClInclude Include="Engine\Src\Audio\AudioSystem.h" />
+    <ClInclude Include="Engine\Src\Audio\SoundClip.h" />
+    <ClInclude Include="Engine\Src\Audio\AudioBus.h" />
+    <ClInclude Include="Engine\Src\Audio\SoundInstance.h" />
+    <ClInclude Include="Engine\Src\Audio\Decoder\AudioData.h" />
+    <ClInclude Include="Engine\Src\Audio\Decoder\IAudioDecoder.h" />
+    <ClInclude Include="Engine\Src\Audio\Decoder\WavDecoder.h" />
+    <ClInclude Include="Engine\Src\Audio\Decoder\MediaFoundationDecoder.h" />
+    <ClInclude Include="Engine\Src\Audio\Internal\SoundVoice.h" />
+    <ClInclude Include="Engine\Src\Audio\Path\AudioPathResolver.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\ShaderCompiler.h" />

@@ -83,10 +83,6 @@ public:
     /// @brief トランジションをスキップ（デバッグ用）
     void SkipTransition();
 
-    /// @brief 現在のシーンのBGM音量コールバックを登録
-    /// @param callback 音量倍率(0.0～1.0)を受け取るコールバック関数
-    void RegisterSceneBGMCallback(std::function<void(float)> callback);
-
     /// @brief 実行中の読み込みステップに「続き」を持たせる
     /// @param work     毎フレーム 1 回呼ばれ、一部だけ進めて完了したら true を返す関数
     /// @param progress そのステップ内の進捗（0.0〜1.0）を返す関数（省略可）
