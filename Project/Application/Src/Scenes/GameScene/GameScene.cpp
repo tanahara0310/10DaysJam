@@ -101,13 +101,13 @@ void GameScene::GameScene::OnInitialize() {
 
     // 列車の移動ロジックを持つオブジェクト。描画とアニメーションは別コンポーネントで追加する。
     auto* train = CreateObject("Train");
-    train->AddComponent<CoreEngine::TransformComponent>();
+    auto* trainTransform = train->AddComponent<CoreEngine::TransformComponent>();
     train->AddComponent<GameComponents::TrainMovementComponent>(
         gridSize, 0.5f, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>());
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
-
+    // 列車の描画は、列車の移動ロジックを持つコンポーネントとは別のコンポーネントで行う。
     railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
         gridSize, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
@@ -116,6 +116,12 @@ void GameScene::GameScene::OnInitialize() {
         train->GetComponent<GameComponents::TrainMovementComponent>());
 
     railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
+
+    // 列車に乗るサル
+    auto* monkey = CreateObject("Monkey");
+    auto* monkeyTransform = monkey->AddComponent<CoreEngine::TransformComponent>();
+    monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
+    monkeyTransform->Get().SetParent(&trainTransform->Get());
 
     // 列車とビルダーの中間を捉え、距離に応じて視野角を変えるゲームカメラ。
     auto* cameraController = CreateObject("CameraManager");
