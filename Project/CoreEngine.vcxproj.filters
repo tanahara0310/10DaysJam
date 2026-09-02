@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp">
@@ -25,6 +25,18 @@
     <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp">
       <Filter>Application\Src\Components\Train</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleButtonAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleLogoAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleSceneSettingsComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\UI\RailResourceUIComponent.cpp">
       <Filter>Application\Src\Components\UI</Filter>
     </ClCompile>
@@ -36,6 +48,21 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleHintText.cpp">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.cpp">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneCVars.cpp">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneUi.cpp">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp">
       <Filter>Engine\Src\Graphics\Water\Render</Filter>
@@ -1254,6 +1281,18 @@
     <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h">
       <Filter>Application\Src\Components\Train</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleButtonAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleLogoAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleSceneSettingsComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\UI\RailResourceUIComponent.h">
       <Filter>Application\Src\Components\UI</Filter>
     </ClInclude>
@@ -1262,6 +1301,21 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleHintText.h">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.h">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneCVars.h">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneUi.h">
+      <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
@@ -2797,6 +2851,9 @@
     <Filter Include="Application\Src\Components\Train">
       <UniqueIdentifier>{C09FEA33-AEF5-4CA2-B9C0-F4C548E5673D}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Components\Title">
+      <UniqueIdentifier>{6A1D00AF-BF40-4B5E-9A9E-0B8D7B24E3F7}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Components\UI">
       <UniqueIdentifier>{A5CE7724-3120-4F27-9D83-4F3F50E876A2}</UniqueIdentifier>
     </Filter>
@@ -2817,6 +2874,12 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\GameScene">
       <UniqueIdentifier>{0FE1078A-F1FE-4786-B0EE-9C36C376D1FC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\TestScene">
+      <UniqueIdentifier>{BFA03B9A-FA4C-41F0-A1DF-6197D741D11A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\TitleScene">
+      <UniqueIdentifier>{EBA724ED-4AC9-4C5C-888A-E4B79B531EF7}</UniqueIdentifier>
     </Filter>
     <Filter Include="Build">
       <UniqueIdentifier>{39C0671C-39F8-432F-BE2C-E14FDE0F3B36}</UniqueIdentifier>
@@ -3250,6 +3313,9 @@
     <Filter Include="Engine\Src\Utility\Debug">
       <UniqueIdentifier>{8A2D5BE0-0975-4A68-995C-266173813571}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Utility\Event">
+      <UniqueIdentifier>{6B0E4A17-2C93-4D58-9F0A-1E7D3C82B4A6}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Utility\FileErrorDialog">
       <UniqueIdentifier>{F75A418E-5312-4734-8D71-95704517A093}</UniqueIdentifier>
     </Filter>
@@ -3265,17 +3331,14 @@
     <Filter Include="Engine\Src\Utility\Profiler">
       <UniqueIdentifier>{EB718086-7172-4261-9E65-2364207C9F96}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Utility\Tween">
-      <UniqueIdentifier>{2F84D3B9-7C15-4E60-A8D2-5B913E07C4F8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Engine\Src\Utility\Event">
-      <UniqueIdentifier>{6B0E4A17-2C93-4D58-9F0A-1E7D3C82B4A6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Utility\Random">
       <UniqueIdentifier>{CE13D7F5-57F4-4CDF-BDA2-D844D244356B}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Timer">
       <UniqueIdentifier>{139020EE-B17F-427B-AB95-76D25BBBABD6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Tween">
+      <UniqueIdentifier>{2F84D3B9-7C15-4E60-A8D2-5B913E07C4F8}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\WinApp">
       <UniqueIdentifier>{CB050433-E22F-4066-94C2-E908D6F2BCF4}</UniqueIdentifier>
