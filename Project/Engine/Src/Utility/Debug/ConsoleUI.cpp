@@ -6,7 +6,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Light/LightManager.h"
 #include "Input/InputManager.h"
-#include "Audio/SoundManager.h"
+#include "Audio/AudioSystem.h"
 #include "Particle/ParticleSystem.h"
 
 // コンポーネントのインクルード
@@ -433,7 +433,7 @@ void ConsoleUI::ShowSystemStatus()
     // 【Phase 4】コンポーネントの状態チェック
     auto graphicsCore = engine_->GetService<GraphicsCore>();
     auto inputManager = engine_->GetService<InputManager>();
-    auto soundManager = engine_->GetService<SoundManager>();
+    auto soundManager = engine_->GetService<AudioSystem>();
     auto lightManager = engine_->GetService<LightManager>();
     auto particleSystem = engine_->GetService<ParticleSystem>();
 
