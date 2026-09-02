@@ -3,6 +3,7 @@
 
 #include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Model/ModelManager.h"

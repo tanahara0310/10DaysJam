@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -180,12 +180,18 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.cpp" />
-    <ClCompile Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.cpp" />
+    <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Rail\RailResourceManagerComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\UI\RailResourceUIComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
+    <ClCompile Include="Application\Src\MyGame.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.cpp" />
@@ -247,9 +253,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <PrecompiledHeader>Create</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp" />
@@ -363,6 +366,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GBufferPass.cpp" />
@@ -408,8 +412,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.cpp" />
-    <ClCompile Include="Application\Src\Scenes\CollisionTestScene\ProbeEvents.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp" />
@@ -450,10 +452,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Model\Model.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\ModelResource.cpp" />
-    <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\UndoRedoHistory.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadBudget.cpp" />
     <ClCompile Include="Engine\Src\Threading\ThreadPool.cpp" />
@@ -536,7 +534,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Input\KeyboardInput.cpp" />
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\GameDebugUI.cpp" />
-    <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
@@ -716,18 +713,20 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Text\FontManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp" />
     <ClCompile Include="Engine\Src\UI\UIText.cpp" />
-    <ClCompile Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\ModelParticleTestScene\ModelParticleTestScene.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\CollisionTestReport.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\GeometrySelfTest.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\CameraShowcase.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterEditorFacade.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSceneController.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceDebugPanel.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterSurfaceParameterPanel.h" />
+    <ClInclude Include="Application\Src\Components\Building\MapChipData.h" />
+    <ClInclude Include="Application\Src\Components\Building\MapGeneratorComponent.h" />
+    <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h" />
+    <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h" />
+    <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h" />
+    <ClInclude Include="Application\Src\Components\Rail\RailResourceManagerComponent.h" />
+    <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h" />
+    <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h" />
+    <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h" />
+    <ClInclude Include="Application\Src\Components\UI\RailResourceUIComponent.h" />
+    <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h" />
@@ -892,6 +891,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.h" />
@@ -1019,7 +1019,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\EulerTransformComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Core\IComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Render\MaterialComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\CollisionTestScene\ProbeComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\ITransformSource.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Scene\SceneTagComponent.h" />
@@ -1153,17 +1152,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Modules\SizeModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h" />
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\SampleGameScene.h" />
-    <ClInclude Include="Application\Src\Scenes\SampleGameScene\PlayerControllerComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingSampleScene.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\BulletObject.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShootingEvents.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ScoreHudComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\EnemyObject.h" />
-    <ClInclude Include="Application\Src\Scenes\ShootingSampleScene\ShipControllerComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\Sprite2DSampleScene.h" />
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\PaddleComponent.h" />
-    <ClInclude Include="Application\Src\Scenes\Sprite2DSampleScene\FallingItemComponent.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />
@@ -1217,7 +1205,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Application\Src\MyGame.h" />
-    <ClInclude Include="Application\Src\Scenes\WaterTestScene\WaterTestScene.h" />
     <ClInclude Include="Externals\imgui\imconfig.h" />
     <ClInclude Include="Externals\imgui\imgui.h" />
     <ClInclude Include="Externals\imgui\imgui_internal.h" />
@@ -1241,8 +1228,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Text\FontManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h" />
     <ClInclude Include="Engine\Src\UI\UIText.h" />
-    <ClInclude Include="Application\Src\Scenes\MsdfTextTestScene\MsdfTextTestScene.h" />
-    <ClInclude Include="Application\Src\Scenes\ModelParticleTestScene\ModelParticleTestScene.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
@@ -1250,7 +1235,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Application\Assets\Models\human\walk.bin" />
     <ClInclude Include="Engine\Src\pch.h" />
     <None Include="Build\Scripts\SyncFilters.ps1" />
     <None Include="Engine\Src\Particle\README.md" />

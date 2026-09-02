@@ -3,6 +3,7 @@
 
 #include "SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
+#include "Input/InputManager.h"
 #include "Camera/CameraManager.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
