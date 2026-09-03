@@ -46,11 +46,22 @@ void GameScene::GameScene::OnInitialize() {
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "box.obj", 600,false);
+    // 水場のオブジェクトプールを生成
+    auto* waterPoolManager = CreateObject("WaterPoolManager");
+    waterPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    waterPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "box.obj", 100, false,
+        CoreEngine::Vector4{ 0.0f, 0.35f, 0.65f, 1.0f });
     // 駅のオブジェクトプールを生成
     auto* stationPoolManager = CreateObject("StationPoolManager");
     stationPoolManager->AddComponent<CoreEngine::TransformComponent>();
     stationPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "box.obj", 10, false);
+        "station.obj", 10, false);
+    // 岩のオブジェクトプールを生成
+    auto* rockPoolManager = CreateObject("RockPoolManager");
+    rockPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    rockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "rock.obj", 50, false);
     // レールのオブジェクトプールを生成
     auto* railPoolManager = CreateObject("RailPoolManager");
     railPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -90,13 +101,13 @@ void GameScene::GameScene::OnInitialize() {
 
     // 列車の移動ロジックを持つオブジェクト。描画とアニメーションは別コンポーネントで追加する。
     auto* train = CreateObject("Train");
-    train->AddComponent<CoreEngine::TransformComponent>();
+    auto* trainTransform = train->AddComponent<CoreEngine::TransformComponent>();
     train->AddComponent<GameComponents::TrainMovementComponent>(
         gridSize, 0.5f, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>());
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
-
+    // 列車の描画は、列車の移動ロジックを持つコンポーネントとは別のコンポーネントで行う。
     railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
         gridSize, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
@@ -105,6 +116,12 @@ void GameScene::GameScene::OnInitialize() {
         train->GetComponent<GameComponents::TrainMovementComponent>());
 
     railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
+
+    // 列車に乗るサル
+    auto* monkey = CreateObject("Monkey");
+    auto* monkeyTransform = monkey->AddComponent<CoreEngine::TransformComponent>();
+    monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
+    monkeyTransform->Get().SetParent(&trainTransform->Get());
 
     // 列車とビルダーの中間を捉え、距離に応じて視野角を変えるゲームカメラ。
     auto* cameraController = CreateObject("CameraManager");
@@ -129,7 +146,9 @@ void GameScene::GameScene::OnInitialize() {
     mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        waterPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
         gridSize, renderWorldDistance);
 

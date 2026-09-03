@@ -38,10 +38,16 @@ void GameComponents::MapGeneratorComponent::AddMapChips(std::size_t count) {
     for (std::size_t i = 0; i < count; ++i) {
         std::vector<MapChipType> newRow(mapSizeZ_, MapChipType::Ground);
         mapChips_.push_back(newRow);
-        // ランダムに穴を配置する（10%の確率で穴を配置）
+        // ランダムにvoidを配置する（10%の確率）
         for (std::size_t z = 0; z < mapSizeZ_; ++z) {
             if (rand() % 10 == 0) { // 10%の確率
                 mapChips_.back()[z] = MapChipType::Void;
+            }
+        }
+        // ランダムに水場を配置する（10%の確率）
+        for (std::size_t z = 0; z < mapSizeZ_; ++z) {
+            if (rand() % 10 == 0) { // 10%の確率
+                mapChips_.back()[z] = MapChipType::Water;
             }
         }
         // ランダムに資源を配置する（5%の確率で資源を配置）
