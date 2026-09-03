@@ -39,11 +39,15 @@ namespace CoreEngine
         /// @details ショットの繋ぎを見ずに素の軌道を確認したいとき（プレビューのスクラブなど）に使う。
         static bool EvaluateRaw(const CameraSequenceAsset& asset, float time, CameraSnapshot& outSnapshot);
 
-        /// @brief 2 つのスナップショットを補間する
+        /// @brief 2 つのスナップショットを直線で補間する
         /// @param t 0..1 の補間係数
         /// @param easing 適用するイージング
         static CameraSnapshot Interpolate(const CameraSnapshot& from, const CameraSnapshot& to,
             float t, EasingUtil::Type easing);
+
+        /// @brief キーの緩急を解決する（キーが既定指定ならシーケンス側の値を使う）
+        static EasingUtil::Type ResolveEasing(const CameraSequenceAsset& asset,
+            const CameraSequenceKeyframe& key);
 
         /// @brief 指定時刻を含む有効なショットの添字を返す
         /// @return 見つからなければ -1

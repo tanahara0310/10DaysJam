@@ -68,6 +68,19 @@ namespace CoreEngine
             return snapshot;
         }
 
+        /// @brief 保存された番号を補間方式へ戻す（未知の値は直線扱い）
+        CameraSequenceInterpolation ToInterpolation(int value)
+        {
+            switch (value) {
+            case static_cast<int>(CameraSequenceInterpolation::Step):
+                return CameraSequenceInterpolation::Step;
+            case static_cast<int>(CameraSequenceInterpolation::Smooth):
+                return CameraSequenceInterpolation::Smooth;
+            default:
+                return CameraSequenceInterpolation::Linear;
+            }
+        }
+
         /// @brief ショット情報を JSON へ変換
         json ShotToJson(const CameraSequenceShot& shot)
         {
@@ -120,7 +133,8 @@ namespace CoreEngine
     bool CameraSequenceIO::Save(const std::string& filePath, const CameraSequenceAsset& asset)
     {
         json root;
-        root["version"] = asset.version;
+        // 書き出す内容は常に現行フォーマット。読み込み時のバージョンを持ち回さない。
+        root["version"] = CameraSequenceAsset::kCurrentVersion;
         root["timelineLength"] = asset.timelineLength;
         root["easingTypeIndex"] = asset.easingTypeIndex;
         root["shotsEnabled"] = asset.shotsEnabled;
@@ -130,6 +144,8 @@ namespace CoreEngine
             json keyJson;
             keyJson["time"] = key.time;
             keyJson["snapshot"] = SnapshotToJson(key.snapshot);
+            keyJson["easingTypeIndex"] = key.easingTypeIndex;
+            keyJson["interpolation"] = static_cast<int>(key.interpolation);
             keyframesJson.push_back(keyJson);
         }
         root["keyframes"] = keyframesJson;
@@ -168,6 +184,14 @@ namespace CoreEngine
                 if (keyJson.contains("snapshot")) {
                     key.snapshot = JsonToSnapshot(keyJson["snapshot"]);
                 }
+
+                // 区間ごとの指定はバージョン 2.1 から。持っていないファイルは
+                // 「シーケンス既定の緩急・直線」になり、従来どおりの見た目になる。
+                key.easingTypeIndex = JsonManager::SafeGet(keyJson, "easingTypeIndex", kUseSequenceEasing);
+                key.interpolation = ToInterpolation(
+                    JsonManager::SafeGet(keyJson, "interpolation",
+                        static_cast<int>(CameraSequenceInterpolation::Linear)));
+
                 asset.keyframes.push_back(key);
             }
         }

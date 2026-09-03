@@ -28,6 +28,15 @@ namespace CoreEngine
         };
 
         constexpr int kShotTransitionLabelCount = static_cast<int>(sizeof(kShotTransitionLabels) / sizeof(kShotTransitionLabels[0]));
+
+        // 補間方式の表示名。CameraSequenceInterpolation の値をそのまま添字に使う。
+        constexpr const char* kInterpolationLabels[] = {
+            "ステップ (補間しない)",
+            "直線",
+            "スムーズ (Catmull-Rom)"
+        };
+
+        constexpr int kInterpolationLabelCount = static_cast<int>(sizeof(kInterpolationLabels) / sizeof(kInterpolationLabels[0]));
     }
 
     void CameraKeyframeEditorModule::Update(const CameraEditorContext& context)
@@ -468,6 +477,62 @@ namespace CoreEngine
                 playhead_ = std::clamp(selectedTime, 0.0f, sequence_.timelineLength);
                 playheadChanged = true;
             }
+
+            // ここから次のキーまでの区間をどう繋ぐか。緩急も補間方式も区間の始点キーが持つ。
+            UI::SectionHeader("次のキーへの繋ぎ方");
+
+            CameraSequenceKeyframe& selectedKey = sequence_.keyframes[selectedIndex_];
+
+            int interpolationIndex = static_cast<int>(selectedKey.interpolation);
+            if (interpolationIndex < 0 || interpolationIndex >= kInterpolationLabelCount) {
+                interpolationIndex = static_cast<int>(CameraSequenceInterpolation::Linear);
+            }
+
+            if (ImGui::BeginCombo("補間方式", kInterpolationLabels[interpolationIndex])) {
+                for (int i = 0; i < kInterpolationLabelCount; ++i) {
+                    const bool selected = (i == interpolationIndex);
+                    if (ImGui::Selectable(kInterpolationLabels[i], selected)) {
+                        PushUndoState();
+                        selectedKey.interpolation = static_cast<CameraSequenceInterpolation>(i);
+                        playheadChanged = true;
+                    }
+                    if (selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            UI::Hint("スムーズは前後のキーも見て曲線で繋ぎます（キーの上は必ず通ります）。");
+
+            // 既定を選べるようにするため、先頭に「シーケンス既定」の項目を足す。
+            const bool usesDefault = (selectedKey.easingTypeIndex == kUseSequenceEasing);
+            char defaultLabel[128]{};
+            std::snprintf(defaultLabel, sizeof(defaultLabel), "シーケンス既定 (%s)",
+                CameraSequenceEasing::LabelAt(sequence_.easingTypeIndex));
+
+            const char* currentEasingLabel = usesDefault
+                ? defaultLabel
+                : CameraSequenceEasing::LabelAt(selectedKey.easingTypeIndex);
+
+            if (ImGui::BeginCombo("この区間の緩急", currentEasingLabel)) {
+                if (ImGui::Selectable(defaultLabel, usesDefault)) {
+                    PushUndoState();
+                    selectedKey.easingTypeIndex = kUseSequenceEasing;
+                    playheadChanged = true;
+                }
+                for (int i = 0; i < CameraSequenceEasing::Count(); ++i) {
+                    const bool selected = (!usesDefault && i == selectedKey.easingTypeIndex);
+                    if (ImGui::Selectable(CameraSequenceEasing::LabelAt(i), selected)) {
+                        PushUndoState();
+                        selectedKey.easingTypeIndex = i;
+                        playheadChanged = true;
+                    }
+                    if (selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
         }
 
         // 再生停止中に再生ヘッドを動かした場合は、その時刻の値を即時反映する。
@@ -676,15 +741,20 @@ namespace CoreEngine
                     continue;
                 }
 
+                // 実際の評価をそのままサンプルする。区間ごとの補間方式・緩急が
+                // 描かれる軌跡へ反映されるので、見た目と再生結果が食い違わない。
                 Vector3 prev = from.snapshot.position;
                 for (int sampleIndex = 1; sampleIndex <= viewportTrajectorySamplesPerSegment_; ++sampleIndex) {
                     const float localT = static_cast<float>(sampleIndex) / static_cast<float>(viewportTrajectorySamplesPerSegment_);
-                    CameraSnapshot interpolated = CameraSequenceEvaluator::Interpolate(
-                        from.snapshot, to.snapshot, localT,
-                        CameraSequenceEasing::TypeAt(sequence_.easingTypeIndex));
-                    const Vector3 current = interpolated.position;
-                    lineManager.DrawLine(prev, current, viewportTrajectoryColor_, viewportTrajectoryAlpha_);
-                    prev = current;
+                    const float sampleTime = from.time + (to.time - from.time) * localT;
+
+                    CameraSnapshot sampled{};
+                    if (!CameraSequenceEvaluator::EvaluateRaw(sequence_, sampleTime, sampled)) {
+                        break;
+                    }
+
+                    lineManager.DrawLine(prev, sampled.position, viewportTrajectoryColor_, viewportTrajectoryAlpha_);
+                    prev = sampled.position;
                 }
             }
         }

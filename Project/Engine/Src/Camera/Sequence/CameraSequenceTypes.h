@@ -37,16 +37,39 @@ namespace CoreEngine
         float blendDuration = 0.2f;
     };
 
+    /// @brief キーから次のキーへ向かう補間の方式
+    /// @note 値は JSON の "interpolation" にそのまま入る。番号を変えると既存アセットが壊れる。
+    enum class CameraSequenceInterpolation {
+        /// @brief 補間しない。次のキーの時刻まで姿勢を固定する（カット割り用）
+        Step = 0,
+        /// @brief 2 キーを直線で結ぶ
+        Linear = 1,
+        /// @brief 前後のキーも見て曲線で結ぶ（Catmull-Rom）
+        /// @details キーの上は必ず通る。直線だとキーごとに進行方向が折れるのに対し、
+        ///          こちらは滑らかに繋がるのでカメラワークらしい動きになる。
+        Smooth = 2
+    };
+
+    /// @brief キーごとの緩急指定で「シーケンス既定に従う」を表す値
+    inline constexpr int kUseSequenceEasing = -1;
+
     /// @brief シーケンス上の 1 キーフレーム（時刻とカメラ姿勢）
     struct CameraSequenceKeyframe {
         float time = 0.0f;
         CameraSnapshot snapshot{};
+
+        /// @brief このキーから次のキーへの緩急（kUseSequenceEasing でシーケンス既定）
+        /// @details 区間ごとに指定できるので「ここだけゆっくり入る」が作れる。
+        int easingTypeIndex = kUseSequenceEasing;
+
+        /// @brief このキーから次のキーへの補間方式
+        CameraSequenceInterpolation interpolation = CameraSequenceInterpolation::Linear;
     };
 
     /// @brief カメラシーケンス 1 本分のデータ
     struct CameraSequenceAsset {
         /// @brief 保存時に書き込むフォーマットバージョン
-        static constexpr const char* kCurrentVersion = "2.0";
+        static constexpr const char* kCurrentVersion = "2.1";
 
         /// @brief タイムライン長の下限（0 秒だと時刻の正規化がゼロ除算になる）
         static constexpr float kMinTimelineLength = 0.1f;
@@ -56,6 +79,7 @@ namespace CoreEngine
 
         std::string version = kCurrentVersion;
         float timelineLength = 10.0f;
+        /// @brief キー側が kUseSequenceEasing のときに使われる既定の緩急
         int easingTypeIndex = 0;
         bool shotsEnabled = true;
         std::vector<CameraSequenceKeyframe> keyframes;
