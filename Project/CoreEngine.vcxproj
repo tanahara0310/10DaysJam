@@ -226,11 +226,14 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Cloud\Render\CloudSkyCubemapBaker.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Cloud\Render\GodRayRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Fog\FogManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Fog\Settings\FogCVars.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudNoisePass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\CloudShadowMapPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\FogPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GodRayPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.cpp" />
@@ -456,6 +459,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\CameraShakeFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Environment\FogEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneTransition.cpp" />
@@ -1003,11 +1007,16 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Cloud\Render\GodRayRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Cloud\Settings\CloudSettings.h" />
     <ClInclude Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Fog\FogManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogSettings.h" />
+    <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogCVars.h" />
+    <ClInclude Include="Engine\Src\Graphics\Fog\Shader\FogBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\AerialPerspectivePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudNoisePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\CloudShadowMapPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\FogPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GodRayPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\WaterCVars.h" />
@@ -1087,6 +1096,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\CameraShakeFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
+    <ClInclude Include="Engine\Src\Editor\Environment\FogEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />
     <ClInclude Include="Engine\Src\Scene\SceneTransition.h" />

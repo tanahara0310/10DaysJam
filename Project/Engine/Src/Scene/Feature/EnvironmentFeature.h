@@ -41,6 +41,11 @@ namespace CoreEngine
         ///          カメラ情報を反映する（LUT 生成・Aerial Perspective の有効化トリガ）。
         void UpdateAtmosphere(SceneContext& ctx);
 
+        /// @brief フォグの毎フレーム更新
+        /// @details フォグは空・大気を必要としないので、SkyBox が無いシーンでも呼ぶ。
+        ///          FogManager::Update が「このフレームはフォグを使う」フラグを立てる。
+        void UpdateFog(SceneContext& ctx);
+
         // 既定背景の SkyBox（所有権は GameObjectManager。Finalize でポインタをクリアする）
         SkyBoxObject* skyBox_ = nullptr;
     };

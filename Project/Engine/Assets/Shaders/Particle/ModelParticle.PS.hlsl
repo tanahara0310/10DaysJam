@@ -1,6 +1,7 @@
 #include "Particle.hlsli"
 #include "../Include/Lighting/LightStructures.hlsli"
 #include "../Include/PBR/PBR.hlsli"
+#include "Fog.hlsli"
 
 // 板ポリパーティクル（Particle.PS.hlsl）と分けている理由:
 // ビルボードは常にカメラを向くので法線に意味がなく、ライティングしても立体感が出ない。
@@ -12,6 +13,9 @@ StructuredBuffer<DirectionalLightData> gDirectionalLights : register(t1);
 ConstantBuffer<LightCounts> gLightCounts : register(b0);
 //Samplerのregisterはs0
 SamplerState gSampler : register(s0);
+
+// フォグ。C++ 側は「減衰のみ」バリアントを差す（板ポリ版と同じ理由）
+ConstantBuffer<FogParameters> gFog : register(b1);
 
 struct PixelShaderOutput
 {
@@ -79,6 +83,9 @@ PixelShaderOutput main(VertexShaderOutput input)
     // 加算ブレンド用：RGB値にアルファを事前乗算
     output.color.rgb = finalColor.rgb * finalColor.a;
     output.color.a = 1.0f;
+
+    // フォグ（不透明・半透明と同じ数式。減衰のみ効く）
+    output.color.rgb = ApplyFog(gFog, input.worldPosition, output.color.rgb);
 
     return output;
 }
