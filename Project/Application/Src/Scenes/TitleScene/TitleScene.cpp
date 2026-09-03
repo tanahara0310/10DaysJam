@@ -2,8 +2,9 @@
 #include "TitleScene.h"
 
 #include "Scenes/TitleScene/TitleSceneModelSetup.h"
-#include "Scenes/TitleScene/TitleHintText.h"
 #include "Scenes/TitleScene/TitleSceneUi.h"
+#include "Audio/AudioSystem.h"
+#include "Components/Title/TitleTextAnimationComponent.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Input/InputManager.h"
 #include "Input/InputQuery.h"
@@ -11,6 +12,12 @@
 #include "UI/UIText.h"
 
 using namespace CoreEngine;
+
+namespace
+{
+    constexpr const char* kTitleBgmPath = "Sounds/BGM/Title_bgm.mp3";
+    constexpr const char* kDecisionSePath = "Sounds/SE/decision.mp3";
+}
 
 void TitleScene::TitleScene::OnInitialize()
 {
@@ -27,9 +34,16 @@ void TitleScene::TitleScene::OnInitialize()
     // title.json / _scene.json に依存せず、必要なオブジェクトをコードで構築する。
     // 生成処理の詳細は専用ファイルへ分離し、このクラスは「シーンを組み立てる順番」
     // だけを担当する。
-    TitleSceneModel::Build([this](const std::string& name) {
-        return CreateObject(name);
-    });
+    const std::function<std::function<void()>()> createIntroCompletionCallback = [this] {
+        ++pendingIntroAnimations_;
+        return [this] { OnTitleIntroAnimationComplete(); };
+    };
+
+    TitleSceneModel::Build(
+        [this](const std::string& name) {
+            return CreateObject(name);
+        },
+        createIntroCompletionCallback);
 
     // UI の見た目・アニメーション設定は TitleSceneUi に閉じ込める。
     // シーン本体は、現在の入力デバイスを初期表示へ渡すだけにする。
@@ -46,29 +60,15 @@ void TitleScene::TitleScene::OnInitialize()
                const Vector2& position,
                const Vector4& color,
                const std::string& name) -> UIText* {
-            // StartHint はコードで初期生成するが、UIText のインスペクターで
-            // 編集したフォント・サイズ・位置をシーンJSONへ保存できるようにする。
-            // 専用UITextを使うことで、ヒント用CVarもStartHint自身に表示する。
-            if (name == "StartHint") {
-                auto* hint = CreateObject<TitleSceneUi::TitleHintText>();
-                if (!hint) {
-                    return static_cast<UIText*>(nullptr);
-                }
-
-                hint->SetName(name);
-                hint->SetText(text);
-                hint->SetFontSize(fontSize);
-                hint->SetAnchor(anchor);
-                hint->SetAnchoredPosition(position);
-                hint->SetColor(color);
-                return hint;
-            }
-
-            return CreateText(text, fontSize, anchor, position, color, name);
+            auto* hint = CreateText(text, fontSize, anchor, position, color, name);
+            return hint;
         },
-        gamepadConnected_);
+        gamepadConnected_,
+        createIntroCompletionCallback);
 
     startHint_ = ui.startHint;
+    introAnimationRegistrationComplete_ = true;
+    StartTitleBgmIfReady();
 }
 
 void TitleScene::TitleScene::OnUpdate()
@@ -105,5 +105,52 @@ void TitleScene::TitleScene::StartGame()
     }
 
     startRequested_ = true;
+
+    if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+        audioSystem->PlayOneShot(
+            kDecisionSePath,
+            { .bus = AudioBus::SE });
+    }
+
+    if (startHint_) {
+        if (auto* animation =
+            startHint_->GetComponent<GameComponents::TitleTextAnimationComponent>()) {
+            animation->PlayStartReaction([this] {
+                if (sceneManager_) {
+                    sceneManager_->ChangeScene("GameScene");
+                }
+            });
+            return;
+        }
+    }
+
     sceneManager_->ChangeScene("GameScene");
+}
+
+void TitleScene::TitleScene::OnTitleIntroAnimationComplete()
+{
+    if (pendingIntroAnimations_ > 0) {
+        --pendingIntroAnimations_;
+    }
+    StartTitleBgmIfReady();
+}
+
+void TitleScene::TitleScene::StartTitleBgmIfReady()
+{
+    if (!introAnimationRegistrationComplete_
+        || pendingIntroAnimations_ != 0
+        || titleBgmStarted_)
+    {
+        return;
+    }
+
+    auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
+    if (!audioSystem) {
+        return;
+    }
+
+    titleBgm_ = audioSystem->PlayScoped(
+        kTitleBgmPath,
+        { .bus = AudioBus::BGM, .loop = true, .volume = 1.0f / 3.0f });
+    titleBgmStarted_ = true;
 }

@@ -5,6 +5,7 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Components/Rail/RailPathComponent.h"
+#include "Components/GameCore/GameManagerComponent.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -18,10 +19,10 @@ using namespace CoreEngine;
 void GameComponents::TrainMovementComponent::Start() {
     transform_ = Sibling<TransformComponent>();
     // RailPathComponent がアタッチされていない場合は処理を中断する
-    if (!transform_ || !railPath_) {
+    if (!transform_ || !railPath_ || !gameManager_) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
-            "TrainMovementComponent: Transform または RailPath が未設定です");
+            "TrainMovementComponent: Transform、RailPath または GameManager が未設定です");
         SetEnabled(false);
         return;
     }
@@ -65,7 +66,7 @@ void GameComponents::TrainMovementComponent::Update() {
 
     // 移動量を計算する前に進行方向を確定し、曲がり角なら減速を反映する。
     if (!isMoving_ && !BeginNextSegment()) {
-        isGameOver_ = true;
+        NotifyGameOver();
         return;
     }
 
@@ -80,7 +81,7 @@ void GameComponents::TrainMovementComponent::Update() {
         if (!isMoving_) {
             const float speedBeforeTurn = moveSpeed_;
             if (!BeginNextSegment()) {
-                isGameOver_ = true;
+                NotifyGameOver();
                 break;
             }
 
@@ -110,8 +111,19 @@ void GameComponents::TrainMovementComponent::Update() {
 
         // 発車後に終端へ到着した時点でゲームオーバーにする。
         if (railPath_->GetUnconfirmedRailCount() == 0) {
-            isGameOver_ = true;
+            NotifyGameOver();
         }
+    }
+}
+
+void GameComponents::TrainMovementComponent::NotifyGameOver() {
+    if (isGameOver_) {
+        return;
+    }
+
+    isGameOver_ = true;
+    if (gameManager_) {
+        gameManager_->RequestGameOver();
     }
 }
 

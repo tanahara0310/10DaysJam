@@ -21,6 +21,7 @@ namespace CoreEngine
     class FFTOceanManager;
     class AtmosphereManager;
     class VolumetricCloudManager;
+    class FogManager;
     class LightManager;
     struct WaterSurfaceData;
     struct RenderContext;
@@ -79,6 +80,7 @@ namespace CoreEngine
         FFTOceanManager* GetFFTOceanManager() { return fftOceanManager_.get(); }
         AtmosphereManager* GetAtmosphereManager() { return atmosphereManager_.get(); }
         VolumetricCloudManager* GetVolumetricCloudManager() { return volumetricCloudManager_.get(); }
+        FogManager* GetFogManager() { return fogManager_.get(); }
 
         // ===== 水面サーフェス状態の publish =====
 
@@ -112,6 +114,7 @@ namespace CoreEngine
         std::unique_ptr<FFTOceanManager> fftOceanManager_;
         std::unique_ptr<AtmosphereManager> atmosphereManager_;
         std::unique_ptr<VolumetricCloudManager> volumetricCloudManager_;
+        std::unique_ptr<FogManager> fogManager_;
 
         /// @brief WaterRenderFeature が publish した水面状態（非所有）
         const WaterSurfaceData* waterSurfaceState_ = nullptr;

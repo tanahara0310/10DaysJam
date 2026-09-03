@@ -165,6 +165,8 @@ namespace CoreEngine
         atmosphereEditor_->Initialize(*engine_);
         cloudEditor_ = std::make_unique<VolumetricCloudEditor>();
         cloudEditor_->Initialize(*engine_);
+        fogEditor_ = std::make_unique<FogEditor>();
+        fogEditor_->Initialize(*engine_);
 
         // エディタ設定の自動保存セクション（登録時に保存済み JSON から前回状態が復元される）。
         // CVar が増えてもここへの追記は不要（レジストリを走査するため）。

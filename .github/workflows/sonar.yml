@@ -1,8 +1,11 @@
 name: SonarQube
 
+# SonarQube解析は無効化中。
+# 再有効化する場合は、以下の push / pull_request のコメントを外す。
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
+  # push:
+  # pull_request:
 
 jobs:
   sonarqube:

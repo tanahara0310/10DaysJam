@@ -10,6 +10,9 @@
     <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
@@ -28,10 +31,16 @@
     <ClCompile Include="Application\Src\Components\Title\TitleButtonAnimationComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Title\TitleLogoAnimationComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Components\Title\TitleSceneSettingsComponent.cpp">
+    <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp">
@@ -49,19 +58,16 @@
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp">
+      <Filter>Application\Src\Scenes\ResultScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
       <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp">
       <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleHintText.cpp">
-      <Filter>Application\Src\Scenes\TitleScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.cpp">
-      <Filter>Application\Src\Scenes\TitleScene</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneCVars.cpp">
       <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneUi.cpp">
@@ -139,6 +145,12 @@
     <ClCompile Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.cpp">
       <Filter>Engine\Src\Graphics\Cloud</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Fog\FogManager.cpp">
+      <Filter>Engine\Src\Graphics\Fog</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Fog\Settings\FogCVars.cpp">
+      <Filter>Engine\Src\Graphics\Fog\Settings</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -152,6 +164,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\FogPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GodRayPass.cpp">
@@ -874,6 +889,9 @@
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\FogEditor.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\SceneDebugEditor.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -1350,6 +1368,9 @@
     <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClInclude>
@@ -1368,10 +1389,16 @@
     <ClInclude Include="Application\Src\Components\Title\TitleButtonAnimationComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Title\TitleLogoAnimationComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Components\Title\TitleSceneSettingsComponent.h">
+    <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h">
@@ -1386,16 +1413,13 @@
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h">
+      <Filter>Application\Src\Scenes\ResultScene</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h">
       <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleHintText.h">
-      <Filter>Application\Src\Scenes\TitleScene</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.h">
-      <Filter>Application\Src\Scenes\TitleScene</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneCVars.h">
       <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneUi.h">
@@ -2205,6 +2229,18 @@
     <ClInclude Include="Engine\Src\Graphics\Cloud\VolumetricCloudManager.h">
       <Filter>Engine\Src\Graphics\Cloud</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Fog\FogManager.h">
+      <Filter>Engine\Src\Graphics\Fog</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogSettings.h">
+      <Filter>Engine\Src\Graphics\Fog\Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogCVars.h">
+      <Filter>Engine\Src\Graphics\Fog\Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Fog\Shader\FogBindings.h">
+      <Filter>Engine\Src\Graphics\Fog\Shader</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\AtmosphereLUTPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
@@ -2218,6 +2254,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricCloudPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\FogPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GodRayPass.h">
@@ -2458,6 +2497,9 @@
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\FogEditor.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h">
@@ -2733,9 +2775,6 @@
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
       <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClInclude>
-    <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
-      <Filter>Application\Src\Scenes\TestScene</Filter>
-    </ClCompile>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -3037,14 +3076,17 @@
     <Filter Include="Application\Src\Components\Camera">
       <UniqueIdentifier>{6D25A498-BF55-4F62-B98B-76B73C71455B}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Components\GameCore">
+      <UniqueIdentifier>{03D6A256-07A2-43DB-ABD3-8AB83DF1C1F7}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Components\Rail">
       <UniqueIdentifier>{2B2D684B-9E7E-438C-9345-388EEF35B52B}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Application\Src\Components\Train">
-      <UniqueIdentifier>{C09FEA33-AEF5-4CA2-B9C0-F4C548E5673D}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Application\Src\Components\Title">
       <UniqueIdentifier>{6A1D00AF-BF40-4B5E-9A9E-0B8D7B24E3F7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Train">
+      <UniqueIdentifier>{C09FEA33-AEF5-4CA2-B9C0-F4C548E5673D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Components\UI">
       <UniqueIdentifier>{A5CE7724-3120-4F27-9D83-4F3F50E876A2}</UniqueIdentifier>
@@ -3067,10 +3109,11 @@
     <Filter Include="Application\Src\Scenes\GameScene">
       <UniqueIdentifier>{0FE1078A-F1FE-4786-B0EE-9C36C376D1FC}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Scenes\ResultScene">
+      <UniqueIdentifier>{0E3C3B7C-C1A6-42A7-BFC6-0A37DB4F0787}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{0F580D97-5827-428A-AF9A-6D974CE04F90}</UniqueIdentifier>
-      <UniqueIdentifier>{b1d4e0c7-2a58-4f36-8e91-6d3c05af7e42}</UniqueIdentifier>
-      <UniqueIdentifier>{BFA03B9A-FA4C-41F0-A1DF-6197D741D11A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TitleScene">
       <UniqueIdentifier>{EBA724ED-4AC9-4C5C-888A-E4B79B531EF7}</UniqueIdentifier>
@@ -3105,9 +3148,6 @@
     <Filter Include="Engine\Src\Camera\Control">
       <UniqueIdentifier>{D99583A0-6A9E-4104-B12D-EFFF3B6DB30F}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Camera\Shake">
-      <UniqueIdentifier>{3f7c1a52-8b64-4d19-9a0e-5c2d7e41b8a3}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Camera\Debug">
       <UniqueIdentifier>{08318A63-7E81-4992-88CF-85F136FCA598}</UniqueIdentifier>
     </Filter>
@@ -3116,6 +3156,8 @@
     </Filter>
     <Filter Include="Engine\Src\Camera\Rig">
       <UniqueIdentifier>{b7e1c4a2-9d38-4f16-8c5b-3a7e0d924f61}</UniqueIdentifier>
+    <Filter Include="Engine\Src\Camera\Shake">
+      <UniqueIdentifier>{3f7c1a52-8b64-4d19-9a0e-5c2d7e41b8a3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Camera\View">
       <UniqueIdentifier>{F5ABBF85-A32B-4EA0-9D89-C0AD772A11EC}</UniqueIdentifier>
@@ -3230,6 +3272,15 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Cloud\Shader">
       <UniqueIdentifier>{8B855244-D072-475E-A09C-E19A9817FA45}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Fog">
+      <UniqueIdentifier>{F4CD8FB1-7523-4AAA-8BA9-6E956BA292F6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Fog\Settings">
+      <UniqueIdentifier>{9ADD1DA1-1EF7-47DA-941C-932C4480E1A2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Fog\Shader">
+      <UniqueIdentifier>{12488C73-1AAF-4F5B-B02E-2E599A409F05}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\IBL">
       <UniqueIdentifier>{CB5C00A8-4E31-4B66-9096-A0DB805289CB}</UniqueIdentifier>

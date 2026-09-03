@@ -12,6 +12,7 @@ namespace CoreEngine
 
 namespace GameComponents {
     class RailPathComponent;
+    class GameManagerComponent;
 }
 
 namespace GameComponents
@@ -23,8 +24,9 @@ namespace GameComponents
         explicit TrainMovementComponent(
             float gridSize = 5.0f, float moveSpeed = 0.5f,
             int32_t gridX = 0, int32_t gridZ = 0,
-            GameComponents::RailPathComponent* railPath = nullptr)
-            : railPath_(railPath), gridSize_(gridSize), moveSpeed_(moveSpeed), gridX_(gridX), gridZ_(gridZ) {
+            GameComponents::RailPathComponent* railPath = nullptr,
+            GameManagerComponent* gameManager = nullptr)
+            : railPath_(railPath), gameManager_(gameManager), gridSize_(gridSize), moveSpeed_(moveSpeed), gridX_(gridX), gridZ_(gridZ) {
         }
 
         // コンポーネントを識別する名前。必須
@@ -50,6 +52,8 @@ namespace GameComponents
         void SetGridSize(float size);
 
     private:
+        // 終端検知を一か所に集め、終了処理は GameManager に委譲する。
+        void NotifyGameOver();
         // 未確定レールを次の目的地として保存し、そのレールを確定する
         bool BeginNextSegment();
         // 現在の移動進捗を Transform に反映する
@@ -59,6 +63,7 @@ namespace GameComponents
 
         CoreEngine::TransformComponent* transform_ = nullptr;
         GameComponents::RailPathComponent* railPath_ = nullptr;
+        GameManagerComponent* gameManager_ = nullptr;
         float gridSize_ = 5.0f;
 
         float moveSpeed_ = 0.5f; // 移動速度（グリッド単位/秒）

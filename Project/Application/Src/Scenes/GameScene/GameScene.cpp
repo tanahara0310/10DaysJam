@@ -21,6 +21,8 @@
 #include "Components/Train/TrainMovementComponent.h"
 #include "Components/UI/RailResourceUIComponent.h"
 
+#include "Components/GameCore/GameManagerComponent.h"
+
 GameScene::GameScene::~GameScene() = default;
 
 void GameScene::GameScene::OnInitialize() {
@@ -40,17 +42,55 @@ void GameScene::GameScene::OnInitialize() {
     uint32_t initialGenerateMapSizeX = 30; // 初期生成マップのX方向のサイズを設定
     uint32_t renderWorldDistance = 20; // 描画するワールドの距離を設定
 
+    // FixedCsv にすると fixedCsvPath の1枚を使用し、終端以降はVoidになる。
+    // Procedural にすると従来のチップ単位のランダム生成を使用する。
+    GameComponents::MapGenerationSettings mapSettings;
+    mapSettings.mode = GameComponents::MapGenerationMode::RandomCsvPool;
+    mapSettings.csvChunkSizeX = 10;
+    // 1プール = 1エリアで使用する複数の区画CSV。地形の種類では分けない。
+    // Area1中はArea1内だけ、Area2へ切替後はArea2内だけから区画を抽選する。
+    mapSettings.csvPools = {
+        { "Area1", {
+            "Application/Assets/Maps/Areas/Area1/chunk_01.csv",
+            "Application/Assets/Maps/Areas/Area1/chunk_02.csv",
+            "Application/Assets/Maps/Areas/Area1/chunk_03.csv",
+        } },
+        { "Area2", {
+            "Application/Assets/Maps/Areas/Area2/chunk_01.csv",
+            "Application/Assets/Maps/Areas/Area2/chunk_02.csv",
+            "Application/Assets/Maps/Areas/Area2/chunk_03.csv",
+        } },
+    };
+    mapSettings.initialCsvPoolName = "Area1";
+    mapSettings.fixedCsvPath = "Application/Assets/Maps/fixed.csv";
+
     // ========== オブジェクトの生成 ==========
+    //　ゲームマスターの追加
+    auto* gameManager = CreateObject("GameManager");
+    auto* gameManagerComponent =
+        gameManager->AddComponent<GameComponents::GameManagerComponent>(sceneManager_);
+
     // 床のオブジェクトプールを生成
     auto* groundPoolManager = CreateObject("GroundPoolManager");
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "box.obj", 600,false);
+    // 水場のオブジェクトプールを生成
+    auto* waterPoolManager = CreateObject("WaterPoolManager");
+    waterPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    waterPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "box.obj", 100, true,
+        CoreEngine::Vector4{ 0.0f, 0.35f, 0.65f, 1.0f });
     // 駅のオブジェクトプールを生成
     auto* stationPoolManager = CreateObject("StationPoolManager");
     stationPoolManager->AddComponent<CoreEngine::TransformComponent>();
     stationPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "box.obj", 10, false);
+        "station.obj", 10, true);
+    // 岩のオブジェクトプールを生成
+    auto* rockPoolManager = CreateObject("RockPoolManager");
+    rockPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    rockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "rock.obj", 50, true);
     // レールのオブジェクトプールを生成
     auto* railPoolManager = CreateObject("RailPoolManager");
     railPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -71,7 +111,7 @@ void GameScene::GameScene::OnInitialize() {
     auto* mapGenerator = CreateObject("MapGenerator");
     mapGenerator->AddComponent<CoreEngine::TransformComponent>();
     mapGenerator->AddComponent<GameComponents::MapGeneratorComponent>(
-        mapSizeZ, initialGenerateMapSizeX);
+        mapSizeZ, initialGenerateMapSizeX, mapSettings);
     
     // レールの配置を管理するコンポーネントを追加
     auto* railPath = CreateObject("RailPath");
@@ -90,13 +130,14 @@ void GameScene::GameScene::OnInitialize() {
 
     // 列車の移動ロジックを持つオブジェクト。描画とアニメーションは別コンポーネントで追加する。
     auto* train = CreateObject("Train");
-    train->AddComponent<CoreEngine::TransformComponent>();
+    auto* trainTransform = train->AddComponent<CoreEngine::TransformComponent>();
     train->AddComponent<GameComponents::TrainMovementComponent>(
         gridSize, 0.5f, initialBuilderPosX, initialBuilderPosZ,
-        railPath->GetComponent<GameComponents::RailPathComponent>());
+        railPath->GetComponent<GameComponents::RailPathComponent>(),
+        gameManagerComponent);
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
-
+    // 列車の描画は、列車の移動ロジックを持つコンポーネントとは別のコンポーネントで行う。
     railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
         gridSize, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
@@ -106,6 +147,16 @@ void GameScene::GameScene::OnInitialize() {
 
     railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
 
+    gameManagerComponent->SetGameplayComponents(
+        train->GetComponent<GameComponents::TrainMovementComponent>(),
+        railBuilder->GetComponent<GameComponents::RailBuilderComponent>());
+
+    // 列車に乗るサル
+    auto* monkey = CreateObject("Monkey");
+    auto* monkeyTransform = monkey->AddComponent<CoreEngine::TransformComponent>();
+    monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
+    monkeyTransform->Get().SetParent(&trainTransform->Get());
+
     // 列車とビルダーの中間を捉え、距離に応じて視野角を変えるゲームカメラ。
     auto* cameraController = CreateObject("CameraManager");
     cameraController->AddComponent<GameComponents::CameraManagerComponent>(
@@ -113,6 +164,9 @@ void GameScene::GameScene::OnInitialize() {
         train->GetComponent<CoreEngine::TransformComponent>(),
         railBuilder->GetComponent<CoreEngine::TransformComponent>(),
         0.4f); // カメラX位置: 0.0 = 列車側、0.5 = 中間、1.0 = ビルダー側
+
+    gameManagerComponent->SetEndingCamera(
+        cameraController->GetComponent<GameComponents::CameraManagerComponent>());
 
     railView->AddComponent<GameComponents::RailViewComponent>(
         gridSize,
@@ -129,7 +183,9 @@ void GameScene::GameScene::OnInitialize() {
     mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        waterPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
         gridSize, renderWorldDistance);
 
