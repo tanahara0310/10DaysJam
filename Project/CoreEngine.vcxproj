@@ -189,6 +189,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleButtonAnimationComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleLogoAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleSceneSettingsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
@@ -742,6 +743,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h" />
     <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleButtonAnimationComponent.h" />
+    <ClInclude Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleLogoAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleSceneSettingsComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />

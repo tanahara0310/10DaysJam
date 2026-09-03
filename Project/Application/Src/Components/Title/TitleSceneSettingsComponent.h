@@ -4,18 +4,18 @@
 
 namespace GameComponents
 {
-    /// @brief タイトルシーン用 CVar をインスペクターへ表示するコンポーネント。
+    /// @brief タイトルモデルの配置・アニメーション用 CVar をインスペクターへ表示するコンポーネント。
     /// @details
     ///  タイトルオブジェクトへこのコンポーネントを追加すると、通常の
-    ///  GameObject インスペクターに「タイトル設定」タブが現れる。値そのものは
-    ///  CVarRegistry が保持するため、アニメーション実装と編集UIを分離できる。
+    ///  GameObject インスペクターに「タイトルモデル設定」タブが現れる。
+    ///  モデルに属さないカメラシェイク設定は別の空オブジェクトへ分離している。
     class TitleSceneSettingsComponent final : public CoreEngine::IComponent
     {
     public:
         const char* GetTypeName() const override { return "TitleSceneSettings"; }
 
 #ifdef USE_IMGUI
-        const char* GetInspectorName() const override { return "タイトル設定"; }
+        const char* GetInspectorName() const override { return "タイトルモデル設定"; }
         const char* GetInspectorIcon() const override { return "scene.png"; }
 
         void GetInspectorIconColor(float* outRgba) const override

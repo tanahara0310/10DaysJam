@@ -3,6 +3,8 @@
 
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
+#include "Camera/Shake/CameraShake.h"
+#include "Camera/Shake/CameraShakePresets.h"
 #include "Scenes/TitleScene/TitleSceneCVars.h"
 #include "Utility/Tween/Tween.h"
 
@@ -31,6 +33,8 @@ void GameComponents::TitleLogoAnimationComponent::Start()
     bobHeight_ = TitleSceneCVars::BobHeight.Get();
     bobDuration_ = TitleSceneCVars::BobDuration.Get();
     rotationAmplitude_ = TitleSceneCVars::RotationAmplitude.Get();
+    shakeStrength_ = TitleSceneCVars::ShakeStrength.Get();
+    nextBounceIndex_ = 0;
 
     // シーン側で設定された最終姿勢を保存する。位置は最終地点より上へ移し、
     // そこから落下させる。EaseOutBounce は「速く落ちる → 地面で大きく跳ねる
@@ -58,7 +62,8 @@ void GameComponents::TitleLogoAnimationComponent::Start()
                 &transform_->Get().translate.y,
                 basePosition_.y,
                 introDuration_)
-                .SetEase(EasingUtil::Type::EaseOutBounce))
+                .SetEase(EasingUtil::Type::EaseOutBounce)
+                .OnUpdate([this](float progress) { OnIntroProgress(progress); }))
         .Join(
             Tween::ScaleTo(owner, baseScale_, introDuration_)
                 .SetEase(EasingUtil::Type::EaseOutBack))
@@ -69,6 +74,34 @@ void GameComponents::TitleLogoAnimationComponent::Start()
         .SetLink(owner)
         .SetUpdateType(TweenUpdate::Unscaled)
         .SetId("title_logo_intro");
+}
+
+void GameComponents::TitleLogoAnimationComponent::OnIntroProgress(float progress)
+{
+    // EasingUtil::EaseOutBounce の d1=2.75 に対応する接地位置。進捗は Tween の
+    // 生の時間進捗なので、フレームレートに関係なく接地を一度ずつ拾える。
+    static constexpr float kBounceProgress[] = {
+        1.0f / 2.75f,
+        2.0f / 2.75f,
+        2.5f / 2.75f,
+        1.0f,
+    };
+    static constexpr float kBounceIntensity[] = { 1.0f, 0.55f, 0.3f, 0.18f };
+
+    while (nextBounceIndex_ < 4
+        && progress >= kBounceProgress[nextBounceIndex_]) {
+        PlayBounceShake(kBounceIntensity[nextBounceIndex_]);
+        ++nextBounceIndex_;
+    }
+}
+
+void GameComponents::TitleLogoAnimationComponent::PlayBounceShake(float intensity)
+{
+    CoreEngine::CameraShakeParams params = CoreEngine::CameraShakePresets::Landing();
+    const float totalIntensity = intensity * shakeStrength_;
+    params.positionAmplitude *= totalIntensity;
+    params.rotationAmplitude *= totalIntensity;
+    CoreEngine::CameraShake::Play(params);
 }
 
 void GameComponents::TitleLogoAnimationComponent::StartIdleAnimation()

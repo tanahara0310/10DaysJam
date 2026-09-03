@@ -8,27 +8,27 @@
         "y": 286.86199951171875
     },
     "color": [
-        0.8500000238418579,
-        0.9200000166893005,
         1.0,
-        0.949999988079071
+        0.9215686321258545,
+        1.0,
+        1.0
     ],
     "fieldAutoFit": true,
     "fieldSize": {
-        "x": 463.7724609375,
-        "y": 53.8681640625
+        "x": 503.8515625,
+        "y": 58.5234375
     },
     "font": "Default",
-    "fontSize": 40.5,
+    "fontSize": 44.0,
     "lineSpacing": 1.0,
     "objectType": "UIText",
     "outlineColor": [
         0.0,
         0.0,
         0.0,
-        0.0
+        1.0
     ],
-    "outlineWidth": 0.0,
+    "outlineWidth": 0.008999999612569809,
     "pivot": {
         "x": 0.5,
         "y": 0.5
@@ -36,6 +36,6 @@
     "rotation": 0.0,
     "sortOrder": 1000,
     "text": "- SPACEキーをおしてスタート -",
-    "weight": 0.0,
+    "weight": 0.004999999888241291,
     "wrapWidth": 0.0
 }

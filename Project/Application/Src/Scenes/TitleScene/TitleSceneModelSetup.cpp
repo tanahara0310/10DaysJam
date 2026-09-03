@@ -2,6 +2,7 @@
 #include "TitleSceneModelSetup.h"
 
 #include "Components/Title/TitleLogoAnimationComponent.h"
+#include "Components/Title/TitleCameraShakeSettingsComponent.h"
 #include "Components/Title/TitleSceneSettingsComponent.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
@@ -43,9 +44,19 @@ namespace TitleSceneModel
         // 影響が伝播しない。
         titleObject->AddComponent<CoreEngine::MeshRendererComponent>("title.obj");
 
+        // タイトルモデル自身の配置・アニメーション設定はモデル側のインスペクターへ表示する。
+        titleObject->AddComponent<GameComponents::TitleSceneSettingsComponent>();
+
+        // カメラに属するバウンド時シェイク強度だけはモデル本体から分離し、
+        // 選択しやすい空の GameObject のインスペクターへ表示する。
+        auto* cameraShakeSettings = createObject("TitleCameraShakeSettings");
+        if (cameraShakeSettings) {
+            cameraShakeSettings->SetSerializeEnabled(false);
+            cameraShakeSettings->AddComponent<GameComponents::TitleCameraShakeSettingsComponent>();
+        }
+
         // ロゴの登場・上下の浮遊・左右の揺れは専用コンポーネントへ委譲する。
         // シーンはコンポーネントを追加するだけで、毎フレームの Tween 制御を持たない。
-        titleObject->AddComponent<GameComponents::TitleSceneSettingsComponent>();
         auto* animation =
             titleObject->AddComponent<GameComponents::TitleLogoAnimationComponent>();
         if (!animation) {

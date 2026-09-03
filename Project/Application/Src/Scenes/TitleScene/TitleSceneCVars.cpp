@@ -61,6 +61,12 @@ namespace TitleSceneCVars
         "落下時・待機時の左右回転幅（ラジアン）",
         CoreEngine::CVarRange{ 0.0f, 1.0f } };
 
+    CoreEngine::CVar<float> ShakeStrength{
+        "Title.CameraShake.Strength",
+        1.0f,
+        "タイトルモデルのバウンド時カメラシェイク強度（0で無効、1で標準）",
+        CoreEngine::CVarRange{ 0.0f, 2.0f } };
+
     // ===== 操作ヒント UI =====
     CoreEngine::CVar<float> HintFontSize{
         "Title.UI.HintFontSize",

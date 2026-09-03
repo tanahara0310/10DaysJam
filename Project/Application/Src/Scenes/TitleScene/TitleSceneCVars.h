@@ -21,6 +21,7 @@ namespace TitleSceneCVars
     extern CoreEngine::CVar<float> BobHeight;
     extern CoreEngine::CVar<float> BobDuration;
     extern CoreEngine::CVar<float> RotationAmplitude;
+    extern CoreEngine::CVar<float> ShakeStrength;
 
     // ===== 操作ヒント UI =====
     extern CoreEngine::CVar<float> HintFontSize;
@@ -36,6 +37,9 @@ namespace TitleSceneCVars
 
     /// @brief タイトルモデルのアニメーションを表示する CVar 接頭辞。
     inline constexpr const char* kAnimationCVarPrefix = "Title.Animation";
+
+    /// @brief タイトルモデルに属さないカメラシェイク設定を表示する CVar 接頭辞。
+    inline constexpr const char* kCameraShakeCVarPrefix = "Title.CameraShake";
 
     /// @brief 操作ヒントUITextを表示する CVar 接頭辞。
     inline constexpr const char* kHintCVarPrefix = "Title.UI";
