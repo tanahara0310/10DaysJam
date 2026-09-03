@@ -18,6 +18,11 @@ namespace TitleSceneModel
 
     /// @brief title.obj とそのアニメーションコンポーネントを構築する
     /// @param createObject シーンの GameObject 生成関数
+    /// @param createIntroCompletionCallback イントロ完了通知を登録する関数
     /// @note title.json が存在しない場合でも、この関数から同じ構成を再現できる。
-    void Build(const ObjectFactory& createObject);
+    using IntroCompletionCallbackFactory = std::function<std::function<void()>()>;
+
+    void Build(
+        const ObjectFactory& createObject,
+        const IntroCompletionCallbackFactory& createIntroCompletionCallback = {});
 }

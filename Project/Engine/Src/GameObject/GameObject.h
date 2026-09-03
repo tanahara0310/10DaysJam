@@ -375,10 +375,10 @@ namespace CoreEngine
         /// @brief アタッチされているコンポーネントからインスペクタのタブを組み立てる
         /// @param outTabs 出力先
         /// @param maxTabs 出力先の要素数
-        /// @return タブ数（コンポーネント数。maxTabs で頭打ち）
-        /// @note `GetInspectorTabs()` を実装していないオブジェクト（＝ CreateObject +
-        ///       AddComponent で組んだもの）に、レガシークラスと同じアイコンタブを
-        ///       与えるための代替。これが無いとインスペクタが名前と Active だけになる。
+        /// @return 追加したタブ数（コンポーネント数。maxTabs で頭打ち）
+        /// @note オブジェクト固有のタブを持つ場合も、その後ろへ追加できる。
+        ///       固有タブを持たないオブジェクトでは、コンポーネントタブがそのまま
+        ///       インスペクターのタブになる。
         int BuildComponentTabs(InspectorTabDef* outTabs, int maxTabs) const;
 
         /// @brief コンポーネントタブの中身を描画する

@@ -3,10 +3,72 @@
 
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
-#include "Scenes/TitleScene/TitleSceneCVars.h"
+#include "Components/Title/TitleLogoAnimationComponent.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#include "Editor/ImGui/Wrappers/ImGuiLayout.h"
+#endif
 #include "Utility/Tween/Tween.h"
 
 using namespace CoreEngine;
+
+namespace GameComponents
+{
+    CoreEngine::CVar<CoreEngine::Vector3> TitleTrolleyAnimationComponent::Position{
+        "Title.Trolley.Position",
+        { 0.0f, 0.0f, -0.5f },
+        "トロッコの最終位置（ワールド座標）",
+        CoreEngine::CVarRange{ -100.0f, 100.0f } };
+
+    CoreEngine::CVar<float> TitleTrolleyAnimationComponent::IntroDelay{
+        "Title.Trolley.IntroDelay",
+        0.35f,
+        "タイトルの落下完了後、トロッコが登場するまでの待ち時間（秒）",
+        CoreEngine::CVarRange{ 0.0f, 5.0f } };
+
+    CoreEngine::CVar<float> TitleTrolleyAnimationComponent::IntroDuration{
+        "Title.Trolley.IntroDuration",
+        0.9f,
+        "トロッコが画面下から登場する時間（秒）",
+        CoreEngine::CVarRange{ 0.05f, 5.0f } };
+
+    CoreEngine::CVar<float> TitleTrolleyAnimationComponent::IntroOffset{
+        "Title.Trolley.IntroOffset",
+        8.0f,
+        "トロッコを最終位置より下へ離す距離（メートル）",
+        CoreEngine::CVarRange{ 0.0f, 30.0f } };
+
+    CoreEngine::CVar<CoreEngine::Vector3> TitleTrolleyAnimationComponent::BobStart{
+        "Title.Trolley.BobStart",
+        { 0.0f, 0.0f, 0.0f },
+        "浮遊の線形補間を開始する位置オフセット（トロッコ基準）",
+        CoreEngine::CVarRange{ -10.0f, 10.0f } };
+
+    CoreEngine::CVar<CoreEngine::Vector3> TitleTrolleyAnimationComponent::BobEnd{
+        "Title.Trolley.BobEnd",
+        { 0.0f, 0.12f, 0.0f },
+        "浮遊の線形補間を終了する位置オフセット（トロッコ基準）",
+        CoreEngine::CVarRange{ -10.0f, 10.0f } };
+
+    CoreEngine::CVar<float> TitleTrolleyAnimationComponent::BobDuration{
+        "Title.Trolley.BobDuration",
+        1.6f,
+        "トロッコが上下へ浮遊する片道の時間（秒）",
+        CoreEngine::CVarRange{ 0.1f, 10.0f } };
+}
+
+#ifdef USE_IMGUI
+bool GameComponents::TitleTrolleyAnimationComponent::DrawInspector()
+{
+    const bool changed = CoreEngine::CVarUI::DrawTree("Title.Trolley");
+
+    CoreEngine::UI::Separator();
+    CoreEngine::UI::Hint(
+        "値はCVarとして保存されます。タイトルシーンを再読み込みすると"
+        "トロッコの配置・登場演出へ反映されます。サルの設定はmonkeyオブジェクト側にあります。");
+    return changed;
+}
+#endif
 
 void GameComponents::TitleTrolleyAnimationComponent::Start()
 {
@@ -17,14 +79,15 @@ void GameComponents::TitleTrolleyAnimationComponent::Start()
         return;
     }
 
-    basePosition_ = TitleSceneCVars::TrolleyPosition.Get();
-    introDuration_ = TitleSceneCVars::TrolleyIntroDuration.Get();
-    introOffset_ = TitleSceneCVars::TrolleyIntroOffset.Get();
-    bobStart_ = TitleSceneCVars::TrolleyBobStart.Get();
-    bobEnd_ = TitleSceneCVars::TrolleyBobEnd.Get();
-    bobDuration_ = TitleSceneCVars::TrolleyBobDuration.Get();
+    basePosition_ = Position.Get();
+    introDuration_ = IntroDuration.Get();
+    introOffset_ = IntroOffset.Get();
+    bobStart_ = BobStart.Get();
+    bobEnd_ = BobEnd.Get();
+    bobDuration_ = BobDuration.Get();
     const float introDelay =
-        TitleSceneCVars::IntroDuration.Get() + TitleSceneCVars::TrolleyIntroDelay.Get();
+        TitleLogoAnimationComponent::IntroDuration.Get()
+        + IntroDelay.Get();
 
     // 最終位置から下へ離した地点を開始位置にする。既定値ではカメラの画面外から
     // タイトルの落下が終わって少し間を置いたあと、EaseOutCubic で減速しながら
@@ -42,7 +105,15 @@ void GameComponents::TitleTrolleyAnimationComponent::Start()
         .SetLink(owner)
         .SetUpdateType(TweenUpdate::Unscaled)
         .SetId("title_trolley_intro")
-        .OnComplete([this] { StartIdleAnimation(); });
+        .OnComplete([this] {
+            StartIdleAnimation();
+            if (!introCompleteNotified_) {
+                introCompleteNotified_ = true;
+                if (onIntroComplete_) {
+                    onIntroComplete_();
+                }
+            }
+        });
 }
 
 void GameComponents::TitleTrolleyAnimationComponent::StartIdleAnimation()

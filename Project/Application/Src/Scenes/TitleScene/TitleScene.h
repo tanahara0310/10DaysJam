@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Audio/SoundInstance.h"
 #include "Scene/BaseScene.h"
+
+#include <functional>
 
 namespace CoreEngine
 {
@@ -17,9 +20,16 @@ namespace TitleScene
 
     private:
         void StartGame();
+        void OnTitleIntroAnimationComplete();
+        void StartTitleBgmIfReady();
 
         CoreEngine::UIText* startHint_ = nullptr;
         bool gamepadConnected_ = false;
         bool startRequested_ = false;
+
+        int pendingIntroAnimations_ = 0;
+        bool introAnimationRegistrationComplete_ = false;
+        bool titleBgmStarted_ = false;
+        CoreEngine::ScopedSound titleBgm_;
     };
 }

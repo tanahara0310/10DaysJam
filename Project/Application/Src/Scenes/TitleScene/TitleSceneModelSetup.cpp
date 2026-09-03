@@ -2,20 +2,18 @@
 #include "TitleSceneModelSetup.h"
 
 #include "Components/Title/TitleMonkeyAnimationComponent.h"
-#include "Components/Title/TitleMonkeySettingsComponent.h"
 #include "Components/Title/TitleTrolleyAnimationComponent.h"
-#include "Components/Title/TitleTrolleySettingsComponent.h"
 #include "Components/Title/TitleLogoAnimationComponent.h"
 #include "Components/Title/TitleCameraShakeSettingsComponent.h"
-#include "Components/Title/TitleSceneSettingsComponent.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
-#include "Scenes/TitleScene/TitleSceneCVars.h"
 
 namespace TitleSceneModel
 {
-    void Build(const ObjectFactory& createObject)
+    void Build(
+        const ObjectFactory& createObject,
+        const IntroCompletionCallbackFactory& createIntroCompletionCallback)
     {
         if (!createObject) {
             return;
@@ -39,17 +37,14 @@ namespace TitleSceneModel
             return;
         }
 
-        transform->Get().translate = TitleSceneCVars::Position.Get();
-        transform->Get().rotate = TitleSceneCVars::Rotation.Get();
-        transform->Get().scale = TitleSceneCVars::Scale.Get();
+        transform->Get().translate = GameComponents::TitleLogoAnimationComponent::Position.Get();
+        transform->Get().rotate = GameComponents::TitleLogoAnimationComponent::Rotation.Get();
+        transform->Get().scale = GameComponents::TitleLogoAnimationComponent::Scale.Get();
 
         // OBJ の読み込み・マテリアル設定は既存の MeshRendererComponent に任せる。
         // この分離により、モデル形式や読み込み処理を変更してもシーンの UI 実装へ
         // 影響が伝播しない。
         titleObject->AddComponent<CoreEngine::MeshRendererComponent>("title.obj");
-
-        // タイトルモデル自身の配置・アニメーション設定はモデル側のインスペクターへ表示する。
-        titleObject->AddComponent<GameComponents::TitleSceneSettingsComponent>();
 
         // カメラに属するバウンド時シェイク強度だけはモデル本体から分離し、
         // 選択しやすい空の GameObject のインスペクターへ表示する。
@@ -67,10 +62,14 @@ namespace TitleSceneModel
 
             auto* trolleyTransform = trolleyObject->AddComponent<CoreEngine::TransformComponent>();
             if (trolleyTransform) {
-                trolleyTransform->Get().translate = TitleSceneCVars::TrolleyPosition.Get();
+                trolleyTransform->Get().translate =
+                    GameComponents::TitleTrolleyAnimationComponent::Position.Get();
                 trolleyObject->AddComponent<CoreEngine::MeshRendererComponent>("trolley.obj");
-                trolleyObject->AddComponent<GameComponents::TitleTrolleySettingsComponent>();
-                trolleyObject->AddComponent<GameComponents::TitleTrolleyAnimationComponent>();
+                auto* trolleyAnimation =
+                    trolleyObject->AddComponent<GameComponents::TitleTrolleyAnimationComponent>();
+                if (trolleyAnimation && createIntroCompletionCallback) {
+                    trolleyAnimation->SetOnIntroComplete(createIntroCompletionCallback());
+                }
 
                 auto* monkeyObject = createObject("monkey");
                 if (monkeyObject) {
@@ -82,13 +81,16 @@ namespace TitleSceneModel
                         // monkey.obj の最終距離はサル側の設定として保持する。
                         monkeyTransform->Get().translate = {
                             0.0f,
-                            TitleSceneCVars::MonkeyDistance.Get(),
+                            GameComponents::TitleMonkeyAnimationComponent::Distance.Get(),
                             0.0f,
                         };
                         monkeyTransform->Get().SetParent(&trolleyTransform->Get());
                         monkeyObject->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
-                        monkeyObject->AddComponent<GameComponents::TitleMonkeySettingsComponent>();
-                        monkeyObject->AddComponent<GameComponents::TitleMonkeyAnimationComponent>();
+                        auto* monkeyAnimation =
+                            monkeyObject->AddComponent<GameComponents::TitleMonkeyAnimationComponent>();
+                        if (monkeyAnimation && createIntroCompletionCallback) {
+                            monkeyAnimation->SetOnIntroComplete(createIntroCompletionCallback());
+                        }
                     }
                 }
             }
@@ -100,6 +102,10 @@ namespace TitleSceneModel
             titleObject->AddComponent<GameComponents::TitleLogoAnimationComponent>();
         if (!animation) {
             return;
+        }
+
+        if (createIntroCompletionCallback) {
+            animation->SetOnIntroComplete(createIntroCompletionCallback());
         }
 
     }

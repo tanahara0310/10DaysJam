@@ -2,7 +2,6 @@
 #include "TitleSceneUi.h"
 
 #include "Components/Title/TitleTextAnimationComponent.h"
-#include "Scenes/TitleScene/TitleSceneCVars.h"
 #include "UI/UIText.h"
 
 namespace TitleSceneUi
@@ -13,7 +12,10 @@ namespace TitleSceneUi
         constexpr const char* kKeyboardStartPrompt = "- SPACEキーをおしてスタート -";
     }
 
-    Elements Build(const TextFactory& createText, bool gamepadConnected)
+    Elements Build(
+        const TextFactory& createText,
+        bool gamepadConnected,
+        const IntroCompletionCallbackFactory& createIntroCompletionCallback)
     {
         Elements elements;
 
@@ -25,10 +27,10 @@ namespace TitleSceneUi
         // これにより、画面を見た時点で「何を押せばよいか」が直接伝わる。
         elements.startHint = createText(
                 gamepadConnected ? kGamepadStartPrompt : kKeyboardStartPrompt,
-                TitleSceneCVars::HintFontSize.Get(),
+                GameComponents::TitleTextAnimationComponent::FontSize.Get(),
                 CoreEngine::UIAnchor::BottomCenter,
-                TitleSceneCVars::HintPosition.Get(),
-                TitleSceneCVars::HintColor.Get(),
+                GameComponents::TitleTextAnimationComponent::Position.Get(),
+                GameComponents::TitleTextAnimationComponent::Color.Get(),
                 "StartHint");
         if (elements.startHint) {
             auto* hint = elements.startHint;
@@ -36,12 +38,12 @@ namespace TitleSceneUi
             // 851など特定フォントをコードで固定しないため、UITextインスペクターの
             // フォント欄から必要に応じて変更でき、保存した設定も復元できる。
             hint->SetPivot({ 0.5f, 0.5f });
-            hint->SetSortOrder(TitleSceneCVars::HintSortOrder.Get());
-            hint->AddComponent<GameComponents::TitleTextAnimationComponent>(
-                TitleSceneCVars::HintIntroDelay.Get(),
-                TitleSceneCVars::HintSlideDistance.Get(),
-                TitleSceneCVars::HintIntroDuration.Get(),
+            hint->SetSortOrder(GameComponents::TitleTextAnimationComponent::SortOrder.Get());
+            auto* animation = hint->AddComponent<GameComponents::TitleTextAnimationComponent>(
                 "title_start_hint_intro");
+            if (animation && createIntroCompletionCallback) {
+                animation->SetOnIntroComplete(createIntroCompletionCallback());
+            }
         }
 
         return elements;
