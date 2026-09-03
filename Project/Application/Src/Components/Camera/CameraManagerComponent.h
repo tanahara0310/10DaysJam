@@ -59,7 +59,16 @@ namespace GameComponents
         CoreEngine::Vector3 GetFocusPosition() const { return smoothedFocusPosition_; }
         float GetCurrentFovDegrees() const { return currentFovDegrees_; }
 
+        // 現在の構図から列車のアップへ移動する。完了後もアップを維持する。
+        void BeginTrainCloseUp(float duration = 1.5f, float distanceScale = 0.3f);
+        bool IsTrainCloseUpComplete() const {
+            return trainCloseUpActive_ && closeUpElapsed_ >= closeUpDuration_;
+        }
+
     private:
+        void UpdateTrainCloseUp();
+        void ApplyCameraState();
+
         CoreEngine::Camera* camera_ = nullptr;
         CoreEngine::TransformComponent* trainTransform_ = nullptr;
         CoreEngine::TransformComponent* builderTransform_ = nullptr;
@@ -76,5 +85,13 @@ namespace GameComponents
         float maxFovDegrees_ = 70.0f;
         float followSpeed_ = 5.0f;
         float currentFovDegrees_ = 35.0f;
+
+        bool trainCloseUpActive_ = false;
+        float closeUpElapsed_ = 0.0f;
+        float closeUpDuration_ = 1.5f;
+        float closeUpDistanceScale_ = 0.3f;
+        CoreEngine::Vector3 closeUpStartPosition_{};
+        CoreEngine::Vector3 closeUpStartFocus_{};
+        float closeUpStartFov_ = 35.0f;
     };
 }

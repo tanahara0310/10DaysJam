@@ -10,6 +10,9 @@
     <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
@@ -63,6 +66,9 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp">
+      <Filter>Application\Src\Scenes\ResultScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
       <Filter>Application\Src\Scenes\TestScene</Filter>
@@ -1320,6 +1326,9 @@
     <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClInclude>
@@ -1370,6 +1379,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h">
+      <Filter>Application\Src\Scenes\ResultScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h">
       <Filter>Application\Src\Scenes\TitleScene</Filter>
@@ -2977,6 +2989,9 @@
     <Filter Include="Application\Src\Components\Camera">
       <UniqueIdentifier>{6D25A498-BF55-4F62-B98B-76B73C71455B}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Components\GameCore">
+      <UniqueIdentifier>{03D6A256-07A2-43DB-ABD3-8AB83DF1C1F7}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\Components\Rail">
       <UniqueIdentifier>{2B2D684B-9E7E-438C-9345-388EEF35B52B}</UniqueIdentifier>
     </Filter>
@@ -3006,6 +3021,9 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\GameScene">
       <UniqueIdentifier>{0FE1078A-F1FE-4786-B0EE-9C36C376D1FC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\ResultScene">
+      <UniqueIdentifier>{0E3C3B7C-C1A6-42A7-BFC6-0A37DB4F0787}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{0F580D97-5827-428A-AF9A-6D974CE04F90}</UniqueIdentifier>

@@ -44,6 +44,12 @@ void GameComponents::CameraManagerComponent::LateUpdate() {
         return;
     }
 
+    if (trainCloseUpActive_) {
+        UpdateTrainCloseUp();
+        ApplyCameraState();
+        return;
+    }
+
     const Vector3 trainPosition = trainTransform_->GetWorldPosition();
     const Vector3 builderPosition = builderTransform_->GetWorldPosition();
     const Vector3 desiredFocusPosition =
@@ -72,6 +78,10 @@ void GameComponents::CameraManagerComponent::LateUpdate() {
     currentFovDegrees_ +=
         (desiredFovDegrees - currentFovDegrees_) * interpolation;
 
+    ApplyCameraState();
+}
+
+void GameComponents::CameraManagerComponent::ApplyCameraState() {
     camera_->SetTranslate(cameraPosition_);
     camera_->LookAt(smoothedFocusPosition_);
     cameraRotation_ = camera_->GetRotate();
@@ -82,6 +92,34 @@ void GameComponents::CameraManagerComponent::LateUpdate() {
 
     // CameraManager の通常更新後に値を変更するため、描画前に行列を反映する。
     camera_->UpdateMatrix();
+}
+
+void GameComponents::CameraManagerComponent::BeginTrainCloseUp(float duration, float distanceScale) {
+    if (trainCloseUpActive_ || !IsEnabled() || !camera_ || !trainTransform_ || !builderTransform_) {
+        return;
+    }
+
+    trainCloseUpActive_ = true;
+    closeUpElapsed_ = 0.0f;
+    closeUpDuration_ = std::max(0.0f, duration);
+    closeUpDistanceScale_ = std::clamp(distanceScale, 0.1f, 1.0f);
+    closeUpStartPosition_ = camera_->GetTranslate();
+    closeUpStartFocus_ = smoothedFocusPosition_;
+    closeUpStartFov_ = camera_->GetParameters().GetFovDegrees();
+}
+
+void GameComponents::CameraManagerComponent::UpdateTrainCloseUp() {
+    closeUpElapsed_ = std::min(closeUpDuration_,
+        closeUpElapsed_ + std::max(0.0f, Time::UnscaledDeltaTime()));
+    const float t = closeUpDuration_ > 0.0f ? closeUpElapsed_ / closeUpDuration_ : 1.0f;
+    // 開始・停止時の速度がゼロになる補間で、急な切り替わりを避ける。
+    const float eased = t * t * (3.0f - 2.0f * t);
+    const Vector3 focus = trainTransform_->GetWorldPosition() + Vector3{ 0.0f, 0.5f, 0.0f };
+    const Vector3 position = focus + cameraOffset_ * closeUpDistanceScale_;
+    const float fov = std::min(closeUpStartFov_, minFovDegrees_);
+    cameraPosition_ = closeUpStartPosition_ + (position - closeUpStartPosition_) * eased;
+    smoothedFocusPosition_ = closeUpStartFocus_ + (focus - closeUpStartFocus_) * eased;
+    currentFovDegrees_ = closeUpStartFov_ + (fov - closeUpStartFov_) * eased;
 }
 
 void GameComponents::CameraManagerComponent::SetFocusRatio(float ratio) {
