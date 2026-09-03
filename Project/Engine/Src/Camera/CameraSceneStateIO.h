@@ -33,6 +33,12 @@ namespace CoreEngine
         /// @brief ゲーム視点として使うカメラ名
         std::string gameCameraName;
 
+        /// @brief シーン開始時に動かすカメラリグの名前（空なら動かさない）
+        /// @details 「どのリグでこのシーンを撮るか」はシーンごとの決め事なので、
+        ///          カメラの構図と同じファイルに置く。コードから
+        ///          CameraRig::Activate を書かなくてもシーンが自分の画で始まる。
+        std::string startupRigName;
+
         std::vector<CameraSceneStateEntry> cameras;
     };
 
@@ -64,5 +70,11 @@ namespace CoreEngine
         /// @brief シーンのカメラ状態を読み込んで適用する
         /// @return ファイルが無い / 読めない場合は false（カメラは変更されない）
         static bool Load(const std::string& sceneName, CameraManager& cameraManager);
+
+        /// @brief シーン開始時に動かすリグの名前だけを読む
+        /// @return 保存が無い / 指定が無ければ空文字
+        /// @details カメラの姿勢は CameraFeature が、リグの起動は CameraRigFeature が
+        ///          担当する。両方が同じファイルを丸ごと読む必要はないので入口を分けた。
+        static std::string LoadStartupRigName(const std::string& sceneName);
     };
 }

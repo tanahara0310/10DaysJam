@@ -41,6 +41,11 @@ namespace CoreEngine
         /// @brief 静的ファサード（CameraRig::Activate など）の委譲先になる
         void Initialize(SceneContext& ctx) override;
 
+        /// @brief シーンに保存された開始リグを動かす
+        /// @details オブジェクトが揃った後に呼ばれるので、対象を名前で引ける。
+        ///          保存が無ければ何もしない（ゲーム側の追従がそのまま効く）。
+        void PostSceneInitialize(SceneContext& ctx) override;
+
         /// @brief PostLogic で減衰を進め、ゲーム視点カメラへ構図を書き込む
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
 

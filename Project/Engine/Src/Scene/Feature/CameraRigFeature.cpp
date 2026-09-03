@@ -3,6 +3,8 @@
 
 #include "Camera/Camera.h"
 #include "Camera/CameraManager.h"
+#include "Camera/CameraSceneStateIO.h"
+#include "Scene/SceneSaveSystem.h"
 #include "Camera/Rig/CameraRig.h"
 #include "Camera/Sequence/CameraSequenceEvaluator.h"
 #include "GameObject/GameObject.h"
@@ -69,6 +71,23 @@ namespace CoreEngine
     void CameraRigFeature::Initialize(SceneContext&)
     {
         CameraRig::SetActiveRuntime(&runtime_);
+    }
+
+    void CameraRigFeature::PostSceneInitialize(SceneContext& ctx)
+    {
+        if (!ctx.saveSystem) {
+            return;
+        }
+
+        const std::string rigName =
+            CameraSceneStateIO::LoadStartupRigName(ctx.saveSystem->GetSceneName());
+        if (rigName.empty()) {
+            return;
+        }
+
+        // シーンの開始時点では繋ぎ元になる構図が無いので、繋がずにそのまま置く。
+        // 読み込めなければ何もしない（ライブラリ側がログを出す）。
+        CameraRig::Activate(rigName);
     }
 
     void CameraRigFeature::UpdateTargetVelocities(GameObjectManager* objects, float deltaTime)

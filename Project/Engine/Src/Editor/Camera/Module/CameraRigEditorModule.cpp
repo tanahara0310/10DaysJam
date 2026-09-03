@@ -313,8 +313,13 @@ namespace CoreEngine
                 "動作中: \"%s\"  繋ぎ %.0f%%",
                 runtime->GetName().empty() ? "(無名)" : runtime->GetName().c_str(),
                 weight * 100.0f);
+            UI::SameLine();
+            UI::Hint("Ctrl+S でシーンを保存すると、動作中のこのリグが"
+                "シーンの開始リグとして記録されます。次回そのシーンを開くと自動で動きます。");
         } else {
             ImGui::TextDisabled("停止中（カメラはゲーム側の追従が握っています）");
+            UI::SameLine();
+            UI::Hint("止めた状態で Ctrl+S すると、シーンの開始リグの指定も外れます。");
         }
     }
 
