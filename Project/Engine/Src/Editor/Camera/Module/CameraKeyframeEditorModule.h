@@ -4,6 +4,7 @@
 
 #include "ICameraEditorModule.h"
 #include "Camera/Sequence/CameraSequenceEvaluator.h"
+#include "Editor/Camera/Widget/CameraTimelineWidget.h"
 
 #include <string>
 #include <vector>
@@ -48,8 +49,41 @@ namespace CoreEngine
         /// @brief 注視対象をシーンから引く解決口を組み立てる
         CameraSequenceAimContext MakeAimContext(const CameraEditorContext& context) const;
 
+        /// @brief 再生・時刻・履歴の行を描画（常に最上段で位置が動かない）
+        void DrawTransport(bool& playheadChanged);
+
+        /// @brief タイムラインを描画し、操作結果を編集状態へ反映
+        void DrawTimeline(bool& playheadChanged);
+
+        /// @brief キー一覧と、その出し入れ操作を描画
+        void DrawKeyList(const CameraEditorContext& context);
+
+        /// @brief 選択キーの中身（構図 / 向き / 繋ぎ方）を描画
+        void DrawKeyInspector(const CameraEditorContext& context, bool& playheadChanged);
+
+        /// @brief 選択キーの構図（位置・回転・視野角）を描画
+        void DrawKeyPose(const CameraEditorContext& context, CameraSequenceKeyframe& key, bool& playheadChanged);
+
+        /// @brief 選択キーの向きの決め方を描画
+        void DrawKeyAim(const CameraEditorContext& context, CameraSequenceKeyframe& key, bool& playheadChanged);
+
+        /// @brief 選択キーから次のキーへの繋ぎ方を描画
+        void DrawKeyTransition(CameraSequenceKeyframe& key, bool& playheadChanged);
+
+        /// @brief ショットの編集 UI を描画
+        void DrawShotTrack();
+
         /// @brief イベントトラックの編集 UI を描画
         void DrawEventTrack();
+
+        /// @brief シーケンスの保存・読み込み UI を描画
+        void DrawSequenceAssets(const CameraEditorContext& context);
+
+        /// @brief ビューポート可視化の設定 UI を描画
+        void DrawViewSettings();
+
+        /// @brief 件数と保存先を出す最下段
+        void DrawStatusBar();
 
         /// @brief スナップショットが同一かを誤差込みで判定
         bool IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const;
@@ -106,8 +140,17 @@ namespace CoreEngine
         bool loopPlayback_ = true;
         float playbackSpeed_ = 1.0f;
 
+        // タイムライン（ズーム・スクロール・ドラッグの状態を持つ）
+        CameraTimelineWidget timeline_;
+
+        /// @brief キーをドラッグしたときに丸める間隔 [秒]（0 で無効）
+        float snapSeconds_ = 0.1f;
+
         int editingShotNameIndex_ = -1;
         char shotNameBuffer_[128] = "";
+
+        int editingKeyLabelIndex_ = -1;
+        char keyLabelBuffer_[128] = "";
 
         // イベントトラック
         int selectedEventIndex_ = -1;

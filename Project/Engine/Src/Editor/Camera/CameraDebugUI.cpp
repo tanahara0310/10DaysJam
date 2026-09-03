@@ -67,19 +67,34 @@ namespace CoreEngine {
         }
     }
 
-    void CameraDebugUI::DrawContent()
+    void CameraDebugUI::DrawToolbar(const CameraEditorContext& context)
     {
-        if (!cameraManager_) {
-            return;
+        CameraManager* cameraManager = context.cameraManager;
+
+        // ===== どちらの視点を覗くか =====
+        // 描画・ギズモ・ピッキングが見るカメラなので、いちばん上に固定で置く。
+        bool useScene = cameraManager->IsUsingSceneCamera();
+        if (ImGui::RadioButton("エディタ視点 (1)", useScene)) {
+            cameraManager->SetUseSceneCamera(true);
+        }
+        UI::SameLine();
+        if (ImGui::RadioButton("ゲーム視点 (2)", !useScene)) {
+            cameraManager->SetUseSceneCamera(false);
         }
 
-        CameraEditorContext context = BuildContext();
+        UI::SameLine();
+        ImGui::TextDisabled("|");
+        UI::SameLine();
+        ImGui::Text("描画中");
+        UI::SameLine();
+        ImGui::TextColored(ImVec4(0.26f, 0.72f, 0.98f, 1.0f), "%s",
+            cameraManager->GetViewCameraName().c_str());
 
-        ImGui::Text("登録カメラ数: %zu", cameraManager_->GetCameraCount());
-        ImGui::Text("アクティブ3D: %s", cameraManager_->GetActiveCameraName(CameraType::Camera3D).c_str());
-
-        // 今このカメラを最後に書き換えているのは誰か。
-        // 追従やコントローラの操作が効かないとき、原因がここで分かるようにしておく。
+        // ===== 今このカメラを動かしているのは誰か =====
+        // 追従やコントローラが効かないとき、原因がここで分かるようにしておく。
+        UI::SameLine();
+        ImGui::TextDisabled("|");
+        UI::SameLine();
         if (CameraSequence::IsActive()) {
             const std::string playingName = CameraSequence::GetPlayingName();
             ImGui::TextColored(ImVec4(0.35f, 0.85f, 0.45f, 1.0f), "駆動: シーケンス \"%s\"%s",
@@ -89,53 +104,44 @@ namespace CoreEngine {
             if (ImGui::SmallButton("停止")) {
                 CameraSequence::Stop();
             }
-            UI::Hint("再生中はゲーム側の追従より後に構図を上書きします。");
         } else {
-            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "駆動: ゲーム / カメラコントローラ");
+            ImGui::TextDisabled("駆動: ゲーム / カメラコントローラ");
+        }
+    }
+
+    void CameraDebugUI::DrawContent()
+    {
+        if (!cameraManager_) {
+            return;
         }
 
+        CameraEditorContext context = BuildContext();
+
+        DrawToolbar(context);
         UI::Separator();
 
-        bool expandAll = false;
-        bool collapseAll = false;
-        if (ImGui::Button("すべて展開")) {
-            expandAll = true;
-        }
-        UI::SameLine();
-        if (ImGui::Button("すべて折りたたみ")) {
-            collapseAll = true;
+        if (modules_.empty()) {
+            UI::Hint("カメラエディターモジュールが登録されていません。");
+            return;
         }
 
-        UI::Separator();
-
-        if (auto child = UI::Scope::ChildScope("CameraModuleVerticalLayout",
-            ImVec2(0.0f, 0.0f), 0, ImGuiWindowFlags_AlwaysVerticalScrollbar)) {
+        // 縦一列の折りたたみをやめてタブにする。前は 1 つ開くたびに下の内容が
+        // 押し下がり、同じボタンの位置が毎回変わっていた。タブなら位置が動かない。
+        if (ImGui::BeginTabBar("##CameraEditorTabs", ImGuiTabBarFlags_FittingPolicyScroll)) {
             for (size_t i = 0; i < modules_.size(); ++i) {
                 const auto& module = modules_[i];
                 if (!module) {
                     continue;
                 }
 
-                ImGui::PushID(static_cast<int>(i));
-
-                if (expandAll) {
-                    ImGui::SetNextItemOpen(true, ImGuiCond_Always);
-                } else if (collapseAll) {
-                    ImGui::SetNextItemOpen(false, ImGuiCond_Always);
-                }
-
-                if (auto s = UI::Scope::TreeScope(module->GetTabName(), ImGuiTreeNodeFlags_DefaultOpen)) {
+                if (ImGui::BeginTabItem(module->GetTabName())) {
+                    ImGui::PushID(static_cast<int>(i));
                     module->Draw(context);
+                    ImGui::PopID();
+                    ImGui::EndTabItem();
                 }
-
-                UI::Separator();
-                ImGui::PopID();
             }
-        }
-
-        if (modules_.empty()) {
-            UI::Separator();
-            UI::Hint("カメラエディターモジュールが登録されていません。");
+            ImGui::EndTabBar();
         }
     }
 

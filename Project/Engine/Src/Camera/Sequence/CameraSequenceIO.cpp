@@ -201,6 +201,7 @@ namespace CoreEngine
             json keyJson;
             keyJson["time"] = key.time;
             keyJson["snapshot"] = SnapshotToJson(key.snapshot);
+            keyJson["label"] = key.label;
             keyJson["easingTypeIndex"] = key.easingTypeIndex;
             keyJson["interpolation"] = static_cast<int>(key.interpolation);
             keyJson["aimMode"] = static_cast<int>(key.aimMode);
@@ -255,6 +256,7 @@ namespace CoreEngine
 
                 // 区間ごとの指定はバージョン 2.1 から。持っていないファイルは
                 // 「シーケンス既定の緩急・直線」になり、従来どおりの見た目になる。
+                key.label = JsonManager::SafeGet(keyJson, "label", std::string());
                 key.easingTypeIndex = JsonManager::SafeGet(keyJson, "easingTypeIndex", kUseSequenceEasing);
                 key.interpolation = ToInterpolation(
                     JsonManager::SafeGet(keyJson, "interpolation",

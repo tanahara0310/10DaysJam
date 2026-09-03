@@ -50,6 +50,9 @@ namespace CoreEngine {
         void ClearModules();
 
     private:
+        /// @brief どのカメラを覗いているか・誰が動かしているかを出す最上段
+        void DrawToolbar(const CameraEditorContext& context);
+
         /// @brief 現在フレーム用のコンテキストを構築
         CameraEditorContext BuildContext();
 

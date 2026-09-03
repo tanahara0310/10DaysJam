@@ -69,6 +69,11 @@ namespace CoreEngine
         float time = 0.0f;
         CameraSnapshot snapshot{};
 
+        /// @brief 一覧やタイムラインに出す名前（空なら時刻で表示される）
+        /// @details 「駅を俯瞰」「列車に寄る」のように役割で呼べると、キーが増えても
+        ///          どれがどのカットなのか探せる。時刻の数字だけでは区別がつかない。
+        std::string label;
+
         /// @brief このキーから次のキーへの緩急（kUseSequenceEasing でシーケンス既定）
         /// @details 区間ごとに指定できるので「ここだけゆっくり入る」が作れる。
         int easingTypeIndex = kUseSequenceEasing;
@@ -131,7 +136,7 @@ namespace CoreEngine
     /// @brief カメラシーケンス 1 本分のデータ
     struct CameraSequenceAsset {
         /// @brief 保存時に書き込むフォーマットバージョン
-        static constexpr const char* kCurrentVersion = "2.3";
+        static constexpr const char* kCurrentVersion = "2.4";
 
         /// @brief タイムライン長の下限（0 秒だと時刻の正規化がゼロ除算になる）
         static constexpr float kMinTimelineLength = 0.1f;

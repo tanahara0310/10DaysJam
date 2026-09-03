@@ -292,6 +292,9 @@
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.cpp">
+      <Filter>Engine\Src\Editor\Camera\Widget</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
@@ -1442,6 +1445,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.h">
+      <Filter>Engine\Src\Editor\Camera\Widget</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
@@ -3074,6 +3080,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Camera">
       <UniqueIdentifier>{7948DDA0-E342-42C7-A7E4-7C26135423C2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Camera\Widget">
+      <UniqueIdentifier>{9c41f8d2-6b37-4e51-a2c8-0d59e7b41f36}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\Camera\Module">
       <UniqueIdentifier>{931C7218-F1A0-427B-89D1-0C2266D82491}</UniqueIdentifier>
