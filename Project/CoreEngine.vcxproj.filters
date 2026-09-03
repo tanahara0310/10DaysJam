@@ -256,6 +256,21 @@
     <ClCompile Include="Engine\Src\Camera\Rig\CameraRigTypes.cpp">
       <Filter>Engine\Src\Camera\Rig</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigIO.cpp">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigLibrary.cpp">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigRuntime.cpp">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRig.cpp">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\CameraRigFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Rig\CameraRigEvaluator.cpp">
       <Filter>Engine\Src\Camera\Rig</Filter>
     </ClCompile>
@@ -1412,6 +1427,21 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Rig\CameraRigTypes.h">
       <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigIO.h">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigLibrary.h">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigRuntime.h">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRig.h">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\CameraRigFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Rig\CameraRigEvaluator.h">
       <Filter>Engine\Src\Camera\Rig</Filter>
