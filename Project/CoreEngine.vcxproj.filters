@@ -28,10 +28,25 @@
     <ClCompile Include="Application\Src\Components\Title\TitleButtonAnimationComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleMonkeySettingsComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Title\TitleLogoAnimationComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Title\TitleSceneSettingsComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\Title\TitleTrolleySettingsComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp">
@@ -1323,10 +1338,25 @@
     <ClInclude Include="Application\Src\Components\Title\TitleButtonAnimationComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleMonkeySettingsComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Title\TitleLogoAnimationComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Title\TitleSceneSettingsComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h">
+      <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Title\TitleTrolleySettingsComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h">

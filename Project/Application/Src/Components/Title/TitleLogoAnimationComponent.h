@@ -20,6 +20,8 @@ namespace GameComponents
         void OnDestroy() override;
 
     private:
+        void OnIntroProgress(float progress);
+        void PlayBounceShake(float intensity);
         void StartIdleAnimation();
 
         CoreEngine::TransformComponent* transform_ = nullptr;
@@ -34,5 +36,10 @@ namespace GameComponents
         float bobHeight_ = 0.12f;
         float bobDuration_ = 1.6f;
         float rotationAmplitude_ = 0.035f;
+        float shakeStrength_ = 1.0f;
+
+        // EaseOutBounce の接地ポイント（大きい着地 1 回 + 小さい反発 3 回）を
+        // それぞれ一度だけ処理するためのインデックス。
+        int nextBounceIndex_ = 0;
     };
 }

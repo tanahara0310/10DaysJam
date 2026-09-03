@@ -61,6 +61,74 @@ namespace TitleSceneCVars
         "落下時・待機時の左右回転幅（ラジアン）",
         CoreEngine::CVarRange{ 0.0f, 1.0f } };
 
+    CoreEngine::CVar<float> ShakeStrength{
+        "Title.CameraShake.Strength",
+        1.0f,
+        "タイトルモデルのバウンド時カメラシェイク強度（0で無効、1で標準）",
+        CoreEngine::CVarRange{ 0.0f, 2.0f } };
+
+    // ===== トロッコ登場演出 =====
+    CoreEngine::CVar<CoreEngine::Vector3> TrolleyPosition{
+        "Title.Trolley.Position",
+        { 0.0f, 0.0f, -0.5f },
+        "トロッコの最終位置（ワールド座標）",
+        CoreEngine::CVarRange{ -100.0f, 100.0f } };
+
+    CoreEngine::CVar<float> TrolleyIntroDelay{
+        "Title.Trolley.IntroDelay",
+        0.35f,
+        "タイトルの落下完了後、トロッコが登場するまでの待ち時間（秒）",
+        CoreEngine::CVarRange{ 0.0f, 5.0f } };
+
+    CoreEngine::CVar<float> TrolleyIntroDuration{
+        "Title.Trolley.IntroDuration",
+        0.9f,
+        "トロッコが画面下から登場する時間（秒）",
+        CoreEngine::CVarRange{ 0.05f, 5.0f } };
+
+    CoreEngine::CVar<float> TrolleyIntroOffset{
+        "Title.Trolley.IntroOffset",
+        8.0f,
+        "トロッコを最終位置より下へ離す距離（メートル）",
+        CoreEngine::CVarRange{ 0.0f, 30.0f } };
+
+    CoreEngine::CVar<CoreEngine::Vector3> TrolleyBobStart{
+        "Title.Trolley.BobStart",
+        { 0.0f, 0.0f, 0.0f },
+        "浮遊の線形補間を開始する位置オフセット（トロッコ基準）",
+        CoreEngine::CVarRange{ -10.0f, 10.0f } };
+
+    CoreEngine::CVar<CoreEngine::Vector3> TrolleyBobEnd{
+        "Title.Trolley.BobEnd",
+        { 0.0f, 0.12f, 0.0f },
+        "浮遊の線形補間を終了する位置オフセット（トロッコ基準）",
+        CoreEngine::CVarRange{ -10.0f, 10.0f } };
+
+    CoreEngine::CVar<float> TrolleyBobDuration{
+        "Title.Trolley.BobDuration",
+        1.6f,
+        "トロッコが上下へ浮遊する片道の時間（秒）",
+        CoreEngine::CVarRange{ 0.1f, 10.0f } };
+
+    // ===== monkey.obj の配置・登場演出 =====
+    CoreEngine::CVar<float> MonkeyDistance{
+        "Title.Monkey.Distance",
+        1.0f,
+        "トロッコの基準位置から monkey.obj の最終位置までの距離（Y方向）",
+        CoreEngine::CVarRange{ 0.0f, 10.0f } };
+
+    CoreEngine::CVar<float> MonkeyIntroDuration{
+        "Title.Monkey.IntroDuration",
+        0.5f,
+        "トロッコ到着後に monkey.obj が飛び出す時間（秒）",
+        CoreEngine::CVarRange{ 0.05f, 3.0f } };
+
+    CoreEngine::CVar<float> MonkeyIntroOffset{
+        "Title.Monkey.IntroOffset",
+        1.5f,
+        "monkey.obj をトロッコ内へ沈めておく距離（メートル）",
+        CoreEngine::CVarRange{ 0.0f, 10.0f } };
+
     // ===== 操作ヒント UI =====
     CoreEngine::CVar<float> HintFontSize{
         "Title.UI.HintFontSize",

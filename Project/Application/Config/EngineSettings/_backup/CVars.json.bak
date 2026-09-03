@@ -1,5 +1,7 @@
 {
-    "Title.UI.HintFontSize": 35.54899978637695,
+    "Title.CameraShake.Strength": 0.7400000095367432,
+    "Title.Monkey.Distance": 0.37700000405311584,
+    "Title.UI.HintFontSize": 40.21799850463867,
     "Title.UI.HintPosition": [
         0.0,
         285.7139892578125
@@ -7,16 +9,9 @@
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        -0.9268882870674133,
-        -0.37097790837287903,
-        0.057039227336645126
-    ],
-    "r.AtmosphereLights.MoonEnabled": true,
-    "r.AtmosphereLights.SunAtmosphereIntensity": 20.0,
-    "r.AtmosphereLights.SunDirection": [
-        -0.5530895590782166,
-        -0.30742835998535156,
-        -0.7743253707885742
+        -0.9396738409996033,
+        0.3420201539993286,
+        0.005947260186076164
     ],
     "r.AutoExposure.Enabled": true,
     "r.Bloom.Intensity": 0.9480000138282776,
@@ -25,6 +20,7 @@
     "r.CAS.Enabled": false,
     "r.Cloud.CloudTopVariation": 0.4000000059604645,
     "r.Cloud.DetailErosionStrength": 0.1599999964237213,
+    "r.Cloud.Enabled": false,
     "r.Cloud.GlobalCoverage": 0.5,
     "r.Cloud.LayerBottomAltitude": 2000.0,
     "r.Cloud.LayerThickness": 3000.0,
