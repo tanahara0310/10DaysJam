@@ -4,6 +4,7 @@
 
 #include "ICameraEditorModule.h"
 #include "Camera/Sequence/CameraSequenceEvaluator.h"
+#include "Editor/Camera/Widget/CameraIconOverlay.h"
 #include "Editor/Camera/Widget/CameraTimelineWidget.h"
 
 #include <string>
@@ -25,8 +26,9 @@ namespace CoreEngine
         /// @brief タブ内容を描画
         void Draw(const CameraEditorContext& context) override;
 
-        /// @brief ビューポート上で選択キーの位置と注視点を掴めるようにする
-        void DrawViewportGizmo(const CameraEditorContext& context, const Camera& viewCamera) override;
+        /// @brief ビューポート上へキーのアイコンとギズモを重ねる
+        void DrawViewportOverlay(const CameraEditorContext& context, const Camera& viewCamera,
+            const CameraEditorViewport& viewport) override;
 
     private:
         /// @brief Undo/Redo で退避する編集状態
@@ -87,6 +89,15 @@ namespace CoreEngine
 
         /// @brief 件数と保存先を出す最下段
         void DrawStatusBar();
+
+        /// @brief キーの位置へカメラアイコンを描き、クリックで選択できるようにする
+        /// @details Unity / Unreal がカメラの居場所に出しているアイコンと同じ役割。
+        ///          線と違って距離によらず同じ大きさで見えるので、遠くのキーも掴める。
+        void DrawKeyIcons(const CameraEditorContext& context, const Camera& viewCamera,
+            const CameraEditorViewport& viewport);
+
+        /// @brief 選択キーの位置・注視点をギズモで動かす
+        void DrawKeyGizmo(const CameraEditorContext& context, const Camera& viewCamera);
 
         /// @brief キーの視錐台を線で描く
         /// @details そのキーが何を画に収めるつもりなのかを、覗き込まずに読めるようにする。
@@ -191,6 +202,10 @@ namespace CoreEngine
         bool viewportShowDebugTarget_ = true;
         bool viewportShowFrustum_ = true;
         bool viewportGizmoEnabled_ = true;
+        bool viewportShowIcons_ = true;
+
+        /// @brief アイコンの大きさ倍率（1.0 で約 22px）
+        float viewportIconScale_ = 1.0f;
 
         /// @brief 視錐台を描く長さ [m]（遠クリップまで描くと画面が埋まる）
         float viewportFrustumLength_ = 6.0f;

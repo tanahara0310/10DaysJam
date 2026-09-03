@@ -22,16 +22,19 @@ namespace CoreEngine
         /// @brief タブ内容を描画
         virtual void Draw(const CameraEditorContext& context) = 0;
 
-        /// @brief ゲームビューポート上のギズモを描画する
+        /// @brief ゲームビューポート上の重ね描き（ギズモ・アイコン）を行う
         /// @param context 共通コンテキスト
-        /// @param viewCamera いま覗いているカメラ（ギズモの投影に使う）
-        /// @details ImGuizmo の準備はビューポート側で済んでいる前提。
+        /// @param viewCamera いま覗いているカメラ（射影に使う）
+        /// @param viewport ビューポートの位置と大きさ
+        /// @details ImGuizmo の準備と描画リストの指定はビューポート側で済んでいる前提。
         ///          タブが選ばれているかに関わらず毎フレーム呼ばれるので、
         ///          出す/出さないの判断はモジュール側で行うこと。
-        virtual void DrawViewportGizmo(const CameraEditorContext& context, const Camera& viewCamera)
+        virtual void DrawViewportOverlay(const CameraEditorContext& context,
+            const Camera& viewCamera, const CameraEditorViewport& viewport)
         {
             (void)context;
             (void)viewCamera;
+            (void)viewport;
         }
     };
 }

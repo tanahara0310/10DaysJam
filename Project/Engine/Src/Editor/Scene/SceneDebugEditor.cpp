@@ -6,6 +6,7 @@
 #include "Input/InputManager.h"
 #include "Camera/CameraManager.h"
 #include "Camera/CameraSceneStateIO.h"
+#include "Editor/Camera/Module/CameraEditorContext.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
@@ -299,10 +300,15 @@ namespace CoreEngine
             objectSelector_.Update(gameObjectManager_, camera3D, normalizedMousePos, isViewportHovered);
             objectSelector_.DrawGizmo(camera3D);
 
-            // カメラ編集のギズモ（キー位置・注視点）はオブジェクト選択の後。
+            // カメラ編集の重ね描き（キーのアイコン・ギズモ）はオブジェクト選択の後。
             // 同じフレームで両方が掴めると、どちらが動いたのか分からなくなる。
             if (cameraManager_ && !Gizmo::IsUsing()) {
-                cameraManager_->DrawDebugViewportGizmo(*camera3D);
+                CameraEditorViewport cameraViewport{};
+                cameraViewport.x = viewportPos.x;
+                cameraViewport.y = viewportPos.y;
+                cameraViewport.width = viewportSize.x;
+                cameraViewport.height = viewportSize.y;
+                cameraManager_->DrawDebugViewportOverlay(*camera3D, cameraViewport);
             }
         }
 

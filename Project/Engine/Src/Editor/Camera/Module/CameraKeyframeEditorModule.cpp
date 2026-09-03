@@ -807,6 +807,8 @@ namespace CoreEngine
         UI::Widgets::ToggleSwitch("注視先への線", &viewportShowDebugTarget_);
         UI::Widgets::ToggleSwitch("視錐台", &viewportShowFrustum_);
         UI::Widgets::ToggleSwitch("ビューポートのギズモ", &viewportGizmoEnabled_);
+        UI::Widgets::ToggleSwitch("カメラアイコン", &viewportShowIcons_);
+        UI::SliderFloat("アイコンの大きさ", viewportIconScale_, 0.5f, 2.5f, "%.2f");
         UI::DragFloat("視錐台の長さ", viewportFrustumLength_, 0.1f, 0.5f, 100.0f, "%.1f m");
 
         UI::DragInt("軌跡サンプル/区間", viewportTrajectorySamplesPerSegment_, 1.0f, 2, 64);
@@ -1298,7 +1300,99 @@ namespace CoreEngine
         }
     }
 
-    void CameraKeyframeEditorModule::DrawViewportGizmo(const CameraEditorContext& context, const Camera& viewCamera)
+    void CameraKeyframeEditorModule::DrawViewportOverlay(const CameraEditorContext& context,
+        const Camera& viewCamera, const CameraEditorViewport& viewport)
+    {
+        if (viewportShowIcons_ && viewport.IsValid()) {
+            DrawKeyIcons(context, viewCamera, viewport);
+        }
+
+        DrawKeyGizmo(context, viewCamera);
+    }
+
+    void CameraKeyframeEditorModule::DrawKeyIcons(const CameraEditorContext& context,
+        const Camera& viewCamera, const CameraEditorViewport& viewport)
+    {
+        if (sequence_.keyframes.empty()) {
+            return;
+        }
+
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        const CameraSequenceAimContext aimContext = MakeAimContext(context);
+        const float scale = viewportIconScale_;
+        const float hitRadius = CameraIconOverlay::GetHitRadius(scale);
+
+        const ImVec2 mouse = ImGui::GetMousePos();
+        int clickedKey = -1;
+        float clickedDistance = hitRadius;
+
+        for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+            const CameraSequenceKeyframe& key = sequence_.keyframes[i];
+
+            float screenX = 0.0f;
+            float screenY = 0.0f;
+            if (!CameraIconOverlay::WorldToScreen(key.snapshot.position, viewCamera, viewport, screenX, screenY)) {
+                continue;
+            }
+
+            // ビューポートの外へはみ出したものは描かない。ImGui のクリップに任せると
+            // 隣のパネルの上にアイコンが乗る。
+            if (screenX < viewport.x - hitRadius || screenX > viewport.x + viewport.width + hitRadius
+                || screenY < viewport.y - hitRadius || screenY > viewport.y + viewport.height + hitRadius) {
+                continue;
+            }
+
+            // レンズが向く方向は、そのキーが実際に撮る向き。注視キーは注視先を向いた
+            // 回転で求めないと、アイコンの向きと再生結果がずれる。
+            Vector3 rotation = key.snapshot.rotation;
+            Vector3 target{};
+            if (CameraSequenceEvaluator::ResolveAimTarget(key, &aimContext, target)) {
+                rotation = CameraSequenceEvaluator::LookRotation(key.snapshot.position, target, key.aimRoll);
+            }
+            const Matrix4x4 basis = MathCore::Matrix::MakeAffine(
+                Vector3{ 1.0f, 1.0f, 1.0f }, rotation, Vector3{ 0.0f, 0.0f, 0.0f });
+            const float angle = CameraIconOverlay::ComputeScreenAngle(
+                key.snapshot.position, basis.GetAxisZ(), viewCamera, viewport);
+
+            const bool selected = (i == selectedIndex_);
+            const ImU32 fill = selected ? IM_COL32(240, 180, 64, 255) : IM_COL32(120, 170, 235, 235);
+            const ImU32 outline = selected ? IM_COL32(70, 44, 6, 255) : IM_COL32(16, 26, 40, 255);
+
+            CameraIconOverlay::DrawCameraGlyph(draw, screenX, screenY, angle,
+                selected ? scale * 1.2f : scale, fill, outline);
+
+            // 番号と名前。アイコンだけではどのキーか分からない。
+            char label[160]{};
+            if (key.label.empty()) {
+                std::snprintf(label, sizeof(label), "%d", i + 1);
+            } else {
+                std::snprintf(label, sizeof(label), "%d %s", i + 1, key.label.c_str());
+            }
+            const float labelY = screenY + CameraIconOverlay::GetHitRadius(scale) + 2.0f;
+            draw->AddText(ImVec2(screenX - 3.0f + 1.0f, labelY + 1.0f), IM_COL32(0, 0, 0, 160), label);
+            draw->AddText(ImVec2(screenX - 3.0f, labelY),
+                selected ? IM_COL32(255, 226, 160, 255) : IM_COL32(210, 224, 240, 235), label);
+
+            const float dx = mouse.x - screenX;
+            const float dy = mouse.y - screenY;
+            const float distance = std::sqrt(dx * dx + dy * dy);
+            if (distance <= clickedDistance) {
+                clickedDistance = distance;
+                clickedKey = i;
+            }
+        }
+
+        // ギズモを掴んでいる最中は選択を変えない。掴んだまま別のキーへ移ると
+        // ドラッグの対象が入れ替わってしまう。
+        if (clickedKey >= 0 && !Gizmo::IsUsing() && !Gizmo::IsOver()
+            && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            selectedIndex_ = clickedKey;
+            playhead_ = sequence_.keyframes[clickedKey].time;
+            ApplyEvaluatedAt(context, playhead_);
+        }
+    }
+
+    void CameraKeyframeEditorModule::DrawKeyGizmo(const CameraEditorContext& context, const Camera& viewCamera)
     {
         if (!viewportGizmoEnabled_
             || selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(sequence_.keyframes.size())) {
@@ -1332,7 +1426,6 @@ namespace CoreEngine
 
         ApplyEvaluatedAt(context, playhead_);
     }
-
     int CameraKeyframeEditorModule::FindNearestKeyframeIndex(float time) const
     {
         if (sequence_.keyframes.empty()) {

@@ -292,6 +292,9 @@
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Camera\Widget\CameraIconOverlay.cpp">
+      <Filter>Engine\Src\Editor\Camera\Widget</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.cpp">
       <Filter>Engine\Src\Editor\Camera\Widget</Filter>
     </ClCompile>
@@ -1445,6 +1448,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Camera\Widget\CameraIconOverlay.h">
+      <Filter>Engine\Src\Editor\Camera\Widget</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.h">
       <Filter>Engine\Src\Editor\Camera\Widget</Filter>

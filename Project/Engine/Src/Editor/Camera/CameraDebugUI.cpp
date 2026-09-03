@@ -67,7 +67,8 @@ namespace CoreEngine {
         }
     }
 
-    void CameraDebugUI::DrawViewportGizmo(const Camera& viewCamera)
+    void CameraDebugUI::DrawViewportOverlay(const Camera& viewCamera,
+        const CameraEditorViewport& viewport)
     {
         if (!cameraManager_) {
             return;
@@ -76,7 +77,7 @@ namespace CoreEngine {
         CameraEditorContext context = BuildContext();
         for (const auto& module : modules_) {
             if (module) {
-                module->DrawViewportGizmo(context, viewCamera);
+                module->DrawViewportOverlay(context, viewCamera, viewport);
             }
         }
     }

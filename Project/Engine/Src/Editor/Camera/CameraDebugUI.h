@@ -40,9 +40,10 @@ namespace CoreEngine {
         /// @brief モジュールの状態更新のみ実行（描画なし）
         void UpdateModules();
 
-        /// @brief ゲームビューポート上のギズモを各モジュールへ描かせる
+        /// @brief ゲームビューポート上の重ね描きを各モジュールへ行わせる
         /// @param viewCamera いま覗いているカメラ
-        void DrawViewportGizmo(const Camera& viewCamera);
+        /// @param viewport ビューポートの位置と大きさ
+        void DrawViewportOverlay(const Camera& viewCamera, const CameraEditorViewport& viewport);
 
         /// @brief カメラUIの内容を描画（ImGui::Begin/Endなし、外部ウィンドウへの埋め込み用）
         void DrawContent();
