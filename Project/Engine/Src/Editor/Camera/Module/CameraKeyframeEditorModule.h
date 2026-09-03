@@ -104,6 +104,11 @@ namespace CoreEngine
         void DrawKeyFrustum(const CameraSequenceKeyframe& key, const CameraSequenceAimContext& aim,
             const Vector3& color, float alpha) const;
 
+        /// @brief 姿勢から視錐台を線で描く
+        /// @details キーではなく「今の再生ヘッド位置の構図」を描くのに使う。
+        void DrawFrustumFromPose(const Vector3& position, const Vector3& rotation,
+            float fov, float aspectRatio, const Vector3& color, float alpha) const;
+
         /// @brief スナップショットが同一かを誤差込みで判定
         bool IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const;
 
@@ -203,6 +208,11 @@ namespace CoreEngine
         bool viewportShowFrustum_ = true;
         bool viewportGizmoEnabled_ = true;
         bool viewportShowIcons_ = true;
+        bool viewportShowPlayheadFrustum_ = true;
+
+        /// @brief 非選択キーの視錐台の濃さ
+        /// @details 明るく細かい床の上では 0.25 程度では読めない。既定を上げてある。
+        float viewportFrustumIdleAlpha_ = 0.5f;
 
         /// @brief アイコンの大きさ倍率（1.0 で約 22px）
         float viewportIconScale_ = 1.0f;

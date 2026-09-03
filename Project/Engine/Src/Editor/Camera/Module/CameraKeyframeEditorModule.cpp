@@ -806,6 +806,8 @@ namespace CoreEngine
         UI::Widgets::ToggleSwitch("キーフレーム位置", &viewportShowKeyMarkers_);
         UI::Widgets::ToggleSwitch("注視先への線", &viewportShowDebugTarget_);
         UI::Widgets::ToggleSwitch("視錐台", &viewportShowFrustum_);
+        UI::Widgets::ToggleSwitch("再生ヘッドの視錐台", &viewportShowPlayheadFrustum_);
+        UI::SliderFloat("非選択キーの濃さ", viewportFrustumIdleAlpha_, 0.1f, 1.0f, "%.2f");
         UI::Widgets::ToggleSwitch("ビューポートのギズモ", &viewportGizmoEnabled_);
         UI::Widgets::ToggleSwitch("カメラアイコン", &viewportShowIcons_);
         UI::SliderFloat("アイコンの大きさ", viewportIconScale_, 0.5f, 2.5f, "%.2f");
@@ -1237,7 +1239,18 @@ namespace CoreEngine
                 const bool selected = (i == selectedIndex_);
                 DrawKeyFrustum(sequence_.keyframes[i], aimContext,
                     selected ? viewportSelectedKeyColor_ : viewportKeyMarkerColor_,
-                    selected ? 0.9f : 0.25f);
+                    selected ? 0.95f : viewportFrustumIdleAlpha_);
+            }
+        }
+
+        if (viewportShowPlayheadFrustum_) {
+            // 再生ヘッド位置の構図。キーの間でも「いま何が写っているか」が読めるので、
+            // スクラブしながら画を詰めるときに効く。
+            CameraSnapshot current{};
+            if (CameraSequenceEvaluator::Evaluate(sequence_, playhead_, current, &aimContext)) {
+                DrawFrustumFromPose(current.position, current.rotation,
+                    current.parameters.fov, current.parameters.aspectRatio,
+                    Vector3{ 0.95f, 0.35f, 0.32f }, 0.95f);
             }
         }
 
@@ -1269,21 +1282,28 @@ namespace CoreEngine
             rotation = CameraSequenceEvaluator::LookRotation(key.snapshot.position, target, key.aimRoll);
         }
 
+        DrawFrustumFromPose(key.snapshot.position, rotation,
+            key.snapshot.parameters.fov, key.snapshot.parameters.aspectRatio, color, alpha);
+    }
+
+    void CameraKeyframeEditorModule::DrawFrustumFromPose(const Vector3& position,
+        const Vector3& rotation, float fov, float aspectRatio,
+        const Vector3& color, float alpha) const
+    {
         const Matrix4x4 basis = MathCore::Matrix::MakeAffine(
-            { 1.0f, 1.0f, 1.0f }, rotation, { 0.0f, 0.0f, 0.0f });
+            Vector3{ 1.0f, 1.0f, 1.0f }, rotation, Vector3{ 0.0f, 0.0f, 0.0f });
         const Vector3 forward = basis.GetAxisZ();
         const Vector3 right = basis.GetAxisX();
         const Vector3 up = basis.GetAxisY();
 
         // 遠クリップまで描くと線が画面を埋めるので、見て分かる長さで打ち切る。
         const float length = viewportFrustumLength_;
-        const float halfHeight = std::tan(key.snapshot.parameters.fov * 0.5f) * length;
+        const float halfHeight = std::tan(fov * 0.5f) * length;
         // アスペクトは 0（自動）のことが多いので、読めれば十分な 16:9 で描く。
-        const float aspect = (key.snapshot.parameters.aspectRatio > 0.0f)
-            ? key.snapshot.parameters.aspectRatio : (16.0f / 9.0f);
+        const float aspect = (aspectRatio > 0.0f) ? aspectRatio : (16.0f / 9.0f);
         const float halfWidth = halfHeight * aspect;
 
-        const Vector3 origin = key.snapshot.position;
+        const Vector3 origin = position;
         const Vector3 center = origin + forward * length;
         const Vector3 corners[4] = {
             center + up * halfHeight - right * halfWidth,
