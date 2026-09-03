@@ -5,6 +5,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Input/InputManager.h"
 #include "Camera/CameraManager.h"
+#include "Camera/CameraSceneStateIO.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Model/DynamicModelObject.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
@@ -252,6 +253,12 @@ namespace CoreEngine
         if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_S)) {
             if (!saveSystem_->GetSceneName().empty()) {
                 saveSystem_->SaveScene(gameObjectManager_);
+
+                // カメラの構図もシーンの一部として一緒に保存する。
+                // これが無いと、エディタで詰めた画がアプリを閉じるたびに消える。
+                if (cameraManager_) {
+                    CameraSceneStateIO::Save(saveSystem_->GetSceneName(), *cameraManager_);
+                }
             }
         }
 

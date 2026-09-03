@@ -2,6 +2,8 @@
 #include "CameraFeature.h"
 
 #include "Camera/Camera.h"
+#include "Camera/CameraSceneStateIO.h"
+#include "Scene/SceneSaveSystem.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Debug/DebugCameraCVars.h"
 #include "Editor/Camera/EditorCameraInput.h"
@@ -71,6 +73,16 @@ namespace CoreEngine
 
         cameraManager_->RegisterCamera(CameraNames::Camera2D, std::move(camera2D));
         cameraManager_->SetActiveCamera(CameraNames::Camera2D, CameraType::Camera2D);
+    }
+
+    void CameraFeature::PostSceneInitialize(SceneContext& ctx)
+    {
+        if (!cameraManager_ || !ctx.saveSystem) {
+            return;
+        }
+
+        // 保存が無ければ何もしない。エディタ視点は CVar 側の値がそのまま残る。
+        CameraSceneStateIO::Load(ctx.saveSystem->GetSceneName(), *cameraManager_);
     }
 
     void CameraFeature::Update(SceneContext& ctx, SceneUpdatePhase phase)
