@@ -14,6 +14,7 @@
 
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
+#include "Camera/Shake/CameraShake.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Line/LineManager.h"
@@ -48,6 +49,16 @@ namespace CoreEngine
         };
 
         constexpr int kAimModeLabelCount = static_cast<int>(sizeof(kAimModeLabels) / sizeof(kAimModeLabels[0]));
+
+        // イベント種別の表示名。CameraSequenceEventType の値をそのまま添字に使う。
+        constexpr const char* kEventTypeLabels[] = {
+            "シェイク",
+            "trauma 加算",
+            "コールバック",
+            "時間スケール"
+        };
+
+        constexpr int kEventTypeLabelCount = static_cast<int>(sizeof(kEventTypeLabels) / sizeof(kEventTypeLabels[0]));
 
         constexpr float kRadToDeg = 180.0f / 3.14159265358979323846f;
         constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
@@ -446,6 +457,12 @@ namespace CoreEngine
                     playheadChanged = true;
                 }
             }
+        }
+
+        UI::Separator();
+
+        if (ImGui::CollapsingHeader("イベントトラック", ImGuiTreeNodeFlags_None)) {
+            DrawEventTrack();
         }
 
         UI::Separator();
@@ -864,6 +881,198 @@ namespace CoreEngine
         }
 
         observedSnapshot_ = current;
+    }
+
+    void CameraKeyframeEditorModule::DrawEventTrack()
+    {
+        UI::Hint("再生ヘッドがこの時刻を跨いだ瞬間に発火します。ゲーム中の再生でも同じです。");
+
+        if (ImGui::Button("現在位置にイベントを追加")) {
+            PushUndoState();
+
+            CameraSequenceEvent event{};
+            event.time = playhead_;
+            event.type = CameraSequenceEventType::Shake;
+            // 既定のプリセット名を入れておく。空のまま置かれて
+            // 「何も起きない」と誤解されるのを防ぐ。
+            const auto& presets = CameraShake::GetPresetLibrary().GetAll();
+            event.name = presets.empty() ? std::string() : presets.front().name;
+
+            sequence_.events.push_back(event);
+            sequence_.SortEvents();
+            selectedEventIndex_ = -1;
+            for (int i = 0; i < static_cast<int>(sequence_.events.size()); ++i) {
+                if (sequence_.events[i].time == event.time && sequence_.events[i].name == event.name) {
+                    selectedEventIndex_ = i;
+                    break;
+                }
+            }
+            editingEventNameIndex_ = -1;
+        }
+
+        UI::SameLine();
+        if (ImGui::Button("選択イベントを削除")) {
+            if (selectedEventIndex_ >= 0 && selectedEventIndex_ < static_cast<int>(sequence_.events.size())) {
+                PushUndoState();
+                sequence_.events.erase(sequence_.events.begin() + selectedEventIndex_);
+                selectedEventIndex_ = sequence_.events.empty()
+                    ? -1
+                    : std::clamp(selectedEventIndex_, 0, static_cast<int>(sequence_.events.size()) - 1);
+                editingEventNameIndex_ = -1;
+            }
+        }
+
+        if (sequence_.events.empty()) {
+            UI::Hint("イベントがありません。");
+            return;
+        }
+
+        selectedEventIndex_ = std::clamp(selectedEventIndex_, -1, static_cast<int>(sequence_.events.size()) - 1);
+
+        if (auto lb = UI::Scope::ListBoxScope("イベント一覧", ImVec2(-1.0f, 110.0f))) {
+            for (int i = 0; i < static_cast<int>(sequence_.events.size()); ++i) {
+                const CameraSequenceEvent& event = sequence_.events[i];
+                const int typeIndex = std::clamp(static_cast<int>(event.type), 0, kEventTypeLabelCount - 1);
+
+                char label[256]{};
+                std::snprintf(label, sizeof(label), "%.2f秒  %s  %s%s##event%d",
+                    event.time,
+                    kEventTypeLabels[typeIndex],
+                    event.name.empty() ? "(名前なし)" : event.name.c_str(),
+                    event.enabled ? "" : "  (無効)",
+                    i);
+
+                if (ImGui::Selectable(label, selectedEventIndex_ == i)) {
+                    selectedEventIndex_ = i;
+                    editingEventNameIndex_ = -1;
+                }
+            }
+        }
+
+        if (selectedEventIndex_ < 0 || selectedEventIndex_ >= static_cast<int>(sequence_.events.size())) {
+            return;
+        }
+
+        CameraSequenceEvent& event = sequence_.events[selectedEventIndex_];
+
+        bool enabled = event.enabled;
+        if (UI::Widgets::ToggleSwitch("有効", &enabled)) {
+            PushUndoState();
+            event.enabled = enabled;
+        }
+
+        float time = event.time;
+        if (UI::DragFloat("時刻 (秒)", time, 0.02f, 0.0f, sequence_.timelineLength, "%.2f")) {
+            PushUndoState();
+            event.time = std::clamp(time, 0.0f, sequence_.timelineLength);
+            // 並べ替えると添字がずれるので、同じイベントを選び直す。
+            const CameraSequenceEvent moved = event;
+            sequence_.SortEvents();
+            for (int i = 0; i < static_cast<int>(sequence_.events.size()); ++i) {
+                if (sequence_.events[i].time == moved.time && sequence_.events[i].name == moved.name) {
+                    selectedEventIndex_ = i;
+                    break;
+                }
+            }
+            editingEventNameIndex_ = -1;
+            return;
+        }
+
+        int typeIndex = std::clamp(static_cast<int>(event.type), 0, kEventTypeLabelCount - 1);
+        if (ImGui::BeginCombo("種類", kEventTypeLabels[typeIndex])) {
+            for (int i = 0; i < kEventTypeLabelCount; ++i) {
+                const bool selected = (i == typeIndex);
+                if (ImGui::Selectable(kEventTypeLabels[i], selected)) {
+                    PushUndoState();
+                    event.type = static_cast<CameraSequenceEventType>(i);
+                }
+                if (selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        switch (event.type) {
+        case CameraSequenceEventType::Shake: {
+            const auto& presets = CameraShake::GetPresetLibrary().GetAll();
+            const char* preview = event.name.empty() ? "未選択" : event.name.c_str();
+
+            if (ImGui::BeginCombo("シェイクプリセット", preview)) {
+                for (const auto& preset : presets) {
+                    const bool selected = (preset.name == event.name);
+                    if (ImGui::Selectable(preset.name.c_str(), selected)) {
+                        PushUndoState();
+                        event.name = preset.name;
+                    }
+                    if (selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (!event.name.empty() && !CameraShake::GetPresetLibrary().Find(event.name)) {
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
+                    "プリセットが見つかりません。再生しても何も起きません。");
+            }
+
+            float scale = event.value;
+            if (UI::SliderFloat("強さ倍率", scale, 0.0f, 3.0f, "%.2f")) {
+                PushUndoState();
+                event.value = scale;
+            }
+
+            if (ImGui::Button("この揺れを試す")) {
+                CameraShake::PlayPreset(event.name, event.value);
+            }
+            break;
+        }
+
+        case CameraSequenceEventType::Trauma: {
+            float amount = event.value;
+            if (UI::SliderFloat("加算量", amount, 0.0f, 1.0f, "%.2f")) {
+                PushUndoState();
+                event.value = amount;
+            }
+            if (ImGui::Button("試す")) {
+                CameraShake::AddTrauma(event.value);
+            }
+            break;
+        }
+
+        case CameraSequenceEventType::TimeScale: {
+            float scale = event.value;
+            if (UI::SliderFloat("時間スケール", scale, 0.0f, 2.0f, "%.2f")) {
+                PushUndoState();
+                event.value = scale;
+            }
+            float duration = event.duration;
+            if (UI::DragFloat("継続 (秒)", duration, 0.01f, 0.0f, 10.0f, "%.2f")) {
+                PushUndoState();
+                event.duration = (std::max)(duration, 0.0f);
+            }
+            UI::Hint("継続が過ぎると等倍へ戻ります。");
+            break;
+        }
+
+        case CameraSequenceEventType::Callback: {
+            if (editingEventNameIndex_ != selectedEventIndex_) {
+                std::snprintf(eventNameBuffer_, sizeof(eventNameBuffer_), "%s", event.name.c_str());
+                editingEventNameIndex_ = selectedEventIndex_;
+            }
+            if (UI::InputText("イベント名", eventNameBuffer_, sizeof(eventNameBuffer_))) {
+                event.name = eventNameBuffer_;
+            }
+            float value = event.value;
+            if (UI::DragFloat("値", value, 0.05f, -1000.0f, 1000.0f, "%.2f")) {
+                PushUndoState();
+                event.value = value;
+            }
+            UI::Hint("CameraSequenceCallbackEvent として EventBus へ流れます。");
+            break;
+        }
+        }
     }
 
     void CameraKeyframeEditorModule::DrawViewportVisualization(const CameraEditorContext& context)

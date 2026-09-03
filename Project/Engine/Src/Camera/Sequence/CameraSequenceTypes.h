@@ -97,10 +97,41 @@ namespace CoreEngine
         float aimRoll = 0.0f;
     };
 
+    /// @brief タイムライン上のイベントの種類
+    /// @note 値は JSON の "type" にそのまま入る。番号を変えると既存アセットが壊れる。
+    enum class CameraSequenceEventType {
+        /// @brief シェイクプリセットを発火する（name = プリセット名 / value = 強さ倍率）
+        Shake = 0,
+        /// @brief trauma を加算する（value = 加算量 0..1）
+        Trauma = 1,
+        /// @brief 名前付きイベントを EventBus へ流す（ゲーム側で拾うための逃げ道）
+        Callback = 2,
+        /// @brief 時間スケールを一定時間だけ変える（value = 倍率 / duration = 秒）
+        TimeScale = 3
+    };
+
+    /// @brief タイムライン上の時刻付きイベント
+    /// @details 「この瞬間に何かを起こす」をシーケンスへ持たせるためのもの。
+    ///          カット割りに合わせた揺れや演出を、コードを書かずに置ける。
+    struct CameraSequenceEvent {
+        float time = 0.0f;
+        CameraSequenceEventType type = CameraSequenceEventType::Shake;
+        bool enabled = true;
+
+        /// @brief シェイクプリセット名 / コールバック名
+        std::string name;
+
+        /// @brief 種類ごとの値（強さ倍率・trauma 量・時間スケール）
+        float value = 1.0f;
+
+        /// @brief 種類ごとの継続時間 [秒]（TimeScale が使う）
+        float duration = 0.2f;
+    };
+
     /// @brief カメラシーケンス 1 本分のデータ
     struct CameraSequenceAsset {
         /// @brief 保存時に書き込むフォーマットバージョン
-        static constexpr const char* kCurrentVersion = "2.2";
+        static constexpr const char* kCurrentVersion = "2.3";
 
         /// @brief タイムライン長の下限（0 秒だと時刻の正規化がゼロ除算になる）
         static constexpr float kMinTimelineLength = 0.1f;
@@ -116,10 +147,18 @@ namespace CoreEngine
         std::vector<CameraSequenceKeyframe> keyframes;
         std::vector<CameraSequenceShot> shots;
 
+        /// @brief 時刻付きイベント（時刻の昇順に並べて持つ）
+        std::vector<CameraSequenceEvent> events;
+
         /// @brief キーフレームを時刻の昇順へ並べ替える
         /// @details 評価は「隣り合う 2 キーの間を補間する」前提なので、
         ///          キーを足した後・読み込んだ後は必ずこれを通すこと。
         void SortKeyframes();
+
+        /// @brief イベントを時刻の昇順へ並べ替える
+        /// @details 発火判定は「前回時刻から今回時刻までの間にあるもの」を順に見るので、
+        ///          並んでいないと発火順が入れ替わる。
+        void SortEvents();
 
         /// @brief 各値をタイムライン長の範囲へ収める
         /// @details timelineLength の下限、キー時刻とショット時刻のクランプ、

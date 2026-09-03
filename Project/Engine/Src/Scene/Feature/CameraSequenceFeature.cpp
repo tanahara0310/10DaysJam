@@ -5,6 +5,9 @@
 #include "Camera/CameraManager.h"
 #include "Camera/Sequence/CameraSequence.h"
 #include "Camera/Sequence/CameraSequenceEvaluator.h"
+#include "Camera/Sequence/CameraSequenceEvent.h"
+#include "Camera/Shake/CameraShake.h"
+#include "Utility/Event/EventBus.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Utility/FrameRate/Time.h"
@@ -36,6 +39,46 @@ namespace CoreEngine
         }
     }
 
+    void CameraSequenceFeature::DispatchEvent(const CameraSequenceEvent& event)
+    {
+        switch (event.type) {
+        case CameraSequenceEventType::Shake:
+            // プリセットが見つからなくても黙って何もしない。演出が出ないだけで
+            // 再生は続けたいし、毎フレーム同じログを吐くと他が読めなくなる。
+            CameraShake::PlayPreset(event.name, event.value);
+            break;
+
+        case CameraSequenceEventType::Trauma:
+            CameraShake::AddTrauma(event.value);
+            break;
+
+        case CameraSequenceEventType::TimeScale:
+            // 戻す時刻を控えて、Update 側で戻す。
+            Time::SetTimeScale(event.value);
+            timeScaleRemaining_ = event.duration;
+            break;
+
+        case CameraSequenceEventType::Callback:
+            EventBus::GetInstance().Publish(CameraSequenceCallbackEvent{ event.name, event.value });
+            break;
+        }
+    }
+
+    void CameraSequenceFeature::UpdateTimeScaleOverride(float unscaledDeltaTime)
+    {
+        if (timeScaleRemaining_ <= 0.0f) {
+            return;
+        }
+
+        // スロー中は Time::DeltaTime() 自体が縮むので、戻すまでの計測は
+        // 必ずスケールされない時間で行う。
+        timeScaleRemaining_ -= unscaledDeltaTime;
+        if (timeScaleRemaining_ <= 0.0f) {
+            timeScaleRemaining_ = 0.0f;
+            Time::SetTimeScale(1.0f);
+        }
+    }
+
     void CameraSequenceFeature::Initialize(SceneContext&)
     {
         CameraSequence::SetActivePlayer(&player_);
@@ -47,8 +90,16 @@ namespace CoreEngine
             return;
         }
 
+        UpdateTimeScaleOverride(Time::UnscaledDeltaTime());
+
         // カメラが無くても時間は進める（シーン切り替え中に再生が凍りつかないように）
         player_.Update(Time::DeltaTime(), Time::UnscaledDeltaTime());
+
+        // 跨いだイベントは、カメラの有無に関わらず実行する。カメラが一瞬いない
+        // フレームで演出だけ落ちると、原因の分からない取りこぼしになる。
+        for (const auto& event : player_.GetFiredEvents()) {
+            DispatchEvent(event);
+        }
 
         if (!player_.IsActive()) {
             hasBlendFrom_ = false;
@@ -100,6 +151,12 @@ namespace CoreEngine
         player_.Stop();
         hasBlendFrom_ = false;
         observedPlayId_ = 0;
+
+        // スロー演出の途中でシーンが終わっても、時間スケールは必ず戻す。
+        if (timeScaleRemaining_ > 0.0f) {
+            timeScaleRemaining_ = 0.0f;
+            Time::SetTimeScale(1.0f);
+        }
 
         if (CameraSequence::GetActivePlayer() == &player_) {
             CameraSequence::SetActivePlayer(nullptr);

@@ -13,6 +13,14 @@ namespace CoreEngine
             });
     }
 
+    void CameraSequenceAsset::SortEvents()
+    {
+        std::sort(events.begin(), events.end(),
+            [](const CameraSequenceEvent& lhs, const CameraSequenceEvent& rhs) {
+                return lhs.time < rhs.time;
+            });
+    }
+
     void CameraSequenceAsset::Sanitize()
     {
         if (timelineLength < kMinTimelineLength) {
@@ -21,6 +29,13 @@ namespace CoreEngine
 
         for (auto& key : keyframes) {
             key.time = std::clamp(key.time, 0.0f, timelineLength);
+        }
+
+        for (auto& event : events) {
+            event.time = std::clamp(event.time, 0.0f, timelineLength);
+            if (event.duration < 0.0f) {
+                event.duration = 0.0f;
+            }
         }
 
         // 開始をタイムライン終端まで許すと、終了を開始より後に置く余地が無くなる。

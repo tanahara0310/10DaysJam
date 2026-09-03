@@ -26,6 +26,11 @@ namespace CoreEngine
         time_ = 0.0f;
         blendInElapsed_ = 0.0f;
         playId_ = nextPlayId_++;
+        firedEvents_.clear();
+
+        // 発火判定は半開区間 (下限, 今回] なので、下限を負にしておくと
+        // 時刻 0 ちょうどのイベントも最初の更新で拾える。
+        eventCursor_ = -1.0f;
     }
 
     void CameraSequencePlayer::Stop()
@@ -36,6 +41,8 @@ namespace CoreEngine
         time_ = 0.0f;
         blendInElapsed_ = 0.0f;
         playId_ = 0;
+        firedEvents_.clear();
+        eventCursor_ = -1.0f;
     }
 
     void CameraSequencePlayer::Pause()
@@ -54,6 +61,8 @@ namespace CoreEngine
 
     void CameraSequencePlayer::Update(float scaledDeltaTime, float unscaledDeltaTime)
     {
+        firedEvents_.clear();
+
         // 終端に達した次の更新で停止する。こうすると最後のキーの構図が
         // ちょうど 1 フレーム分カメラへ反映されてから、ゲーム側へ返る。
         if (state_ == State::Finishing) {
@@ -65,6 +74,8 @@ namespace CoreEngine
             return;
         }
 
+        const float previousTime = time_;
+
         const float delta = options_.useUnscaledTime ? unscaledDeltaTime : scaledDeltaTime;
 
         // 繋ぎはポーズの影響を受けさせない。ポーズ中に再生を始めたとき、
@@ -72,6 +83,35 @@ namespace CoreEngine
         blendInElapsed_ += unscaledDeltaTime;
 
         AdvanceTime(delta * options_.speed);
+
+        // 巻き戻った（ループした）ときは、終端までと先頭からの 2 区間に分けて拾う。
+        // 1 区間として扱うと、跨いだはずのイベントがまるごと落ちる。
+        if (time_ < previousTime) {
+            CollectEvents(eventCursor_, GetDuration());
+            CollectEvents(-1.0f, time_);
+        } else {
+            CollectEvents(eventCursor_, time_);
+        }
+
+        eventCursor_ = time_;
+    }
+
+    void CameraSequencePlayer::CollectEvents(float fromTime, float toTime)
+    {
+        if (!asset_ || asset_->events.empty() || toTime < fromTime) {
+            return;
+        }
+
+        // events は時刻の昇順に並んでいる前提（CameraSequenceIO::Load が保証する）。
+        for (const auto& event : asset_->events) {
+            if (event.time > toTime) {
+                break;
+            }
+            if (!event.enabled || event.time <= fromTime) {
+                continue;
+            }
+            firedEvents_.push_back(event);
+        }
     }
 
     void CameraSequencePlayer::AdvanceTime(float delta)
@@ -115,6 +155,10 @@ namespace CoreEngine
     void CameraSequencePlayer::Seek(float time)
     {
         time_ = std::clamp(time, 0.0f, GetDuration());
+
+        // 飛び越した区間のイベントは発火させない。エディタでつまみを動かすたびに
+        // 揺れが出ると構図の確認ができなくなる。
+        eventCursor_ = time_;
     }
 
     float CameraSequencePlayer::GetDuration() const

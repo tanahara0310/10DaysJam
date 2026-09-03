@@ -107,6 +107,50 @@ namespace CoreEngine
             return jsonData;
         }
 
+        /// @brief 保存された番号をイベント種別へ戻す（未知の値は Callback 扱い）
+        /// @details 知らない種別を落とすと、新しいエンジンで作ったシーケンスを
+        ///          古いエンジンで開いたときイベントが黙って消える。Callback へ倒して残す。
+        CameraSequenceEventType ToEventType(int value)
+        {
+            switch (value) {
+            case static_cast<int>(CameraSequenceEventType::Shake):
+                return CameraSequenceEventType::Shake;
+            case static_cast<int>(CameraSequenceEventType::Trauma):
+                return CameraSequenceEventType::Trauma;
+            case static_cast<int>(CameraSequenceEventType::TimeScale):
+                return CameraSequenceEventType::TimeScale;
+            default:
+                return CameraSequenceEventType::Callback;
+            }
+        }
+
+        /// @brief イベントを JSON へ変換
+        json EventToJson(const CameraSequenceEvent& event)
+        {
+            json jsonData;
+            jsonData["time"] = event.time;
+            jsonData["type"] = static_cast<int>(event.type);
+            jsonData["enabled"] = event.enabled;
+            jsonData["name"] = event.name;
+            jsonData["value"] = event.value;
+            jsonData["duration"] = event.duration;
+            return jsonData;
+        }
+
+        /// @brief JSON からイベントを復元
+        CameraSequenceEvent JsonToEvent(const json& jsonData)
+        {
+            CameraSequenceEvent event{};
+            event.time = JsonManager::SafeGet(jsonData, "time", 0.0f);
+            event.type = ToEventType(JsonManager::SafeGet(jsonData, "type",
+                static_cast<int>(CameraSequenceEventType::Shake)));
+            event.enabled = JsonManager::SafeGet(jsonData, "enabled", true);
+            event.name = JsonManager::SafeGet(jsonData, "name", std::string());
+            event.value = JsonManager::SafeGet(jsonData, "value", 1.0f);
+            event.duration = JsonManager::SafeGet(jsonData, "duration", 0.2f);
+            return event;
+        }
+
         /// @brief JSON からショット情報を復元
         CameraSequenceShot JsonToShot(const json& jsonData)
         {
@@ -174,6 +218,12 @@ namespace CoreEngine
         }
         root["shots"] = shotsJson;
 
+        json eventsJson = json::array();
+        for (const auto& event : asset.events) {
+            eventsJson.push_back(EventToJson(event));
+        }
+        root["events"] = eventsJson;
+
         return JsonManager::GetInstance().SaveJson(filePath, root);
     }
 
@@ -229,9 +279,16 @@ namespace CoreEngine
             }
         }
 
+        if (root.contains("events") && root["events"].is_array()) {
+            for (const auto& eventJson : root["events"]) {
+                asset.events.push_back(JsonToEvent(eventJson));
+            }
+        }
+
         // 時刻の並びと範囲はここで整えておく。読み手が毎回気にしなくて済む。
         asset.Sanitize();
         asset.SortKeyframes();
+        asset.SortEvents();
 
         outAsset = std::move(asset);
         return !outAsset.keyframes.empty();

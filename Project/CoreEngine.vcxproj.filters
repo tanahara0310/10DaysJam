@@ -289,6 +289,9 @@
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.cpp">
+      <Filter>Engine\Src\Editor\Camera\Module</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
@@ -1051,6 +1054,9 @@
     <ClCompile Include="Engine\Src\Camera\Shake\CameraShake.cpp">
       <Filter>Engine\Src\Camera\Shake</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Shake\CameraShakePresetLibrary.cpp">
+      <Filter>Engine\Src\Camera\Shake</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Shake\CameraShaker.cpp">
       <Filter>Engine\Src\Camera\Shake</Filter>
     </ClCompile>
@@ -1398,6 +1404,9 @@
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequence.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceEvent.h">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClInclude>
@@ -1426,6 +1435,9 @@
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.h">
+      <Filter>Engine\Src\Editor\Camera\Module</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h">
@@ -2677,6 +2689,9 @@
       <Filter>Engine\Src\Camera\Shake</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Shake\CameraShakeTypes.h">
+      <Filter>Engine\Src\Camera\Shake</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShakePresetLibrary.h">
       <Filter>Engine\Src\Camera\Shake</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Shake\CameraShaker.h">

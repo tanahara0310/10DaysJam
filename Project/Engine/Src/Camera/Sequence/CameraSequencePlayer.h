@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 /// @file
 /// @brief カメラシーケンスの再生ランタイム（再生ヘッドの進行と状態管理）
@@ -74,7 +75,14 @@ namespace CoreEngine
             const CameraSequenceAimContext* aim = nullptr) const;
 
         /// @brief 再生ヘッドを直接動かす（スクラブ用）
+        /// @note 跨いだイベントは発火しない。エディタでつまみを動かすたびに
+        ///       揺れが出ると、構図の確認ができなくなる。
         void Seek(float time);
+
+        /// @brief 直前の Update で跨いだイベント（時刻の昇順）
+        /// @details Update のたびに作り直される。呼び出し側はこれを見て実際の演出を起こす。
+        ///          Player 自身はシェイクもイベントバスも知らない。
+        const std::vector<CameraSequenceEvent>& GetFiredEvents() const { return firedEvents_; }
 
         // ===== 状態の照会 =====
 
@@ -119,6 +127,11 @@ namespace CoreEngine
         /// @brief 再生ヘッドを終端で折り返す / 止める
         void AdvanceTime(float delta);
 
+        /// @brief 半開区間 (fromTime, toTime] に入るイベントを firedEvents_ へ積む
+        /// @details 端点の扱いを半開にしないと、ループのたびに時刻 0 のイベントが
+        ///          二重に出たり、逆に一度も出なかったりする。
+        void CollectEvents(float fromTime, float toTime);
+
         enum class State {
             Stopped,
             Playing,
@@ -137,5 +150,13 @@ namespace CoreEngine
         float blendInElapsed_ = 0.0f;
         std::uint32_t playId_ = 0;
         std::uint32_t nextPlayId_ = 1;
+
+        // 直前の Update で跨いだイベント
+        std::vector<CameraSequenceEvent> firedEvents_;
+
+        // 次に拾う範囲の下限（この時刻より後のイベントが対象）。
+        // 再生開始時は -1 にして、時刻 0 ちょうどのイベントも拾えるようにする。
+        // Seek はここを移動先へ合わせるだけなので、飛び越した分は発火しない。
+        float eventCursor_ = -1.0f;
     };
 }

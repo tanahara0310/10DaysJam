@@ -47,7 +47,16 @@ namespace CoreEngine
         const CameraSequencePlayer& GetPlayer() const { return player_; }
 
     private:
+        /// @brief 跨いだイベント 1 件を実際の演出へ変換する
+        void DispatchEvent(const CameraSequenceEvent& event);
+
+        /// @brief TimeScale イベントの残り時間を進め、切れたら等倍へ戻す
+        void UpdateTimeScaleOverride(float unscaledDeltaTime);
+
         CameraSequencePlayer player_;
+
+        // TimeScale イベントで変更した時間スケールを戻すまでの残り秒数
+        float timeScaleRemaining_ = 0.0f;
 
         // ブレンドイン用。再生が始まった瞬間のカメラ姿勢を繋ぎ元として控える。
         CameraSnapshot blendFrom_{};

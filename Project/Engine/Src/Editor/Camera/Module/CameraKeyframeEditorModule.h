@@ -48,6 +48,9 @@ namespace CoreEngine
         /// @brief 注視対象をシーンから引く解決口を組み立てる
         CameraSequenceAimContext MakeAimContext(const CameraEditorContext& context) const;
 
+        /// @brief イベントトラックの編集 UI を描画
+        void DrawEventTrack();
+
         /// @brief スナップショットが同一かを誤差込みで判定
         bool IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const;
 
@@ -105,6 +108,11 @@ namespace CoreEngine
 
         int editingShotNameIndex_ = -1;
         char shotNameBuffer_[128] = "";
+
+        // イベントトラック
+        int selectedEventIndex_ = -1;
+        int editingEventNameIndex_ = -1;
+        char eventNameBuffer_[128] = "";
 
         // シーケンス保存/読み込み
         char clipFileNameBuffer_[128] = "新規カメラシーケンス";

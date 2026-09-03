@@ -5,6 +5,7 @@
 #include "Module/CameraFollowEditorModule.h"
 #include "Module/CameraListEditorModule.h"
 #include "Module/CameraParametersEditorModule.h"
+#include "Module/CameraShakeEditorModule.h"
 #include "Module/CameraTransformEditorModule.h"
 #include "Module/CameraGameViewControlModule.h"
 
@@ -36,6 +37,7 @@ namespace CoreEngine {
             RegisterModule(std::make_unique<CameraGameViewControlModule>());
             RegisterModule(std::make_unique<CameraKeyframeEditorModule>());
             RegisterModule(std::make_unique<CameraClipPlayerModule>());
+            RegisterModule(std::make_unique<CameraShakeEditorModule>());
         }
     }
 
