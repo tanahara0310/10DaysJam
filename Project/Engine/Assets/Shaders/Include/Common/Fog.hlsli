@@ -10,6 +10,11 @@
 ///   heightFalloff = 0 : 高さ非依存 ＝ 古典的な指数距離フォグ
 ///   heightFalloff > 0 : 高いほど薄い ＝ 地表に溜まる霧
 /// レイに沿った光学的深さは解析的に積分できるので、レイマーチは不要。
+///
+/// @note 大気散乱には依存しない。空色ブレンド用の Sky-View LUT は
+///       呼び出し側がサンプルして FogInscatteringColor へ値で渡す
+///       （このファイルが AtmosphereCommon.hlsli を引くと、大気を持たない
+///        前方シェーダーがフォグを適用できなくなる）。
 
 /// @brief フォグの共有パラメータ（C++ 側 FogConstants と 1 対 1）
 /// @note メンバを増減したら FogManager.h の kFogConstantsFields も直すこと。
@@ -26,7 +31,13 @@ struct FogParameters
     float    maxOpacity;      ///< フォグの最大濃度 [0,1]。1 未満なら遠景が消えきらない
     float    skyDistance;     ///< 背景ピクセルのレイ長 [m]
     uint     applyToSky;      ///< 背景（深度 far）にもフォグを掛けるか
-    float3   fogPad;
+    float3   sunDirection;    ///< 太陽光の進行方向（太陽→地表、正規化済み）
+    float    sunExponent;     ///< 内散乱ローブの鋭さ。大きいほど太陽の周りだけ光る
+    float3   sunTint;         ///< 太陽方向でのフォグの色味（基準色への倍率）
+    float    sunGain;         ///< 太陽方向でのフォグの明るさ倍率。1 で無効
+    float    skyColorBlend;   ///< フォグ色を空の色へ寄せる量 [0,1]。大気が無ければ 0
+    float    cameraRadiusKm;  ///< Sky-View LUT サンプル用: 惑星中心からのカメラ距離 [km]
+    float    planetRadiusKm;  ///< Sky-View LUT サンプル用: 惑星半径 [km]
 };
 
 /// @brief 光学的深さの上限。exp(-32) = 1.3e-14 で、これ以上は完全に不透明と区別できない
@@ -43,8 +54,9 @@ static const float kFogMaxExponent = 40.0f;
 /// @param t0     積分開始距離 [m]
 /// @param t1     積分終了距離 [m]
 /// @return 光学的深さ tau（透過率は exp(-tau)）
-/// @details rho(y) = a * exp(-k * (t - t0)) （a = t0 での密度、k = heightFalloff * dir.y）と
-///          書けるので、区間積分は a * (1 - exp(-k*s)) / k。k -> 0 の極限は a * s。
+/// @details 密度は高さの指数関数なので、区間積分は 2 つの指数の差で閉じた形に書ける:
+///          tau = density * (exp(-falloff*(y0-href)) - exp(-falloff*(y1-href))) / (falloff*dir.y)。
+///          falloff*dir.y -> 0 の極限は始点密度 × 区間長。
 float FogOpticalDepth(FogParameters p, float3 origin, float3 dir, float t0, float t1)
 {
     const float s = max(t1 - t0, 0.0f);
@@ -53,25 +65,29 @@ float FogOpticalDepth(FogParameters p, float3 origin, float3 dir, float t0, floa
         return 0.0f;
     }
 
-    // 区間始点の高度における密度
-    const float y0 = origin.y + dir.y * t0;
-    const float startExponent = clamp(
-        -p.heightFalloff * (y0 - p.heightRef), -kFogMaxExponent, kFogMaxExponent);
-    const float a = p.density * exp(startExponent);
-
-    const float k = p.heightFalloff * dir.y;
+    const float y0 = origin.y + dir.y * t0;      // 区間の始点高度
+    const float y1 = y0 + dir.y * s;             // 区間の終点高度
+    const float k = p.heightFalloff * dir.y;     // 高さ減衰 × 視線の傾き
 
     // ほぼ水平なレイ、または heightFalloff = 0 は一様密度として積分する
-    // （このとき a * (1 - exp(-k*s)) / k は 0/0 になる）
+    // （このとき下の差分は 0/0 になり、桁落ちで精度も出ない）
     if (abs(k * s) < 1.0e-4f)
     {
-        return min(a * s, kFogMaxOpticalDepth);
+        const float e = min(-p.heightFalloff * (y0 - p.heightRef), kFogMaxExponent);
+        return min(p.density * exp(e) * s, kFogMaxOpticalDepth);
     }
 
-    // 下向きレイ（k < 0）は exp が発散しうるので指数を打ち止める。
-    // 打ち止めた時点で tau は上限を超えているため、結果は変わらない
-    const float exponent = min(-k * s, kFogMaxExponent);
-    return min(a * (1.0f - exp(exponent)) / k, kFogMaxOpticalDepth);
+    // tau = density * (exp(-falloff*(y0-href)) - exp(-falloff*(y1-href))) / k
+    //
+    // 指数は「上限だけ」を打ち止める。下側は exp が 0 へ落ちるのが正しい極限なので
+    // クランプしてはいけない。始点側（小さい値）と区間長側（大きい値）を別々に
+    // クランプすると、本来 0 に潰れるはずの積が残って、フォグ層より上の面にまで
+    // 薄く霞がかかる（heightFalloff を大きくするほど顕著になる）。
+    const float e0 = min(-p.heightFalloff * (y0 - p.heightRef), kFogMaxExponent);
+    const float e1 = min(-p.heightFalloff * (y1 - p.heightRef), kFogMaxExponent);
+
+    const float tau = p.density * (exp(e0) - exp(e1)) / k;
+    return min(max(tau, 0.0f), kFogMaxOpticalDepth);
 }
 
 /// @brief 区間 [t0, t1] の透過率を返す（1 = フォグなし、0 = 完全にフォグ色）
@@ -96,10 +112,54 @@ float FogTransmittanceToPoint(FogParameters p, float3 worldPos)
     return FogTransmittance(p, p.cameraWorldPos, dir, t0, distance);
 }
 
+/// @brief 視線方向のフォグ色（内散乱色）を求める
+/// @param p             フォグパラメータ
+/// @param rayDir        カメラから見た正規化済み視線方向
+/// @param skyLuminance  その方向の空の輝度（Sky-View LUT の値）
+/// @details 基準色を空の色へ寄せてから、太陽方向に前方散乱のローブを乗せる。
+///          ローブは cos^n の 1 項だけで、ミー位相関数のような厳密さは狙わない
+///          （フォグは美術パラメータで、大気散乱のように物理値で駆動しないため）。
+/// @note ローブは絶対色ではなく「基準色への倍率」として乗せる。Sky-View LUT の輝度は
+///       数十のオーダーで、美術値の色（〜1）と lerp すると太陽方向でフォグが
+///       暗くなってしまうため。倍率なら空色ブレンドの有無で挙動が変わらない。
+float3 FogInscatteringColor(FogParameters p, float3 rayDir, float3 skyLuminance)
+{
+    // 空色ブレンド: 大気があるシーンでは遠景のフォグが空へ溶ける。
+    // 大気が無いフレームは C++ 側が skyColorBlend = 0 にするので fogColor がそのまま残る
+    const float3 base = lerp(p.fogColor, skyLuminance, saturate(p.skyColorBlend));
+
+    // sunDirection は進行方向（太陽→地表）なので、太陽を見る向きはその逆
+    const float cosTheta = dot(rayDir, -p.sunDirection);
+    const float lobe = pow(saturate(cosTheta), max(p.sunExponent, 1.0e-3f));
+
+    // 太陽が無いフレームは C++ 側が sunTint = (1,1,1) / sunGain = 1 にするので恒等になる
+    const float3 gain = lerp(float3(1.0f, 1.0f, 1.0f), p.sunTint * p.sunGain, lobe);
+    return base * gain;
+}
+
+/// @brief 空の輝度を持たない呼び出し側（前方描画）用のフォグ色
+/// @details skyLuminance に fogColor を渡すのでブレンドは恒等になり、
+///          太陽の内散乱だけが乗る。
+float3 FogInscatteringColor(FogParameters p, float3 rayDir)
+{
+    return FogInscatteringColor(p, rayDir, p.fogColor);
+}
+
 /// @brief ワールド座標が分かっている面の色へフォグを合成する
 /// @details 前方描画（半透明・水面・パーティクル）はこれを呼ぶ。
 ///          全画面パスと同じ数式を通るので、不透明との境目が出ない。
 float3 ApplyFog(FogParameters p, float3 worldPos, float3 color)
 {
-    return lerp(p.fogColor, color, FogTransmittanceToPoint(p, worldPos));
+    const float3 toSurface = worldPos - p.cameraWorldPos;
+    const float distance = length(toSurface);
+    if (distance < 1.0e-5f)
+    {
+        return color;
+    }
+
+    const float3 dir = toSurface / distance;
+    const float t0 = min(p.startDistance, distance);
+    const float transmittance = FogTransmittance(p, p.cameraWorldPos, dir, t0, distance);
+
+    return lerp(FogInscatteringColor(p, dir), color, transmittance);
 }

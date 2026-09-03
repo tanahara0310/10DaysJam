@@ -20,16 +20,21 @@ namespace CoreEngine {
         constexpr const char* kCVarPrefix = "r.Fog";
 
 #ifdef USE_IMGUI
-        /// @brief プリセット 1 件分。色以外は FogCVars と同じ単位系
+        /// @brief プリセット 1 件分。単位系は FogCVars と同じ
         struct FogPreset {
             const char* name;
             const char* description;
             Vector4 color;
+            float colorIntensity; ///< 色の明るさ倍率（HDR）
             float density;        ///< [1/m]
             float heightFalloff;  ///< [1/m]
             float heightRefM;     ///< [m]
             float maxOpacity;
             bool  applyToSky;
+            float skyColorBlend;  ///< 空の色へ寄せる量 [0,1]
+            Vector4 sunTint;      ///< 太陽方向でのフォグの色味（基準色への倍率）
+            float sunGain;        ///< 太陽方向でのフォグの明るさ倍率（1 で無効）
+            float sunExponent;    ///< 内散乱ローブの鋭さ
         };
 
         /// プリセット一覧。index 0 は FogCVars の既定値と同じ
@@ -38,20 +43,26 @@ namespace CoreEngine {
             static const FogPreset presets[] = {
                 { "屋外の霞み（既定）",
                   "遠景がゆるく霞む、汎用の屋外フォグ。\n"
-                  "水平方向 50m で透過率 0.37。高いところほど薄くなる。",
-                  { 0.62f, 0.68f, 0.75f, 1.0f }, 0.02f, 0.1f, 0.0f, 1.0f, true },
+                  "水平方向 50m で透過率 0.37。高いところほど薄くなる。\n"
+                  "大気があるシーンではフォグ色が空の色に一致する。",
+                  { 0.62f, 0.68f, 0.75f, 1.0f }, 1.0f, 0.02f, 0.1f, 0.0f, 1.0f, true,
+                  1.0f, { 1.0f, 0.82f, 0.60f, 1.0f }, 2.5f, 16.0f },
                 { "地表の霧",
                   "高さ 2m 付近から下に溜まる薄い霧。\n"
                   "立っているキャラの足元だけが白む。",
-                  { 0.75f, 0.78f, 0.82f, 1.0f }, 0.15f, 1.5f, 2.0f, 1.0f, true },
+                  { 0.75f, 0.78f, 0.82f, 1.0f }, 1.5f, 0.15f, 1.5f, 2.0f, 1.0f, true,
+                  0.6f, { 1.0f, 0.86f, 0.68f, 1.0f }, 2.0f, 24.0f },
                 { "霧の海",
                   "境界のはっきりした雲海。HeightRef が「水面」の高さになる。\n"
-                  "地形の天面は素通りし、下に落ちる視線だけがフォグ色で埋まる。",
-                  { 0.86f, 0.89f, 0.93f, 1.0f }, 1.0f, 8.0f, 0.2f, 1.0f, true },
+                  "地形の天面は素通りし、下に落ちる視線だけがフォグ色で埋まる。\n"
+                  "様式的な見た目を保つため空色ブレンドは切ってある。",
+                  { 0.86f, 0.89f, 0.93f, 1.0f }, 3.0f, 1.0f, 8.0f, 0.2f, 1.0f, true,
+                  0.0f, { 1.0f, 0.95f, 0.86f, 1.0f }, 1.6f, 8.0f },
                 { "濃霧",
                   "視界 30m 程度の高さ非依存フォグ（＝古典的な指数距離フォグ）。\n"
                   "空も塗り潰されるので、屋内・閉所や演出向け。",
-                  { 0.72f, 0.74f, 0.76f, 1.0f }, 0.1f, 0.05f, 0.0f, 1.0f, true },
+                  { 0.72f, 0.74f, 0.76f, 1.0f }, 1.5f, 0.1f, 0.05f, 0.0f, 1.0f, true,
+                  0.0f, { 1.0f, 0.97f, 0.92f, 1.0f }, 1.3f, 4.0f },
             };
             return presets;
         }
@@ -61,11 +72,16 @@ namespace CoreEngine {
         void ApplyFogPreset(const FogPreset& preset)
         {
             FogCVars::Color.Set(preset.color);
+            FogCVars::ColorIntensity.Set(preset.colorIntensity);
             FogCVars::Density.Set(preset.density);
             FogCVars::HeightFalloff.Set(preset.heightFalloff);
             FogCVars::HeightRefM.Set(preset.heightRefM);
             FogCVars::MaxOpacity.Set(preset.maxOpacity);
             FogCVars::ApplyToSky.Set(preset.applyToSky);
+            FogCVars::SkyColorBlend.Set(preset.skyColorBlend);
+            FogCVars::SunTint.Set(preset.sunTint);
+            FogCVars::SunScatteringGain.Set(preset.sunGain);
+            FogCVars::SunScatteringExponent.Set(preset.sunExponent);
         }
 
         /// @brief UE 風の (?) ホバーツールチップ（ラベルの右に付ける）

@@ -22,9 +22,8 @@ namespace CoreEngine
 
         void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
 
-        bool IsEnabledForView(const RenderViewSettings& view) const override {
-            return view.viewType == RenderViewType::GameView;
-        }
+        /// @note どの View でも登録する。SceneColor へ合成するのは GameView だけだが、
+        ///       前方描画が読むフォグ定数はどの View でも用意する必要がある
 
         /// @brief パスの実行
         /// @param context レンダリングコンテキスト

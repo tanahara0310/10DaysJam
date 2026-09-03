@@ -241,8 +241,24 @@ namespace CoreEngine
             return;
         }
 
+        // 太陽内散乱に要るのは向きだけなので、サービスではなく値を渡す
+        // （FogManager に LightManager を持たせない）。大気の太陽ライトを最優先し、
+        // 無ければ最初の平行光を使う（大気非対応シーンでも内散乱が効く）
+        Vector3 sunDirection{ 0.0f, -1.0f, 0.0f };
+        bool hasSun = false;
+        if (auto* lightManager = ctx.engine->GetService<LightManager>()) {
+            const Light* sun = lightManager->GetAtmosphereSunLight();
+            if (!sun) {
+                sun = lightManager->GetDirectionalLight(0);
+            }
+            if (sun && sun->enabled) {
+                sunDirection = sun->direction;
+                hasSun = true;
+            }
+        }
+
         // このフレームはフォグを使うと宣言する（実際に合成するかは r.Fog.Enabled 次第）。
         // 深度復元用の行列とカメラ位置は FrameViews から FogPass が取るのでここでは渡さない。
-        fogManager->Update();
+        fogManager->Update(sunDirection, hasSun);
     }
 }

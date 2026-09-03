@@ -15,13 +15,16 @@ namespace CoreEngine::FogApplyBind
     enum Slot : size_t {
         gFog,
         gSceneDepth,
+        gSkyViewLUT,
         gOutput,
         Count
     };
 
     inline constexpr ShaderBindingDecl kDecls[] = {
         { "gFog",        ShaderBindingType::CBV, BindingUsage::Required },  // b0
-        { "gSceneDepth", ShaderBindingType::SRV, BindingUsage::Required },  // t0
+        { "gSceneDepth", ShaderBindingType::SRV, BindingUsage::Required },     // t0
+        // 空色ブレンドが有効なフレームだけ差す（大気非対応シーンでは未バインド）
+        { "gSkyViewLUT", ShaderBindingType::SRV, BindingUsage::Conditional }, // t1
         { "gOutput",     ShaderBindingType::UAV, BindingUsage::Required },  // u0
     };
 

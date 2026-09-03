@@ -13,6 +13,7 @@ namespace CoreEngine
     {
         extern CVar<bool>    Enabled;
         extern CVar<Vector4> Color;
+        extern CVar<float>   ColorIntensity;
         extern CVar<float>   Density;
         extern CVar<float>   HeightFalloff;
         extern CVar<float>   HeightRefM;
@@ -20,6 +21,10 @@ namespace CoreEngine
         extern CVar<float>   MaxOpacity;
         extern CVar<float>   SkyDistanceM;
         extern CVar<bool>    ApplyToSky;
+        extern CVar<float>   SkyColorBlend;
+        extern CVar<Vector4> SunTint;
+        extern CVar<float>   SunScatteringGain;
+        extern CVar<float>   SunScatteringExponent;
 
         /// @brief CVar の現在値を設定構造体へ取り込む
         void LoadInto(FogSettings& settings);
