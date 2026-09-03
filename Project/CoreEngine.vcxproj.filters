@@ -253,6 +253,12 @@
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.cpp">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigTypes.cpp">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigEvaluator.cpp">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequencePlayer.cpp">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClCompile>
@@ -1403,6 +1409,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigTypes.h">
+      <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigEvaluator.h">
+      <Filter>Engine\Src\Camera\Rig</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequencePlayer.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
@@ -3065,6 +3077,9 @@
     </Filter>
     <Filter Include="Engine\Src\Camera\Sequence">
       <UniqueIdentifier>{5e2b9d47-3c81-4f6a-b09d-71a4c8e35d02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Camera\Rig">
+      <UniqueIdentifier>{b7e1c4a2-9d38-4f16-8c5b-3a7e0d924f61}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Camera\View">
       <UniqueIdentifier>{F5ABBF85-A32B-4EA0-9D89-C0AD772A11EC}</UniqueIdentifier>

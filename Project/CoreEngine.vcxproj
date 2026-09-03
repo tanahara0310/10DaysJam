@@ -270,6 +270,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequence.cpp" />
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigTypes.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigEvaluator.cpp" />
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequencePlayer.cpp" />
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceLibrary.cpp" />
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.cpp" />
@@ -776,6 +778,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequence.h" />
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.h" />
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigTypes.h" />
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigEvaluator.h" />
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequencePlayer.h" />
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceLibrary.h" />
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.h" />
