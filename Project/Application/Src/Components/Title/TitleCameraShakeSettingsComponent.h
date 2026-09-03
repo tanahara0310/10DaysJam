@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "Utility/CVar/CVar.h"
 
 namespace GameComponents
 {
@@ -9,6 +10,8 @@ namespace GameComponents
     class TitleCameraShakeSettingsComponent final : public CoreEngine::IComponent
     {
     public:
+        static CoreEngine::CVar<float> ShakeStrength;
+
         const char* GetTypeName() const override { return "TitleCameraShakeSettings"; }
 
 #ifdef USE_IMGUI

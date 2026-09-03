@@ -343,15 +343,11 @@ namespace CoreEngine
 
         // ── タブ判定 ─────────────────────────────────────────────
         InspectorTabDef tabs[8];
-        int tabCount = GetInspectorTabs(tabs, 8);
-
-        // 専用タブを持たないオブジェクトは、アタッチ済みコンポーネントから組み立てる。
-        // これが無いと CreateObject + AddComponent で作ったオブジェクトのインスペクタが
-        // 名前と Active だけになってしまう（レガシークラスだけがタブを持っていた）。
-        const bool useComponentTabs = (tabCount == 0);
-        if (useComponentTabs) {
-            tabCount = BuildComponentTabs(tabs, 8);
-        }
+        const int objectTabCount = GetInspectorTabs(tabs, 8);
+        const int componentTabCount = objectTabCount < 8
+            ? BuildComponentTabs(tabs + objectTabCount, 8 - objectTabCount)
+            : 0;
+        const int tabCount = objectTabCount + componentTabCount;
 
         // 前回選んでいたタブがコンポーネントの増減で範囲外になることがある
         if (inspectorTab_ >= tabCount) { inspectorTab_ = 0; }
@@ -421,9 +417,9 @@ namespace CoreEngine
             {
                 UI::Scope::ChildScope content("##PropContent", ImVec2(0.0f, 0.0f));
                 if (inspectorTab_ >= 0 && inspectorTab_ < tabCount) {
-                    changed |= useComponentTabs
-                        ? DrawComponentTabContent(inspectorTab_)
-                        : DrawInspectorTabContent(inspectorTab_);
+                    changed |= inspectorTab_ < objectTabCount
+                        ? DrawInspectorTabContent(inspectorTab_)
+                        : DrawComponentTabContent(inspectorTab_ - objectTabCount);
                 }
             }
         } else {
