@@ -32,6 +32,11 @@ namespace CoreEngine
         /// @note GraphicsCore が未登録の場合は何も生成しない（GetCameraManager() は nullptr）。
         void Initialize(SceneContext& ctx) override;
 
+        /// @brief シーンに保存されたカメラ状態を復元する
+        /// @details シーン側の OnInitialize が構図を決めた後に走る。ここで復元すると、
+        ///          エディタで詰めた構図がシーンのコードより優先される。
+        void PostSceneInitialize(SceneContext& ctx) override;
+
         /// @brief FrameStart でカメラ操作を反映し、結果を CVar へ写す
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
 

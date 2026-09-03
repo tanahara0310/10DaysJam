@@ -1,6 +1,9 @@
 #pragma once
 
+#include "Camera/Shake/CameraShakePresetLibrary.h"
 #include "Camera/Shake/CameraShakeTypes.h"
+
+#include <string>
 
 /// @file
 /// @brief カメラシェイクの静的な入口（どこからでも 1 行で揺らすため）
@@ -54,6 +57,18 @@ namespace CoreEngine
         static void SetGlobalScale(float scale);
         static float GetGlobalScale() { return globalScale_; }
 
+        /// @brief 名前でプリセットを再生する
+        /// @param name プリセット名（CameraShake::GetPresetLibrary() に登録されているもの）
+        /// @param scale 振幅の倍率（1.0 でそのまま）
+        /// @return ハンドル（プリセットが無い / 委譲先が無ければ 0）
+        /// @details シーケンスのイベントトラックはこの入口を使う。揺れの中身は
+        ///          エディタで編集し、シーケンス側は名前だけを持つ。
+        static ShakeHandle PlayPreset(const std::string& name, float scale = 1.0f);
+
+        /// @brief 名前付きプリセットの保管庫
+        /// @details Shaker はシーンごとに作り直されるので、こちらが正本。
+        static CameraShakePresetLibrary& GetPresetLibrary() { return presetLibrary_; }
+
         /// @brief 委譲先が居るか（通常は確かめる必要はない）
         static bool IsAvailable() { return activeShaker_ != nullptr; }
 
@@ -70,5 +85,8 @@ namespace CoreEngine
 
         /// @brief 全体強度。Shaker はシーンごとに作り直されるので、こちらが正本
         static inline float globalScale_ = 1.0f;
+
+        /// @brief プリセット集（組み込みで初期化され、保存すると json が正本になる）
+        static inline CameraShakePresetLibrary presetLibrary_{};
     };
 }

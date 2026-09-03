@@ -1,11 +1,9 @@
 #include "pch.h"
-#include "CameraSequenceAssetIO.h"
-
-#ifdef USE_IMGUI
+#include "CameraSequenceIO.h"
 
 #include "Utility/JsonManager/JsonManager.h"
-#include "Camera/Control/OrbitFlyController.h"
 #include "Math/MathCore.h"
+
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -14,11 +12,10 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief スナップショットをJSONへ変換
+        /// @brief スナップショットを JSON へ変換
         json SnapshotToJson(const CameraSnapshot& snapshot)
         {
             // カメラが 1 種類になったため、スナップショットは常に Transform + 投影パラメータ。
-            // 旧フォーマット（isDebugCamera + target/distance/pitch/yaw）も読めるようにしてある。
             json jsonData;
             jsonData["position"] = JsonManager::Vector3ToJson(snapshot.position);
             jsonData["rotation"] = JsonManager::Vector3ToJson(snapshot.rotation);
@@ -33,7 +30,7 @@ namespace CoreEngine
             return jsonData;
         }
 
-        /// @brief JSONからスナップショットを復元
+        /// @brief JSON からスナップショットを復元
         CameraSnapshot JsonToSnapshot(const json& jsonData)
         {
             CameraSnapshot snapshot{};
@@ -71,7 +68,33 @@ namespace CoreEngine
             return snapshot;
         }
 
-        /// @brief ショット情報をJSONへ変換
+        /// @brief 保存された番号を補間方式へ戻す（未知の値は直線扱い）
+        CameraSequenceInterpolation ToInterpolation(int value)
+        {
+            switch (value) {
+            case static_cast<int>(CameraSequenceInterpolation::Step):
+                return CameraSequenceInterpolation::Step;
+            case static_cast<int>(CameraSequenceInterpolation::Smooth):
+                return CameraSequenceInterpolation::Smooth;
+            default:
+                return CameraSequenceInterpolation::Linear;
+            }
+        }
+
+        /// @brief 保存された番号を向きの決め方へ戻す（未知の値は Euler 扱い）
+        CameraSequenceAimMode ToAimMode(int value)
+        {
+            switch (value) {
+            case static_cast<int>(CameraSequenceAimMode::LookAtPoint):
+                return CameraSequenceAimMode::LookAtPoint;
+            case static_cast<int>(CameraSequenceAimMode::LookAtObject):
+                return CameraSequenceAimMode::LookAtObject;
+            default:
+                return CameraSequenceAimMode::Euler;
+            }
+        }
+
+        /// @brief ショット情報を JSON へ変換
         json ShotToJson(const CameraSequenceShot& shot)
         {
             json jsonData;
@@ -84,7 +107,51 @@ namespace CoreEngine
             return jsonData;
         }
 
-        /// @brief JSONからショット情報を復元
+        /// @brief 保存された番号をイベント種別へ戻す（未知の値は Callback 扱い）
+        /// @details 知らない種別を落とすと、新しいエンジンで作ったシーケンスを
+        ///          古いエンジンで開いたときイベントが黙って消える。Callback へ倒して残す。
+        CameraSequenceEventType ToEventType(int value)
+        {
+            switch (value) {
+            case static_cast<int>(CameraSequenceEventType::Shake):
+                return CameraSequenceEventType::Shake;
+            case static_cast<int>(CameraSequenceEventType::Trauma):
+                return CameraSequenceEventType::Trauma;
+            case static_cast<int>(CameraSequenceEventType::TimeScale):
+                return CameraSequenceEventType::TimeScale;
+            default:
+                return CameraSequenceEventType::Callback;
+            }
+        }
+
+        /// @brief イベントを JSON へ変換
+        json EventToJson(const CameraSequenceEvent& event)
+        {
+            json jsonData;
+            jsonData["time"] = event.time;
+            jsonData["type"] = static_cast<int>(event.type);
+            jsonData["enabled"] = event.enabled;
+            jsonData["name"] = event.name;
+            jsonData["value"] = event.value;
+            jsonData["duration"] = event.duration;
+            return jsonData;
+        }
+
+        /// @brief JSON からイベントを復元
+        CameraSequenceEvent JsonToEvent(const json& jsonData)
+        {
+            CameraSequenceEvent event{};
+            event.time = JsonManager::SafeGet(jsonData, "time", 0.0f);
+            event.type = ToEventType(JsonManager::SafeGet(jsonData, "type",
+                static_cast<int>(CameraSequenceEventType::Shake)));
+            event.enabled = JsonManager::SafeGet(jsonData, "enabled", true);
+            event.name = JsonManager::SafeGet(jsonData, "name", std::string());
+            event.value = JsonManager::SafeGet(jsonData, "value", 1.0f);
+            event.duration = JsonManager::SafeGet(jsonData, "duration", 0.2f);
+            return event;
+        }
+
+        /// @brief JSON からショット情報を復元
         CameraSequenceShot JsonToShot(const json& jsonData)
         {
             CameraSequenceShot shot{};
@@ -102,7 +169,7 @@ namespace CoreEngine
         }
     }
 
-    std::vector<std::string> CameraSequenceAssetIO::GetSequenceFileList(const std::string& directoryPath)
+    std::vector<std::string> CameraSequenceIO::GetSequenceFileList(const std::string& directoryPath)
     {
         std::vector<std::string> fileList;
 
@@ -120,10 +187,11 @@ namespace CoreEngine
         return fileList;
     }
 
-    bool CameraSequenceAssetIO::Save(const std::string& filePath, const CameraSequenceAsset& asset)
+    bool CameraSequenceIO::Save(const std::string& filePath, const CameraSequenceAsset& asset)
     {
         json root;
-        root["version"] = asset.version;
+        // 書き出す内容は常に現行フォーマット。読み込み時のバージョンを持ち回さない。
+        root["version"] = CameraSequenceAsset::kCurrentVersion;
         root["timelineLength"] = asset.timelineLength;
         root["easingTypeIndex"] = asset.easingTypeIndex;
         root["shotsEnabled"] = asset.shotsEnabled;
@@ -133,6 +201,14 @@ namespace CoreEngine
             json keyJson;
             keyJson["time"] = key.time;
             keyJson["snapshot"] = SnapshotToJson(key.snapshot);
+            keyJson["label"] = key.label;
+            keyJson["easingTypeIndex"] = key.easingTypeIndex;
+            keyJson["interpolation"] = static_cast<int>(key.interpolation);
+            keyJson["aimMode"] = static_cast<int>(key.aimMode);
+            keyJson["aimPoint"] = JsonManager::Vector3ToJson(key.aimPoint);
+            keyJson["aimObjectName"] = key.aimObjectName;
+            keyJson["aimOffset"] = JsonManager::Vector3ToJson(key.aimOffset);
+            keyJson["aimRoll"] = key.aimRoll;
             keyframesJson.push_back(keyJson);
         }
         root["keyframes"] = keyframesJson;
@@ -143,10 +219,16 @@ namespace CoreEngine
         }
         root["shots"] = shotsJson;
 
+        json eventsJson = json::array();
+        for (const auto& event : asset.events) {
+            eventsJson.push_back(EventToJson(event));
+        }
+        root["events"] = eventsJson;
+
         return JsonManager::GetInstance().SaveJson(filePath, root);
     }
 
-    bool CameraSequenceAssetIO::Load(const std::string& filePath, CameraSequenceAsset& outAsset)
+    bool CameraSequenceIO::Load(const std::string& filePath, CameraSequenceAsset& outAsset)
     {
         // 欠けたキーは SafeGet の既定値で補う。古いバージョンのファイルも読めるようにするため
         if (!JsonManager::GetInstance().FileExists(filePath)) {
@@ -164,44 +246,53 @@ namespace CoreEngine
         asset.easingTypeIndex = JsonManager::SafeGet(root, "easingTypeIndex", 0);
         asset.shotsEnabled = JsonManager::SafeGet(root, "shotsEnabled", true);
 
-        if (asset.timelineLength < 0.1f) {
-            asset.timelineLength = 0.1f;
-        }
-
         if (root.contains("keyframes") && root["keyframes"].is_array()) {
             for (const auto& keyJson : root["keyframes"]) {
-                CameraSequenceAsset::Keyframe key{};
+                CameraSequenceKeyframe key{};
                 key.time = JsonManager::SafeGet(keyJson, "time", 0.0f);
                 if (keyJson.contains("snapshot")) {
                     key.snapshot = JsonToSnapshot(keyJson["snapshot"]);
                 }
+
+                // 区間ごとの指定はバージョン 2.1 から。持っていないファイルは
+                // 「シーケンス既定の緩急・直線」になり、従来どおりの見た目になる。
+                key.label = JsonManager::SafeGet(keyJson, "label", std::string());
+                key.easingTypeIndex = JsonManager::SafeGet(keyJson, "easingTypeIndex", kUseSequenceEasing);
+                key.interpolation = ToInterpolation(
+                    JsonManager::SafeGet(keyJson, "interpolation",
+                        static_cast<int>(CameraSequenceInterpolation::Linear)));
+
+                // 注視の指定はバージョン 2.2 から。持っていないファイルは Euler になり、
+                // 保存された回転がそのまま使われる（従来どおりの見た目）。
+                key.aimMode = ToAimMode(JsonManager::SafeGet(keyJson, "aimMode",
+                    static_cast<int>(CameraSequenceAimMode::Euler)));
+                key.aimPoint = JsonManager::SafeGetVector3(keyJson, "aimPoint");
+                key.aimObjectName = JsonManager::SafeGet(keyJson, "aimObjectName", std::string());
+                key.aimOffset = JsonManager::SafeGetVector3(keyJson, "aimOffset");
+                key.aimRoll = JsonManager::SafeGet(keyJson, "aimRoll", 0.0f);
+
                 asset.keyframes.push_back(key);
             }
         }
 
-        std::sort(asset.keyframes.begin(), asset.keyframes.end(),
-            [](const CameraSequenceAsset::Keyframe& lhs, const CameraSequenceAsset::Keyframe& rhs) {
-                return lhs.time < rhs.time;
-            });
-
         if (root.contains("shots") && root["shots"].is_array()) {
             for (const auto& shotJson : root["shots"]) {
-                CameraSequenceShot shot = JsonToShot(shotJson);
-                shot.startTime = std::clamp(shot.startTime, 0.0f, asset.timelineLength);
-                shot.endTime = std::clamp(shot.endTime, 0.0f, asset.timelineLength);
-                if (shot.endTime <= shot.startTime) {
-                    shot.endTime = std::clamp(shot.startTime + 0.01f, 0.01f, asset.timelineLength);
-                }
-                if (shot.blendDuration < 0.0f) {
-                    shot.blendDuration = 0.0f;
-                }
-                asset.shots.push_back(shot);
+                asset.shots.push_back(JsonToShot(shotJson));
             }
         }
+
+        if (root.contains("events") && root["events"].is_array()) {
+            for (const auto& eventJson : root["events"]) {
+                asset.events.push_back(JsonToEvent(eventJson));
+            }
+        }
+
+        // 時刻の並びと範囲はここで整えておく。読み手が毎回気にしなくて済む。
+        asset.Sanitize();
+        asset.SortKeyframes();
+        asset.SortEvents();
 
         outAsset = std::move(asset);
         return !outAsset.keyframes.empty();
     }
 }
-
-#endif // _DEBUG

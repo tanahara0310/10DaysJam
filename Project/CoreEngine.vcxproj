@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -271,15 +271,32 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp" />
+    <ClCompile Include="Engine\Src\Camera\CameraSceneStateIO.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequence.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigTypes.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigIO.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigLibrary.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigRuntime.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRig.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\CameraRigFeature.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Rig\CameraRigEvaluator.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequencePlayer.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceLibrary.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceIO.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\CameraDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraFollowEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraGameViewControlModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraRigEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Camera\Widget\CameraIconOverlay.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Collision\Collider.cpp" />
     <ClCompile Include="Engine\Src\Collision\ColliderComponent.cpp" />
@@ -458,6 +475,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\EventDispatchFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CameraFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\CameraSequenceFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CameraShakeFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
@@ -533,6 +551,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Camera\Camera.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp" />
     <ClCompile Include="Engine\Src\Camera\Shake\CameraShake.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Shake\CameraShakePresetLibrary.cpp" />
     <ClCompile Include="Engine\Src\Camera\Shake\CameraShaker.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraCVars.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\FreeLookController.cpp" />
@@ -769,16 +788,34 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.h" />
     <ClInclude Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.h" />
     <ClInclude Include="Engine\Src\Camera\CameraManager.h" />
+    <ClInclude Include="Engine\Src\Camera\CameraSceneStateIO.h" />
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequence.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.h" />
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigTypes.h" />
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigIO.h" />
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigLibrary.h" />
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigRuntime.h" />
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRig.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\CameraRigFeature.h" />
+    <ClInclude Include="Engine\Src\Camera\Rig\CameraRigEvaluator.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequencePlayer.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceLibrary.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceEvent.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceIO.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\CameraDebugUI.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraEditorContext.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraFollowEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraGameViewControlModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.h" />
+    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraRigEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h" />
-    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.h" />
+    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.h" />
+    <ClInclude Include="Engine\Src\Editor\Camera\Widget\CameraIconOverlay.h" />
+    <ClInclude Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\ICameraEditorModule.h" />
     <ClInclude Include="Engine\Src\Collision\Collider.h" />
@@ -1097,6 +1134,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\EventDispatchFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CameraFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\CameraSequenceFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CameraShakeFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
@@ -1199,6 +1237,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Camera\Shake\CameraShakeEvent.h" />
     <ClInclude Include="Engine\Src\Camera\Shake\CameraShakePresets.h" />
     <ClInclude Include="Engine\Src\Camera\Shake\CameraShakeTypes.h" />
+    <ClInclude Include="Engine\Src\Camera\Shake\CameraShakePresetLibrary.h" />
     <ClInclude Include="Engine\Src\Camera\Shake\CameraShaker.h" />
     <ClInclude Include="Engine\Src\Camera\Debug\DebugCameraCVars.h" />
     <ClInclude Include="Engine\Src\Camera\Control\FreeLookController.h" />

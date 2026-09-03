@@ -56,6 +56,14 @@ namespace CoreEngine
         static bool ManipulateUI(UILayout& layout, const Vector2& referenceSize,
             Mode mode = Mode::Translate);
 
+        /// @brief ワールド座標 1 点を移動ギズモで操作する
+        /// @param position 操作対象。変更はここへ直接書き戻す
+        /// @param camera 視点カメラ
+        /// @return 動かされたら true
+        /// @details GameObject を持たない編集対象（カメラのキーフレーム位置、注視点など）を
+        ///          ビューポート上で直接掴めるようにするためのもの。
+        static bool ManipulatePoint(Vector3& position, const Camera* camera);
+
         /// @brief ギズモが現在操作中かどうか
         /// @return 操作中ならtrue
         static bool IsUsing();
