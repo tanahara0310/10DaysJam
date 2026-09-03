@@ -253,6 +253,9 @@
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequence.cpp">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.cpp">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceIO.cpp">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClCompile>
@@ -1372,6 +1375,9 @@
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequence.h">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceIO.h">

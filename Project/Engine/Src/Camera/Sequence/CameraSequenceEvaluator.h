@@ -1,0 +1,52 @@
+#pragma once
+
+#include "Camera/Sequence/CameraSequence.h"
+#include "Math/Easing/EasingUtil.h"
+
+/// @file
+/// @brief カメラシーケンスの評価（時刻 → カメラ姿勢）
+/// @details 入力はシーケンスと時刻だけ、出力はスナップショットだけの純関数群。
+///          エディタのプレビューもランタイムの再生もここを通す。以前は編集モジュールと
+///          再生モジュールが同じ評価を別々に持っており、片方を直すと動きが食い違った。
+
+namespace CoreEngine
+{
+    /// @brief シーケンスに保存するイージング種別（JSON の easingTypeIndex が指す表）
+    /// @note 並び順が添字としてファイルに入る。要素の挿入・削除は既存アセットの見た目を変える。
+    namespace CameraSequenceEasing
+    {
+        /// @brief 選択肢の数
+        int Count();
+
+        /// @brief 添字に対応するイージング種別（範囲外は Linear）
+        EasingUtil::Type TypeAt(int index);
+
+        /// @brief 添字に対応する表示名（範囲外は先頭の名前）
+        const char* LabelAt(int index);
+    }
+
+    /// @brief シーケンスを時刻で評価する
+    class CameraSequenceEvaluator {
+    public:
+        /// @brief 指定時刻のカメラ姿勢を求める（ショット遷移を適用）
+        /// @param asset 評価対象のシーケンス
+        /// @param time タイムライン時刻（範囲外はクランプ）
+        /// @param outSnapshot 評価結果
+        /// @return キーフレームが 1 つも無ければ false
+        static bool Evaluate(const CameraSequenceAsset& asset, float time, CameraSnapshot& outSnapshot);
+
+        /// @brief ショット遷移を無視し、キーフレーム列だけで評価する
+        /// @details ショットの繋ぎを見ずに素の軌道を確認したいとき（プレビューのスクラブなど）に使う。
+        static bool EvaluateRaw(const CameraSequenceAsset& asset, float time, CameraSnapshot& outSnapshot);
+
+        /// @brief 2 つのスナップショットを補間する
+        /// @param t 0..1 の補間係数
+        /// @param easing 適用するイージング
+        static CameraSnapshot Interpolate(const CameraSnapshot& from, const CameraSnapshot& to,
+            float t, EasingUtil::Type easing);
+
+        /// @brief 指定時刻を含む有効なショットの添字を返す
+        /// @return 見つからなければ -1
+        static int FindShotIndexAt(const CameraSequenceAsset& asset, float time);
+    };
+}

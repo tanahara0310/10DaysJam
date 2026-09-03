@@ -4,7 +4,6 @@
 
 #include "ICameraEditorModule.h"
 #include "Camera/Sequence/CameraSequence.h"
-#include "Math/Easing/EasingUtil.h"
 
 #include <string>
 #include <vector>
@@ -12,50 +11,39 @@
 namespace CoreEngine
 {
     /// @brief カメラワーク用のキーフレーム編集モジュール
+    /// @details 編集中のタイムラインは CameraSequenceAsset そのもの。評価（時刻 → カメラ姿勢）は
+    ///          CameraSequenceEvaluator に任せ、ここは編集操作と UI だけを持つ。
     class CameraKeyframeEditorModule final : public ICameraEditorModule {
     public:
         /// @brief タブ名を取得
         const char* GetTabName() const override { return "キーフレーム"; }
 
-        /// @brief 毎フレーム更新（現時点では状態更新なし）
+        /// @brief 毎フレーム更新（再生・オートキー・可視化）
         void Update(const CameraEditorContext& context) override;
 
         /// @brief タブ内容を描画
         void Draw(const CameraEditorContext& context) override;
 
     private:
-        /// @brief タイムライン編集中の状態（キーフレーム列・再生位置・選択）
+        /// @brief Undo/Redo で退避する編集状態
         struct EditorState {
-            std::vector<CameraSequenceKeyframe> keyframes;
-            std::vector<CameraSequenceShot> shots;
-            float timelineLength = 10.0f;
+            CameraSequenceAsset sequence;
             float playhead = 0.0f;
             int selectedIndex = -1;
             int selectedShotIndex = -1;
             bool isPlaying = false;
-            bool shotsEnabled = true;
             bool loopPlayback = true;
             float playbackSpeed = 1.0f;
-            int easingTypeIndex = 0;
         };
-
-        /// @brief UI選択インデックスからイージングタイプへ変換
-        EasingUtil::Type GetSelectedEasingType() const;
-
-        /// @brief 指定時刻の補間済みスナップショットを評価
-        bool EvaluateSnapshotAt(float time, CameraSnapshot& outSnapshot) const;
-
-        /// @brief 生タイムライン時刻で補間済みスナップショットを評価
-        bool EvaluateSnapshotRaw(float time, CameraSnapshot& outSnapshot) const;
-
-        /// @brief 2つのスナップショットを線形補間
-        CameraSnapshot InterpolateSnapshot(const CameraSnapshot& from, const CameraSnapshot& to, float t) const;
 
         /// @brief アクティブ3Dカメラからスナップショットを取得
         bool CaptureFromActiveCamera(const CameraEditorContext& context, CameraSnapshot& outSnapshot) const;
 
         /// @brief スナップショットをアクティブ3Dカメラへ適用
         bool ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot);
+
+        /// @brief 指定時刻を評価してアクティブ3Dカメラへ反映
+        void ApplyEvaluatedAt(const CameraEditorContext& context, float time);
 
         /// @brief スナップショットが同一かを誤差込みで判定
         bool IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const;
@@ -66,9 +54,6 @@ namespace CoreEngine
         /// @brief Sceneビュー向けのカメラワーク可視化を描画
         void DrawViewportVisualization();
 
-        /// @brief スナップショットからワールド座標のカメラ位置を取得
-        Vector3 GetSnapshotWorldPosition(const CameraSnapshot& snapshot) const;
-
         /// @brief 指定時刻に最も近いキーフレームを検索
         int FindNearestKeyframeIndex(float time) const;
 
@@ -77,9 +62,6 @@ namespace CoreEngine
 
         /// @brief 指定時刻より後の最も近いキーフレームを検索
         int FindNextKeyframeIndex(float time) const;
-
-        /// @brief 指定時刻のショットインデックスを検索
-        int FindShotIndexAt(float time) const;
 
         /// @brief シーケンスファイル一覧を更新
         void RefreshClipFileList();
@@ -106,18 +88,17 @@ namespace CoreEngine
         void Redo();
 
     private:
-        std::vector<CameraSequenceKeyframe> keyframes_;
-        std::vector<CameraSequenceShot> shots_;
-        float timelineLength_ = 10.0f;
+        // 編集中のシーケンス本体（キー・ショット・タイムライン長・イージングを含む）
+        CameraSequenceAsset sequence_;
+
+        // 編集・再生の状態（シーケンスには保存しない、この画面だけの状態）
         float playhead_ = 0.0f;
         int selectedIndex_ = -1;
         int selectedShotIndex_ = -1;
         float updateThreshold_ = 0.01f;
         bool isPlaying_ = false;
-        bool shotsEnabled_ = true;
         bool loopPlayback_ = true;
         float playbackSpeed_ = 1.0f;
-        int easingTypeIndex_ = 0;
 
         int editingShotNameIndex_ = -1;
         char shotNameBuffer_[128] = "";
@@ -156,4 +137,4 @@ namespace CoreEngine
     };
 }
 
-#endif // _DEBUG
+#endif // USE_IMGUI

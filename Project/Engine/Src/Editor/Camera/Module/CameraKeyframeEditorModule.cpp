@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "CameraKeyframeEditorModule.h"
+#include "Camera/Sequence/CameraSequenceEvaluator.h"
 #include "Camera/Sequence/CameraSequenceIO.h"
 
 #ifdef USE_IMGUI
@@ -20,44 +21,18 @@ namespace CoreEngine
 {
     namespace
     {
-        struct EasingOption {
-            const char* label;
-            EasingUtil::Type type;
-        };
-
-        constexpr EasingOption kEasingOptions[] = {
-            { "線形", EasingUtil::Type::Linear },
-            { "イーズイン (Quad)", EasingUtil::Type::EaseInQuad },
-            { "イーズアウト (Quad)", EasingUtil::Type::EaseOutQuad },
-            { "イーズインアウト (Quad)", EasingUtil::Type::EaseInOutQuad },
-            { "イーズイン (Cubic)", EasingUtil::Type::EaseInCubic },
-            { "イーズアウト (Cubic)", EasingUtil::Type::EaseOutCubic },
-            { "イーズインアウト (Cubic)", EasingUtil::Type::EaseInOutCubic },
-            { "イーズイン (Quart)", EasingUtil::Type::EaseInQuart },
-            { "イーズアウト (Quart)", EasingUtil::Type::EaseOutQuart },
-            { "イーズインアウト (Quart)", EasingUtil::Type::EaseInOutQuart },
-            { "イーズイン (Sine)", EasingUtil::Type::EaseInSine },
-            { "イーズアウト (Sine)", EasingUtil::Type::EaseOutSine },
-            { "イーズインアウト (Sine)", EasingUtil::Type::EaseInOutSine },
-            { "イーズイン (Expo)", EasingUtil::Type::EaseInExpo },
-            { "イーズアウト (Expo)", EasingUtil::Type::EaseOutExpo },
-            { "イーズインアウト (Expo)", EasingUtil::Type::EaseInOutExpo }
-        };
-
-        constexpr int kEasingOptionCount = static_cast<int>(sizeof(kEasingOptions) / sizeof(kEasingOptions[0]));
-
+        // 遷移方式の表示名。CameraSequenceTransitionType の値をそのまま添字に使う。
         constexpr const char* kShotTransitionLabels[] = {
             "カット",
             "ブレンド"
         };
 
         constexpr int kShotTransitionLabelCount = static_cast<int>(sizeof(kShotTransitionLabels) / sizeof(kShotTransitionLabels[0]));
-
     }
 
     void CameraKeyframeEditorModule::Update(const CameraEditorContext& context)
     {
-        if (!context.cameraManager || !isPlaying_ || keyframes_.size() < 2) {
+        if (!context.cameraManager || !isPlaying_ || sequence_.keyframes.size() < 2) {
             UpdateAutoKey(context);
             DrawViewportVisualization();
             return;
@@ -66,19 +41,16 @@ namespace CoreEngine
         // 再生ヘッドを進め、補間結果を現在カメラへ適用する。
         playhead_ += ImGui::GetIO().DeltaTime * playbackSpeed_;
 
-        if (playhead_ > timelineLength_) {
+        if (playhead_ > sequence_.timelineLength) {
             if (loopPlayback_) {
                 playhead_ = 0.0f;
             } else {
-                playhead_ = timelineLength_;
+                playhead_ = sequence_.timelineLength;
                 isPlaying_ = false;
             }
         }
 
-        CameraSnapshot evaluated{};
-        if (EvaluateSnapshotAt(playhead_, evaluated)) {
-            ApplyToActiveCamera(context, evaluated);
-        }
+        ApplyEvaluatedAt(context, playhead_);
 
         UpdateAutoKey(context);
         DrawViewportVisualization();
@@ -135,12 +107,12 @@ namespace CoreEngine
         viewportMarkerSize_ = std::clamp(viewportMarkerSize_, 0.02f, 2.0f);
 
         // タイムライン長と再生ヘッドを編集する。
-        UI::DragFloat("タイムライン長(秒)", timelineLength_, 0.1f, 0.1f, 600.0f, "%.2f");
-        if (timelineLength_ < 0.1f) {
-            timelineLength_ = 0.1f;
+        UI::DragFloat("タイムライン長(秒)", sequence_.timelineLength, 0.1f, 0.1f, 600.0f, "%.2f");
+        if (sequence_.timelineLength < 0.1f) {
+            sequence_.timelineLength = 0.1f;
         }
 
-        bool playheadChanged = UI::SliderFloat("再生ヘッド", playhead_, 0.0f, timelineLength_, "%.2f 秒");
+        bool playheadChanged = UI::SliderFloat("再生ヘッド", playhead_, 0.0f, sequence_.timelineLength, "%.2f 秒");
 
         // タイムライン上のキーフレームを直接クリックして移動できるように可視化する。
         {
@@ -161,15 +133,15 @@ namespace CoreEngine
             drawList->AddLine(ImVec2(cursor.x, centerY), ImVec2(cursor.x + size.x, centerY), lineColor, 2.0f);
 
             // キーフレームマーカー描画
-            for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-                const float normalized = (timelineLength_ > 0.0f) ? (keyframes_[i].time / timelineLength_) : 0.0f;
+            for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+                const float normalized = (sequence_.timelineLength > 0.0f) ? (sequence_.keyframes[i].time / sequence_.timelineLength) : 0.0f;
                 const float x = cursor.x + (std::clamp(normalized, 0.0f, 1.0f) * size.x);
                 const ImU32 color = (i == selectedIndex_) ? selectedKeyColor : keyColor;
                 drawList->AddCircleFilled(ImVec2(x, centerY), 4.5f, color);
             }
 
             // 再生ヘッド描画
-            const float playheadX = cursor.x + ((playhead_ / timelineLength_) * size.x);
+            const float playheadX = cursor.x + ((playhead_ / sequence_.timelineLength) * size.x);
             drawList->AddLine(ImVec2(playheadX, cursor.y), ImVec2(playheadX, cursor.y + size.y), playheadColor, 2.0f);
 
             // クリック時、近いキーフレームがあれば選択、なければ再生ヘッド移動
@@ -178,8 +150,8 @@ namespace CoreEngine
                 int nearest = -1;
                 float nearestPixelDist = 10.0f;
 
-                for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-                    const float normalized = (timelineLength_ > 0.0f) ? (keyframes_[i].time / timelineLength_) : 0.0f;
+                for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+                    const float normalized = (sequence_.timelineLength > 0.0f) ? (sequence_.keyframes[i].time / sequence_.timelineLength) : 0.0f;
                     const float x = cursor.x + (std::clamp(normalized, 0.0f, 1.0f) * size.x);
                     const float d = std::fabs(mouseX - x);
                     if (d < nearestPixelDist) {
@@ -190,11 +162,11 @@ namespace CoreEngine
 
                 if (nearest >= 0) {
                     selectedIndex_ = nearest;
-                    playhead_ = keyframes_[nearest].time;
+                    playhead_ = sequence_.keyframes[nearest].time;
                     playheadChanged = true;
                 } else {
                     const float normalizedMouse = std::clamp((mouseX - cursor.x) / size.x, 0.0f, 1.0f);
-                    playhead_ = normalizedMouse * timelineLength_;
+                    playhead_ = normalizedMouse * sequence_.timelineLength;
                     playheadChanged = true;
                 }
             }
@@ -213,11 +185,8 @@ namespace CoreEngine
         UI::SameLine();
         if (ImGui::Button("先頭へ")) {
             playhead_ = 0.0f;
-            if (!keyframes_.empty()) {
-                CameraSnapshot evaluated{};
-                if (EvaluateSnapshotAt(playhead_, evaluated)) {
-                    ApplyToActiveCamera(context, evaluated);
-                }
+            if (!sequence_.keyframes.empty()) {
+                ApplyEvaluatedAt(context, playhead_);
             }
         }
 
@@ -226,15 +195,15 @@ namespace CoreEngine
 
         UI::DragFloat("再生速度", playbackSpeed_, 0.05f, 0.1f, 4.0f, "%.2fx");
 
-        if (easingTypeIndex_ < 0 || easingTypeIndex_ >= kEasingOptionCount) {
-            easingTypeIndex_ = 0;
+        if (sequence_.easingTypeIndex < 0 || sequence_.easingTypeIndex >= CameraSequenceEasing::Count()) {
+            sequence_.easingTypeIndex = 0;
         }
 
-        if (ImGui::BeginCombo("補間タイプ", kEasingOptions[easingTypeIndex_].label)) {
-            for (int i = 0; i < kEasingOptionCount; ++i) {
-                const bool selected = (i == easingTypeIndex_);
-                if (ImGui::Selectable(kEasingOptions[i].label, selected)) {
-                    easingTypeIndex_ = i;
+        if (ImGui::BeginCombo("補間タイプ", CameraSequenceEasing::LabelAt(sequence_.easingTypeIndex))) {
+            for (int i = 0; i < CameraSequenceEasing::Count(); ++i) {
+                const bool selected = (i == sequence_.easingTypeIndex);
+                if (ImGui::Selectable(CameraSequenceEasing::LabelAt(i), selected)) {
+                    sequence_.easingTypeIndex = i;
                 }
                 if (selected) {
                     ImGui::SetItemDefaultFocus();
@@ -248,7 +217,7 @@ namespace CoreEngine
             const int prev = FindPreviousKeyframeIndex(playhead_ - updateThreshold_);
             if (prev >= 0) {
                 selectedIndex_ = prev;
-                playhead_ = keyframes_[prev].time;
+                playhead_ = sequence_.keyframes[prev].time;
                 playheadChanged = true;
             }
         }
@@ -258,7 +227,7 @@ namespace CoreEngine
             const int next = FindNextKeyframeIndex(playhead_ + updateThreshold_);
             if (next >= 0) {
                 selectedIndex_ = next;
-                playhead_ = keyframes_[next].time;
+                playhead_ = sequence_.keyframes[next].time;
                 playheadChanged = true;
             }
         }
@@ -269,15 +238,15 @@ namespace CoreEngine
             if (CaptureFromActiveCamera(context, snapshot)) {
                 PushUndoState();
                 const int nearest = FindNearestKeyframeIndex(playhead_);
-                if (nearest >= 0 && std::fabs(keyframes_[nearest].time - playhead_) <= updateThreshold_) {
-                    keyframes_[nearest].snapshot = snapshot;
+                if (nearest >= 0 && std::fabs(sequence_.keyframes[nearest].time - playhead_) <= updateThreshold_) {
+                    sequence_.keyframes[nearest].snapshot = snapshot;
                     selectedIndex_ = nearest;
                 } else {
                     CameraSequenceKeyframe key{};
                     key.time = playhead_;
                     key.snapshot = snapshot;
-                    keyframes_.push_back(key);
-                    std::sort(keyframes_.begin(), keyframes_.end(),
+                    sequence_.keyframes.push_back(key);
+                    std::sort(sequence_.keyframes.begin(), sequence_.keyframes.end(),
                         [](const CameraSequenceKeyframe& a, const CameraSequenceKeyframe& b) { return a.time < b.time; });
 
                     selectedIndex_ = FindNearestKeyframeIndex(playhead_);
@@ -287,17 +256,17 @@ namespace CoreEngine
 
         UI::SameLine();
         if (ImGui::Button("選択キーフレームを複製")) {
-            if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(keyframes_.size())) {
+            if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(sequence_.keyframes.size())) {
                 PushUndoState();
 
-                CameraSequenceKeyframe duplicated = keyframes_[selectedIndex_];
-                duplicated.time = std::clamp(duplicated.time + 0.1f, 0.0f, timelineLength_);
-                if (std::fabs(duplicated.time - keyframes_[selectedIndex_].time) <= updateThreshold_) {
-                    duplicated.time = std::clamp(duplicated.time + updateThreshold_, 0.0f, timelineLength_);
+                CameraSequenceKeyframe duplicated = sequence_.keyframes[selectedIndex_];
+                duplicated.time = std::clamp(duplicated.time + 0.1f, 0.0f, sequence_.timelineLength);
+                if (std::fabs(duplicated.time - sequence_.keyframes[selectedIndex_].time) <= updateThreshold_) {
+                    duplicated.time = std::clamp(duplicated.time + updateThreshold_, 0.0f, sequence_.timelineLength);
                 }
 
-                keyframes_.push_back(duplicated);
-                std::sort(keyframes_.begin(), keyframes_.end(),
+                sequence_.keyframes.push_back(duplicated);
+                std::sort(sequence_.keyframes.begin(), sequence_.keyframes.end(),
                     [](const CameraSequenceKeyframe& a, const CameraSequenceKeyframe& b) { return a.time < b.time; });
 
                 selectedIndex_ = FindNearestKeyframeIndex(duplicated.time);
@@ -308,13 +277,13 @@ namespace CoreEngine
 
         UI::SameLine();
         if (ImGui::Button("選択キーフレームを削除")) {
-            if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(keyframes_.size())) {
+            if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(sequence_.keyframes.size())) {
                 PushUndoState();
-                keyframes_.erase(keyframes_.begin() + selectedIndex_);
-                if (keyframes_.empty()) {
+                sequence_.keyframes.erase(sequence_.keyframes.begin() + selectedIndex_);
+                if (sequence_.keyframes.empty()) {
                     selectedIndex_ = -1;
-                } else if (selectedIndex_ >= static_cast<int>(keyframes_.size())) {
-                    selectedIndex_ = static_cast<int>(keyframes_.size()) - 1;
+                } else if (selectedIndex_ >= static_cast<int>(sequence_.keyframes.size())) {
+                    selectedIndex_ = static_cast<int>(sequence_.keyframes.size()) - 1;
                 }
             }
         }
@@ -322,64 +291,64 @@ namespace CoreEngine
         UI::SameLine();
         if (ImGui::Button("全キーフレームをクリア")) {
             PushUndoState();
-            keyframes_.clear();
+            sequence_.keyframes.clear();
             selectedIndex_ = -1;
         }
 
         UI::Separator();
 
         if (ImGui::CollapsingHeader("詳細: ショット遷移", ImGuiTreeNodeFlags_None)) {
-            UI::Widgets::ToggleSwitch("ショット遷移を有効", &shotsEnabled_);
+            UI::Widgets::ToggleSwitch("ショット遷移を有効", &sequence_.shotsEnabled);
 
             if (ImGui::Button("現在位置にショットを追加")) {
                 PushUndoState();
 
                 CameraSequenceShot shot{};
-                shot.name = "ショット" + std::to_string(shots_.size() + 1);
-                shot.startTime = std::clamp(playhead_ - 0.5f, 0.0f, timelineLength_);
-                shot.endTime = std::clamp(playhead_ + 0.5f, 0.0f, timelineLength_);
+                shot.name = "ショット" + std::to_string(sequence_.shots.size() + 1);
+                shot.startTime = std::clamp(playhead_ - 0.5f, 0.0f, sequence_.timelineLength);
+                shot.endTime = std::clamp(playhead_ + 0.5f, 0.0f, sequence_.timelineLength);
                 if (shot.endTime <= shot.startTime + 0.01f) {
-                    shot.endTime = std::clamp(shot.startTime + 0.01f, 0.01f, timelineLength_);
+                    shot.endTime = std::clamp(shot.startTime + 0.01f, 0.01f, sequence_.timelineLength);
                 }
 
-                shots_.push_back(shot);
-                selectedShotIndex_ = static_cast<int>(shots_.size()) - 1;
+                sequence_.shots.push_back(shot);
+                selectedShotIndex_ = static_cast<int>(sequence_.shots.size()) - 1;
                 editingShotNameIndex_ = -1;
             }
 
             UI::SameLine();
             if (ImGui::Button("現在位置のショットを選択")) {
-                selectedShotIndex_ = FindShotIndexAt(playhead_);
+                selectedShotIndex_ = CameraSequenceEvaluator::FindShotIndexAt(sequence_, playhead_);
                 editingShotNameIndex_ = -1;
             }
 
             UI::SameLine();
             if (ImGui::Button("選択ショットを削除")) {
-                if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(shots_.size())) {
+                if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(sequence_.shots.size())) {
                     PushUndoState();
-                    shots_.erase(shots_.begin() + selectedShotIndex_);
-                    if (shots_.empty()) {
+                    sequence_.shots.erase(sequence_.shots.begin() + selectedShotIndex_);
+                    if (sequence_.shots.empty()) {
                         selectedShotIndex_ = -1;
                     } else {
-                        selectedShotIndex_ = std::clamp(selectedShotIndex_, 0, static_cast<int>(shots_.size()) - 1);
+                        selectedShotIndex_ = std::clamp(selectedShotIndex_, 0, static_cast<int>(sequence_.shots.size()) - 1);
                     }
                     editingShotNameIndex_ = -1;
                 }
             }
 
-            if (shots_.empty()) {
+            if (sequence_.shots.empty()) {
                 UI::Hint("ショットがありません。必要な場合のみ追加してください。");
             } else {
-                selectedShotIndex_ = std::clamp(selectedShotIndex_, -1, static_cast<int>(shots_.size()) - 1);
+                selectedShotIndex_ = std::clamp(selectedShotIndex_, -1, static_cast<int>(sequence_.shots.size()) - 1);
 
                 if (auto lb = UI::Scope::ListBoxScope("ショット一覧", ImVec2(-1.0f, 100.0f))) {
-                    for (int i = 0; i < static_cast<int>(shots_.size()); ++i) {
+                    for (int i = 0; i < static_cast<int>(sequence_.shots.size()); ++i) {
                         char label[256]{};
                         std::snprintf(label, sizeof(label), "%s [%.2f - %.2f]%s",
-                            shots_[i].name.c_str(),
-                            shots_[i].startTime,
-                            shots_[i].endTime,
-                            shots_[i].enabled ? "" : " (無効)");
+                            sequence_.shots[i].name.c_str(),
+                            sequence_.shots[i].startTime,
+                            sequence_.shots[i].endTime,
+                            sequence_.shots[i].enabled ? "" : " (無効)");
 
                         const bool selected = (selectedShotIndex_ == i);
                         if (ImGui::Selectable(label, selected)) {
@@ -390,8 +359,8 @@ namespace CoreEngine
                 }
             }
 
-            if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(shots_.size())) {
-                CameraSequenceShot& shot = shots_[selectedShotIndex_];
+            if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(sequence_.shots.size())) {
+                CameraSequenceShot& shot = sequence_.shots[selectedShotIndex_];
 
                 if (editingShotNameIndex_ != selectedShotIndex_) {
                     std::snprintf(shotNameBuffer_, sizeof(shotNameBuffer_), "%s", shot.name.c_str());
@@ -407,8 +376,8 @@ namespace CoreEngine
                 bool shotChanged = false;
 
                 shotChanged |= UI::Widgets::ToggleSwitch("ショットを有効", &editedShot.enabled);
-                shotChanged |= UI::DragFloat("開始時刻", editedShot.startTime, 0.05f, 0.0f, timelineLength_, "%.2f 秒");
-                shotChanged |= UI::DragFloat("終了時刻", editedShot.endTime, 0.05f, 0.0f, timelineLength_, "%.2f 秒");
+                shotChanged |= UI::DragFloat("開始時刻", editedShot.startTime, 0.05f, 0.0f, sequence_.timelineLength, "%.2f 秒");
+                shotChanged |= UI::DragFloat("終了時刻", editedShot.endTime, 0.05f, 0.0f, sequence_.timelineLength, "%.2f 秒");
 
                 int transitionIndex = static_cast<int>(editedShot.transitionType);
                 if (transitionIndex < 0 || transitionIndex >= kShotTransitionLabelCount) {
@@ -431,13 +400,13 @@ namespace CoreEngine
                 editedShot.transitionType = static_cast<CameraSequenceTransitionType>(transitionIndex);
 
                 if (editedShot.transitionType == CameraSequenceTransitionType::Blend) {
-                    shotChanged |= UI::DragFloat("ブレンド時間", editedShot.blendDuration, 0.01f, 0.0f, timelineLength_, "%.2f 秒");
+                    shotChanged |= UI::DragFloat("ブレンド時間", editedShot.blendDuration, 0.01f, 0.0f, sequence_.timelineLength, "%.2f 秒");
                 }
 
-                editedShot.startTime = std::clamp(editedShot.startTime, 0.0f, timelineLength_);
-                editedShot.endTime = std::clamp(editedShot.endTime, 0.0f, timelineLength_);
+                editedShot.startTime = std::clamp(editedShot.startTime, 0.0f, sequence_.timelineLength);
+                editedShot.endTime = std::clamp(editedShot.endTime, 0.0f, sequence_.timelineLength);
                 if (editedShot.endTime <= editedShot.startTime) {
-                    editedShot.endTime = std::clamp(editedShot.startTime + 0.01f, 0.01f, timelineLength_);
+                    editedShot.endTime = std::clamp(editedShot.startTime + 0.01f, 0.01f, sequence_.timelineLength);
                 }
 
                 if (editedShot.blendDuration < 0.0f) {
@@ -458,17 +427,17 @@ namespace CoreEngine
 
         UI::Separator();
 
-        if (keyframes_.empty()) {
+        if (sequence_.keyframes.empty()) {
             UI::Hint("キーフレームがありません。");
             return;
         }
 
         // キーフレーム一覧表示
         if (auto lb = UI::Scope::ListBoxScope("キーフレーム一覧", ImVec2(-1.0f, 180.0f))) {
-            for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
+            for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
                 const bool isSelected = (i == selectedIndex_);
                 char timeLabel[32]{};
-                std::snprintf(timeLabel, sizeof(timeLabel), "%.2f秒", keyframes_[i].time);
+                std::snprintf(timeLabel, sizeof(timeLabel), "%.2f秒", sequence_.keyframes[i].time);
                 const std::string label = timeLabel;
                 if (ImGui::Selectable(label.c_str(), isSelected)) {
                     selectedIndex_ = i;
@@ -477,36 +446,33 @@ namespace CoreEngine
         }
 
         // 選択したキーフレームを現在のアクティブカメラへ適用
-        if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(keyframes_.size())) {
+        if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(sequence_.keyframes.size())) {
             if (ImGui::Button("選択キーフレームを適用")) {
-                ApplyToActiveCamera(context, keyframes_[selectedIndex_].snapshot);
+                ApplyToActiveCamera(context, sequence_.keyframes[selectedIndex_].snapshot);
             }
 
             UI::SameLine();
             if (ImGui::Button("再生ヘッドを選択位置へ移動")) {
-                playhead_ = keyframes_[selectedIndex_].time;
+                playhead_ = sequence_.keyframes[selectedIndex_].time;
                 playheadChanged = true;
             }
 
             // 選択キーの時刻を直接編集できるようにする。
-            float selectedTime = keyframes_[selectedIndex_].time;
-            if (UI::DragFloat("選択キー時刻(秒)", selectedTime, 0.05f, 0.0f, timelineLength_, "%.2f")) {
+            float selectedTime = sequence_.keyframes[selectedIndex_].time;
+            if (UI::DragFloat("選択キー時刻(秒)", selectedTime, 0.05f, 0.0f, sequence_.timelineLength, "%.2f")) {
                 PushUndoState();
-                keyframes_[selectedIndex_].time = std::clamp(selectedTime, 0.0f, timelineLength_);
-                std::sort(keyframes_.begin(), keyframes_.end(),
+                sequence_.keyframes[selectedIndex_].time = std::clamp(selectedTime, 0.0f, sequence_.timelineLength);
+                std::sort(sequence_.keyframes.begin(), sequence_.keyframes.end(),
                     [](const CameraSequenceKeyframe& a, const CameraSequenceKeyframe& b) { return a.time < b.time; });
                 selectedIndex_ = FindNearestKeyframeIndex(selectedTime);
-                playhead_ = std::clamp(selectedTime, 0.0f, timelineLength_);
+                playhead_ = std::clamp(selectedTime, 0.0f, sequence_.timelineLength);
                 playheadChanged = true;
             }
         }
 
         // 再生停止中に再生ヘッドを動かした場合は、その時刻の値を即時反映する。
         if (!isPlaying_ && playheadChanged) {
-            CameraSnapshot evaluated{};
-            if (EvaluateSnapshotAt(playhead_, evaluated)) {
-                ApplyToActiveCamera(context, evaluated);
-            }
+            ApplyEvaluatedAt(context, playhead_);
         }
 
         UI::Separator();
@@ -554,10 +520,7 @@ namespace CoreEngine
                     PushUndoState();
                     if (LoadClipFromFile(fullPath.string())) {
                         // 先頭状態を反映し、読み込み後すぐ内容を確認できるようにする。
-                        CameraSnapshot evaluated{};
-                        if (EvaluateSnapshotAt(playhead_, evaluated)) {
-                            ApplyToActiveCamera(context, evaluated);
-                        }
+                        ApplyEvaluatedAt(context, playhead_);
                     } else {
                         // 読み込み失敗時は不要なUndo履歴を取り消す。
                         if (!undoStack_.empty()) {
@@ -567,142 +530,6 @@ namespace CoreEngine
                 }
             }
         }
-    }
-
-    bool CameraKeyframeEditorModule::EvaluateSnapshotAt(float time, CameraSnapshot& outSnapshot) const
-    {
-        if (!EvaluateSnapshotRaw(time, outSnapshot)) {
-            return false;
-        }
-
-        // ショット管理有効時は、ショット定義に従って遷移処理（カット/ブレンド）を適用する。
-        if (!shotsEnabled_ || shots_.empty()) {
-            return true;
-        }
-
-        const float clampedTime = std::clamp(time, 0.0f, timelineLength_);
-        const int shotIndex = FindShotIndexAt(clampedTime);
-        if (shotIndex < 0 || shotIndex >= static_cast<int>(shots_.size())) {
-            return true;
-        }
-
-        const CameraSequenceShot& currentShot = shots_[shotIndex];
-        if (!currentShot.enabled || currentShot.transitionType != CameraSequenceTransitionType::Blend) {
-            return true;
-        }
-
-        int previousShotIndex = -1;
-        for (int i = shotIndex - 1; i >= 0; --i) {
-            if (shots_[i].enabled) {
-                previousShotIndex = i;
-                break;
-            }
-        }
-
-        if (previousShotIndex < 0) {
-            return true;
-        }
-
-        const CameraSequenceShot& previousShot = shots_[previousShotIndex];
-        const float currentShotDuration = (std::max)(currentShot.endTime - currentShot.startTime, 0.0f);
-        const float blendDuration = std::clamp(currentShot.blendDuration, 0.0f, currentShotDuration);
-        if (blendDuration <= 0.0001f) {
-            return true;
-        }
-
-        const float blendStart = currentShot.startTime;
-        const float blendEnd = blendStart + blendDuration;
-        if (clampedTime < blendStart || clampedTime > blendEnd) {
-            return true;
-        }
-
-        CameraSnapshot fromSnapshot{};
-        if (!EvaluateSnapshotRaw(previousShot.endTime, fromSnapshot)) {
-            return true;
-        }
-
-        CameraSnapshot toSnapshot{};
-        if (!EvaluateSnapshotRaw(clampedTime, toSnapshot)) {
-            return true;
-        }
-
-        const float blendT = std::clamp((clampedTime - blendStart) / blendDuration, 0.0f, 1.0f);
-        outSnapshot = InterpolateSnapshot(fromSnapshot, toSnapshot, blendT);
-        return true;
-    }
-
-    bool CameraKeyframeEditorModule::EvaluateSnapshotRaw(float time, CameraSnapshot& outSnapshot) const
-    {
-        if (keyframes_.empty()) {
-            return false;
-        }
-
-        if (keyframes_.size() == 1) {
-            outSnapshot = keyframes_.front().snapshot;
-            return true;
-        }
-
-        const float clampedTime = std::clamp(time, 0.0f, timelineLength_);
-
-        // 範囲外は端のキーフレームを返す。
-        if (clampedTime <= keyframes_.front().time) {
-            outSnapshot = keyframes_.front().snapshot;
-            return true;
-        }
-        if (clampedTime >= keyframes_.back().time) {
-            outSnapshot = keyframes_.back().snapshot;
-            return true;
-        }
-
-        // 区間を探索して線形補間する。
-        for (size_t i = 0; i + 1 < keyframes_.size(); ++i) {
-            const CameraSequenceKeyframe& from = keyframes_[i];
-            const CameraSequenceKeyframe& to = keyframes_[i + 1];
-
-            if (clampedTime >= from.time && clampedTime <= to.time) {
-                const float span = to.time - from.time;
-                if (span <= 0.0001f) {
-                    outSnapshot = from.snapshot;
-                    return true;
-                }
-
-                const float t = (clampedTime - from.time) / span;
-                outSnapshot = InterpolateSnapshot(from.snapshot, to.snapshot, t);
-                return true;
-            }
-        }
-
-        outSnapshot = keyframes_.back().snapshot;
-        return true;
-    }
-
-    CameraSnapshot CameraKeyframeEditorModule::InterpolateSnapshot(const CameraSnapshot& from, const CameraSnapshot& to, float t) const
-    {
-        CameraSnapshot result{};
-        const EasingUtil::Type easingType = GetSelectedEasingType();
-
-        result.position = EasingUtil::LerpVector3(from.position, to.position, t, easingType);
-        result.rotation = Vector3(
-            EasingUtil::LerpAngle(from.rotation.x, to.rotation.x, t, easingType),
-            EasingUtil::LerpAngle(from.rotation.y, to.rotation.y, t, easingType),
-            EasingUtil::LerpAngle(from.rotation.z, to.rotation.z, t, easingType));
-        result.scale = EasingUtil::LerpVector3(from.scale, to.scale, t, easingType);
-        result.parameters.projectionType = from.parameters.projectionType;
-
-        result.parameters.fov = EasingUtil::Lerp(from.parameters.fov, to.parameters.fov, t, easingType);
-        result.parameters.nearClip = EasingUtil::Lerp(from.parameters.nearClip, to.parameters.nearClip, t, easingType);
-        result.parameters.farClip = EasingUtil::Lerp(from.parameters.farClip, to.parameters.farClip, t, easingType);
-        result.parameters.aspectRatio = EasingUtil::Lerp(from.parameters.aspectRatio, to.parameters.aspectRatio, t, easingType);
-        return result;
-    }
-
-    EasingUtil::Type CameraKeyframeEditorModule::GetSelectedEasingType() const
-    {
-        if (easingTypeIndex_ < 0 || easingTypeIndex_ >= kEasingOptionCount) {
-            return EasingUtil::Type::Linear;
-        }
-
-        return kEasingOptions[easingTypeIndex_].type;
     }
 
     bool CameraKeyframeEditorModule::CaptureFromActiveCamera(const CameraEditorContext& context, CameraSnapshot& outSnapshot) const
@@ -728,6 +555,14 @@ namespace CoreEngine
         observedSnapshot_ = snapshot;
         hasObservedSnapshot_ = true;
         return true;
+    }
+
+    void CameraKeyframeEditorModule::ApplyEvaluatedAt(const CameraEditorContext& context, float time)
+    {
+        CameraSnapshot evaluated{};
+        if (CameraSequenceEvaluator::Evaluate(sequence_, time, evaluated)) {
+            ApplyToActiveCamera(context, evaluated);
+        }
     }
 
     bool CameraKeyframeEditorModule::IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const
@@ -805,15 +640,15 @@ namespace CoreEngine
         }
 
         const int nearest = FindNearestKeyframeIndex(playhead_);
-        if (nearest >= 0 && std::fabs(keyframes_[nearest].time - playhead_) <= updateThreshold_) {
-            keyframes_[nearest].snapshot = current;
+        if (nearest >= 0 && std::fabs(sequence_.keyframes[nearest].time - playhead_) <= updateThreshold_) {
+            sequence_.keyframes[nearest].snapshot = current;
             selectedIndex_ = nearest;
         } else {
             CameraSequenceKeyframe key{};
             key.time = playhead_;
             key.snapshot = current;
-            keyframes_.push_back(key);
-            std::sort(keyframes_.begin(), keyframes_.end(),
+            sequence_.keyframes.push_back(key);
+            std::sort(sequence_.keyframes.begin(), sequence_.keyframes.end(),
                 [](const CameraSequenceKeyframe& a, const CameraSequenceKeyframe& b) { return a.time < b.time; });
 
             selectedIndex_ = FindNearestKeyframeIndex(playhead_);
@@ -824,27 +659,30 @@ namespace CoreEngine
 
     void CameraKeyframeEditorModule::DrawViewportVisualization()
     {
-        if (!viewportVisualizationEnabled_ || keyframes_.empty()) {
+        if (!viewportVisualizationEnabled_ || sequence_.keyframes.empty()) {
             return;
         }
 
         auto& lineManager = LineManager::GetInstance();
 
-        if (viewportShowTrajectory_ && keyframes_.size() >= 2) {
+        // スナップショットの position はそのまま視点のワールド座標（軌道パラメータは持たない）。
+        if (viewportShowTrajectory_ && sequence_.keyframes.size() >= 2) {
             // 区間ごとの補間結果を細かくサンプルし、Sceneビュー上で軌跡として可視化する。
-            for (size_t i = 0; i + 1 < keyframes_.size(); ++i) {
-                const CameraSequenceKeyframe& from = keyframes_[i];
-                const CameraSequenceKeyframe& to = keyframes_[i + 1];
+            for (size_t i = 0; i + 1 < sequence_.keyframes.size(); ++i) {
+                const CameraSequenceKeyframe& from = sequence_.keyframes[i];
+                const CameraSequenceKeyframe& to = sequence_.keyframes[i + 1];
 
                 if (to.time <= from.time) {
                     continue;
                 }
 
-                Vector3 prev = GetSnapshotWorldPosition(from.snapshot);
+                Vector3 prev = from.snapshot.position;
                 for (int sampleIndex = 1; sampleIndex <= viewportTrajectorySamplesPerSegment_; ++sampleIndex) {
                     const float localT = static_cast<float>(sampleIndex) / static_cast<float>(viewportTrajectorySamplesPerSegment_);
-                    CameraSnapshot interpolated = InterpolateSnapshot(from.snapshot, to.snapshot, localT);
-                    const Vector3 current = GetSnapshotWorldPosition(interpolated);
+                    CameraSnapshot interpolated = CameraSequenceEvaluator::Interpolate(
+                        from.snapshot, to.snapshot, localT,
+                        CameraSequenceEasing::TypeAt(sequence_.easingTypeIndex));
+                    const Vector3 current = interpolated.position;
                     lineManager.DrawLine(prev, current, viewportTrajectoryColor_, viewportTrajectoryAlpha_);
                     prev = current;
                 }
@@ -853,31 +691,25 @@ namespace CoreEngine
 
         if (viewportShowKeyMarkers_) {
             // キーフレーム位置をマーカー表示し、選択中キーを色で区別する。
-            for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-                const Vector3 position = GetSnapshotWorldPosition(keyframes_[i].snapshot);
+            for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+                const Vector3 position = sequence_.keyframes[i].snapshot.position;
                 const Vector3 color = (i == selectedIndex_) ? viewportSelectedKeyColor_ : viewportKeyMarkerColor_;
                 lineManager.DrawWireSphere(position, viewportMarkerSize_, 8, color, 0.95f);
             }
         }
     }
 
-    Vector3 CameraKeyframeEditorModule::GetSnapshotWorldPosition(const CameraSnapshot& snapshot) const
-    {
-        // スナップショットは常に視点ワールド座標を持つ（軌道パラメータは持たない）
-        return snapshot.position;
-    }
-
     int CameraKeyframeEditorModule::FindNearestKeyframeIndex(float time) const
     {
-        if (keyframes_.empty()) {
+        if (sequence_.keyframes.empty()) {
             return -1;
         }
 
         int bestIndex = 0;
-        float bestDistance = std::fabs(keyframes_[0].time - time);
+        float bestDistance = std::fabs(sequence_.keyframes[0].time - time);
 
-        for (int i = 1; i < static_cast<int>(keyframes_.size()); ++i) {
-            const float distance = std::fabs(keyframes_[i].time - time);
+        for (int i = 1; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+            const float distance = std::fabs(sequence_.keyframes[i].time - time);
             if (distance < bestDistance) {
                 bestDistance = distance;
                 bestIndex = i;
@@ -887,28 +719,11 @@ namespace CoreEngine
         return bestIndex;
     }
 
-    int CameraKeyframeEditorModule::FindShotIndexAt(float time) const
-    {
-        int found = -1;
-        for (int i = 0; i < static_cast<int>(shots_.size()); ++i) {
-            const CameraSequenceShot& shot = shots_[i];
-            if (!shot.enabled) {
-                continue;
-            }
-
-            if (time >= shot.startTime && time <= shot.endTime) {
-                found = i;
-                break;
-            }
-        }
-        return found;
-    }
-
     int CameraKeyframeEditorModule::FindPreviousKeyframeIndex(float time) const
     {
         int index = -1;
-        for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-            if (keyframes_[i].time <= time) {
+        for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+            if (sequence_.keyframes[i].time <= time) {
                 index = i;
             } else {
                 break;
@@ -919,8 +734,8 @@ namespace CoreEngine
 
     int CameraKeyframeEditorModule::FindNextKeyframeIndex(float time) const
     {
-        for (int i = 0; i < static_cast<int>(keyframes_.size()); ++i) {
-            if (keyframes_[i].time >= time) {
+        for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+            if (sequence_.keyframes[i].time >= time) {
                 return i;
             }
         }
@@ -935,15 +750,8 @@ namespace CoreEngine
 
     bool CameraKeyframeEditorModule::SaveCurrentClipToFile(const std::string& filePath) const
     {
-        // 編集中の状態とシーケンスは同じ型なので、そのまま渡すだけでよい。
-        CameraSequenceAsset asset{};
-        asset.timelineLength = timelineLength_;
-        asset.easingTypeIndex = easingTypeIndex_;
-        asset.shotsEnabled = shotsEnabled_;
-        asset.keyframes = keyframes_;
-        asset.shots = shots_;
-
-        return CameraSequenceIO::Save(filePath, asset);
+        // 編集中のタイムラインがシーケンスそのものなので、そのまま渡すだけでよい。
+        return CameraSequenceIO::Save(filePath, sequence_);
     }
 
     bool CameraKeyframeEditorModule::LoadClipFromFile(const std::string& filePath)
@@ -955,14 +763,10 @@ namespace CoreEngine
         }
 
         // 時刻の並び・範囲は CameraSequenceIO::Load が整えて返す。
-        timelineLength_ = asset.timelineLength;
-        easingTypeIndex_ = asset.easingTypeIndex;
-        shotsEnabled_ = asset.shotsEnabled;
-        keyframes_ = std::move(asset.keyframes);
-        shots_ = std::move(asset.shots);
+        sequence_ = std::move(asset);
 
-        selectedIndex_ = keyframes_.empty() ? -1 : 0;
-        selectedShotIndex_ = shots_.empty() ? -1 : 0;
+        selectedIndex_ = sequence_.keyframes.empty() ? -1 : 0;
+        selectedShotIndex_ = sequence_.shots.empty() ? -1 : 0;
         editingShotNameIndex_ = -1;
         playhead_ = 0.0f;
         isPlaying_ = false;
@@ -972,33 +776,25 @@ namespace CoreEngine
     CameraKeyframeEditorModule::EditorState CameraKeyframeEditorModule::CaptureEditorState() const
     {
         EditorState state{};
-        state.keyframes = keyframes_;
-        state.shots = shots_;
-        state.timelineLength = timelineLength_;
+        state.sequence = sequence_;
         state.playhead = playhead_;
         state.selectedIndex = selectedIndex_;
         state.selectedShotIndex = selectedShotIndex_;
         state.isPlaying = isPlaying_;
-        state.shotsEnabled = shotsEnabled_;
         state.loopPlayback = loopPlayback_;
         state.playbackSpeed = playbackSpeed_;
-        state.easingTypeIndex = easingTypeIndex_;
         return state;
     }
 
     void CameraKeyframeEditorModule::ApplyEditorState(const EditorState& state)
     {
-        keyframes_ = state.keyframes;
-        shots_ = state.shots;
-        timelineLength_ = state.timelineLength;
+        sequence_ = state.sequence;
         playhead_ = state.playhead;
         selectedIndex_ = state.selectedIndex;
         selectedShotIndex_ = state.selectedShotIndex;
         isPlaying_ = state.isPlaying;
-        shotsEnabled_ = state.shotsEnabled;
         loopPlayback_ = state.loopPlayback;
         playbackSpeed_ = state.playbackSpeed;
-        easingTypeIndex_ = state.easingTypeIndex;
         editingShotNameIndex_ = -1;
     }
 
