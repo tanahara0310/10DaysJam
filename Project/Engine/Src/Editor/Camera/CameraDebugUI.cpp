@@ -12,6 +12,7 @@
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Camera/CameraManager.h"
+#include "Camera/Sequence/CameraSequence.h"
 
 namespace CoreEngine {
 
@@ -74,6 +75,23 @@ namespace CoreEngine {
 
         ImGui::Text("登録カメラ数: %zu", cameraManager_->GetCameraCount());
         ImGui::Text("アクティブ3D: %s", cameraManager_->GetActiveCameraName(CameraType::Camera3D).c_str());
+
+        // 今このカメラを最後に書き換えているのは誰か。
+        // 追従やコントローラの操作が効かないとき、原因がここで分かるようにしておく。
+        if (CameraSequence::IsActive()) {
+            const std::string playingName = CameraSequence::GetPlayingName();
+            ImGui::TextColored(ImVec4(0.35f, 0.85f, 0.45f, 1.0f), "駆動: シーケンス \"%s\"%s",
+                playingName.empty() ? "(無名)" : playingName.c_str(),
+                CameraSequence::IsPlaying() ? "" : " (一時停止中)");
+            UI::SameLine();
+            if (ImGui::SmallButton("停止")) {
+                CameraSequence::Stop();
+            }
+            UI::Hint("再生中はゲーム側の追従より後に構図を上書きします。");
+        } else {
+            ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "駆動: ゲーム / カメラコントローラ");
+        }
+
         UI::Separator();
 
         bool expandAll = false;

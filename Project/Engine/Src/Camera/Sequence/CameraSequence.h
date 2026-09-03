@@ -1,74 +1,80 @@
 #pragma once
 
-#include "Camera/CameraStructs.h"
+#include "Camera/Sequence/CameraSequenceLibrary.h"
+#include "Camera/Sequence/CameraSequencePlayer.h"
 
 #include <string>
-#include <vector>
 
 /// @file
-/// @brief カメラシーケンス（キーフレームで組んだカメラワーク）のデータ型
-/// @details エディタ・ランタイムの両方がこの 1 組の型だけを使う。以前は
-///          キーフレーム編集モジュール・シーケンス再生モジュール・保存 I/O が
-///          それぞれ自前の同名の型を持っており、片方だけ直すと食い違っていた。
+/// @brief カメラシーケンスの静的な入口（どこからでも 1 行で再生するため）
 
 namespace CoreEngine
 {
-    /// @brief シーケンスの既定の置き場所
-    namespace CameraSequencePaths {
-        /// @brief シーケンス(.json)を探すディレクトリ
-        inline constexpr const char* kDirectory = "Application/Assets/Presets/CameraClips/";
-    }
+    /// @brief 現在のシーンの CameraSequencePlayer へ委譲する静的ファサード
+    ///
+    /// @details
+    /// 再生したい側が Camera も CameraManager も知らずに済むようにするための入口。
+    /// 委譲先は CameraSequenceFeature が Initialize / PostSceneFinalize で差し替える。
+    /// 委譲先が無い間（シーン外・Feature 未登録）はすべて無害な空振りになる。
+    ///
+    /// シーケンスの実体はエディタで作った .json で、コード側が知っているのは名前だけ。
+    /// カット割り・タイミング・構図をコードに書かずに済ませるための境界がここ。
+    ///
+    /// @code
+    ///     CameraSequence::Play("Opening_Station");
+    ///
+    ///     CameraSequencePlaybackOptions options;
+    ///     options.blendInSeconds = 0.4f;   // 今の構図から 0.4 秒かけて繋ぐ
+    ///     options.useUnscaledTime = true;  // ヒットストップ中も進める
+    ///     CameraSequence::Play("Bridge_Collapse", options);
+    /// @endcode
+    ///
+    /// @note メインスレッド専用。
+    class CameraSequence {
+    public:
+        /// @brief 名前でシーケンスを頭から再生する
+        /// @param name 拡張子なしのシーケンス名（"Opening_Station"）
+        /// @return 再生を開始できたら true（未登録・ファイル無しなら false）
+        static bool Play(const std::string& name, const CameraSequencePlaybackOptions& options = {});
 
-    /// @brief ショット間の遷移方式（0:カット / 1:ブレンド）
-    /// @note 値は JSON の "transitionType" にそのまま入るため、番号を変えると既存アセットが壊れる。
-    enum class CameraSequenceTransitionType {
-        Cut = 0,
-        Blend = 1
-    };
+        /// @brief 再生を止め、カメラをゲーム側へ返す
+        static void Stop();
 
-    /// @brief シーケンス内の 1 ショット
-    /// @details キーフレーム列の上に重ねる区間の定義。ショットが無くてもシーケンスは成立する。
-    struct CameraSequenceShot {
-        std::string name;
-        float startTime = 0.0f;
-        float endTime = 1.0f;
-        bool enabled = true;
-        CameraSequenceTransitionType transitionType = CameraSequenceTransitionType::Cut;
-        float blendDuration = 0.2f;
-    };
+        /// @brief 再生ヘッドを止める（構図はその位置で保持される）
+        static void Pause();
 
-    /// @brief シーケンス上の 1 キーフレーム（時刻とカメラ姿勢）
-    struct CameraSequenceKeyframe {
-        float time = 0.0f;
-        CameraSnapshot snapshot{};
-    };
+        /// @brief 一時停止から再開する
+        static void Resume();
 
-    /// @brief カメラシーケンス 1 本分のデータ
-    struct CameraSequenceAsset {
-        /// @brief 保存時に書き込むフォーマットバージョン
-        static constexpr const char* kCurrentVersion = "2.0";
+        /// @brief 再生ヘッドが進んでいるか
+        static bool IsPlaying();
 
-        /// @brief タイムライン長の下限（0 秒だと時刻の正規化がゼロ除算になる）
-        static constexpr float kMinTimelineLength = 0.1f;
+        /// @brief シーケンスがカメラを握っているか（一時停止中も含む）
+        /// @details 「今カメラを動かしているのは誰か」の判定はこちらを見ること。
+        static bool IsActive();
 
-        /// @brief ショットの最小長
-        static constexpr float kMinShotDuration = 0.01f;
+        /// @brief 再生中のシーケンス名（何も再生していなければ空）
+        static std::string GetPlayingName();
 
-        std::string version = kCurrentVersion;
-        float timelineLength = 10.0f;
-        int easingTypeIndex = 0;
-        bool shotsEnabled = true;
-        std::vector<CameraSequenceKeyframe> keyframes;
-        std::vector<CameraSequenceShot> shots;
+        /// @brief シーケンスの読み込みキャッシュ
+        /// @details ディレクトリの変更や、エディタで保存し直した後の Reload に使う。
+        static CameraSequenceLibrary& GetLibrary() { return library_; }
 
-        /// @brief キーフレームを時刻の昇順へ並べ替える
-        /// @details 評価は「隣り合う 2 キーの間を補間する」前提なので、
-        ///          キーを足した後・読み込んだ後は必ずこれを通すこと。
-        void SortKeyframes();
+        /// @brief 委譲先が居るか（通常は確かめる必要はない）
+        static bool IsAvailable() { return activePlayer_ != nullptr; }
 
-        /// @brief 各値をタイムライン長の範囲へ収める
-        /// @details timelineLength の下限、キー時刻とショット時刻のクランプ、
-        ///          ショットの最小長とブレンド長の非負化をまとめて行う。
-        void Sanitize();
+        /// @brief 委譲先の Player（細かい制御が要るとき用。無ければ nullptr）
+        static CameraSequencePlayer* GetActivePlayer() { return activePlayer_; }
+
+        /// @brief 委譲先を差し替える
+        /// @note CameraSequenceFeature が呼ぶ。利用側は呼ばないこと。
+        static void SetActivePlayer(CameraSequencePlayer* player) { activePlayer_ = player; }
+
+    private:
+        /// @brief 委譲先（非所有。所有は CameraSequenceFeature）
+        static inline CameraSequencePlayer* activePlayer_ = nullptr;
+
+        /// @brief 読み込みキャッシュ。Player はシーンごとに作り直されるので、こちらが正本
+        static inline CameraSequenceLibrary library_{};
     };
 }

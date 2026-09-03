@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Camera/Sequence/CameraSequence.h"
+#include "Camera/Sequence/CameraSequenceTypes.h"
 #include "Math/Easing/EasingUtil.h"
 
 /// @file

@@ -2,6 +2,7 @@
 #include "DefaultSceneFeatures.h"
 
 #include "CameraFeature.h"
+#include "CameraSequenceFeature.h"
 #include "CameraShakeFeature.h"
 #include "CollisionFeature.h"
 #include "DebugEditorFeature.h"
@@ -70,8 +71,14 @@ namespace CoreEngine
         AddLate<TweenFeature>(features);          // PreObjectUpdate の最後
         AddLate<EventDispatchFeature>(features);  // PostObjectUpdate の最後
 
-        // カメラシェイクは PostLogic の最後。追従カメラ（OnLateUpdate）が構図を
-        // 決め切ってから揺らさないと、揺れが追従に上書きされて何も起きない。
+        // ここから下は 1 つのカメラを「ゲーム側の追従 → シーケンス → 揺れ」の順に
+        // 重ね書きする。どちらも PostLogic の最後（＝追従が構図を決め切った後）に回り、
+        // この 2 行の並びがそのまま重ね順になる。入れ替えてはいけない。
+
+        // カメラシーケンスは揺れより先。エディタで作ったカット割りで構図を差し替える。
+        AddLate<CameraSequenceFeature>(features); // PostLogic の最後（シェイクより先）
+
+        // カメラシェイクは最後。シーケンスが決めた構図の上に揺れを乗せる。
         // 同フェーズの大気・雲より後に回るので、それらは揺れる前の姿勢を見る。
         AddLate<CameraShakeFeature>(features);    // PostLogic の最後
 

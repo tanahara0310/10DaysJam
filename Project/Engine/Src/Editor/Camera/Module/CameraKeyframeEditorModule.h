@@ -3,7 +3,7 @@
 #ifdef USE_IMGUI
 
 #include "ICameraEditorModule.h"
-#include "Camera/Sequence/CameraSequence.h"
+#include "Camera/Sequence/CameraSequenceTypes.h"
 
 #include <string>
 #include <vector>

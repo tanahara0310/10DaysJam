@@ -268,6 +268,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequence.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequencePlayer.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceLibrary.cpp" />
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.cpp" />
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceIO.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp" />
@@ -455,6 +458,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\EventDispatchFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CameraFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\CameraSequenceFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CameraShakeFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
@@ -765,6 +769,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Camera\CameraManager.h" />
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequence.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequencePlayer.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceLibrary.h" />
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.h" />
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceIO.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.h" />
@@ -1088,6 +1095,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\EventDispatchFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\DefaultSceneFeatures.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CameraFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\CameraSequenceFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CameraShakeFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />

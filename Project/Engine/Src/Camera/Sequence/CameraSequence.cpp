@@ -1,41 +1,56 @@
 #include "pch.h"
 #include "CameraSequence.h"
 
-#include <algorithm>
-
 namespace CoreEngine
 {
-    void CameraSequenceAsset::SortKeyframes()
+    bool CameraSequence::Play(const std::string& name, const CameraSequencePlaybackOptions& options)
     {
-        std::sort(keyframes.begin(), keyframes.end(),
-            [](const CameraSequenceKeyframe& lhs, const CameraSequenceKeyframe& rhs) {
-                return lhs.time < rhs.time;
-            });
+        if (!activePlayer_) {
+            return false;
+        }
+
+        auto asset = library_.Get(name);
+        if (!asset) {
+            return false;
+        }
+
+        activePlayer_->Play(std::move(asset), options, name);
+        return activePlayer_->IsActive();
     }
 
-    void CameraSequenceAsset::Sanitize()
+    void CameraSequence::Stop()
     {
-        if (timelineLength < kMinTimelineLength) {
-            timelineLength = kMinTimelineLength;
+        if (activePlayer_) {
+            activePlayer_->Stop();
         }
+    }
 
-        for (auto& key : keyframes) {
-            key.time = std::clamp(key.time, 0.0f, timelineLength);
+    void CameraSequence::Pause()
+    {
+        if (activePlayer_) {
+            activePlayer_->Pause();
         }
+    }
 
-        for (auto& shot : shots) {
-            shot.startTime = std::clamp(shot.startTime, 0.0f, timelineLength);
-            shot.endTime = std::clamp(shot.endTime, 0.0f, timelineLength);
-
-            // 終了が開始以下だと区間の長さがゼロ以下になり、
-            // 「この時刻はどのショットか」の判定が破綻する。
-            if (shot.endTime <= shot.startTime) {
-                shot.endTime = std::clamp(shot.startTime + kMinShotDuration, kMinShotDuration, timelineLength);
-            }
-
-            if (shot.blendDuration < 0.0f) {
-                shot.blendDuration = 0.0f;
-            }
+    void CameraSequence::Resume()
+    {
+        if (activePlayer_) {
+            activePlayer_->Resume();
         }
+    }
+
+    bool CameraSequence::IsPlaying()
+    {
+        return activePlayer_ && activePlayer_->IsPlaying();
+    }
+
+    bool CameraSequence::IsActive()
+    {
+        return activePlayer_ && activePlayer_->IsActive();
+    }
+
+    std::string CameraSequence::GetPlayingName()
+    {
+        return activePlayer_ ? activePlayer_->GetName() : std::string{};
     }
 }

@@ -250,6 +250,15 @@
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.cpp">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequencePlayer.cpp">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceLibrary.cpp">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequence.cpp">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClCompile>
@@ -817,6 +826,9 @@
     <ClCompile Include="Engine\Src\Scene\Feature\CameraFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\CameraSequenceFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\CameraShakeFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
@@ -1373,6 +1385,15 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\CameraManager.h">
       <Filter>Engine\Src\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.h">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequencePlayer.h">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceLibrary.h">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequence.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
@@ -2347,6 +2368,9 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\CameraFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\CameraSequenceFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\CameraShakeFeature.h">
