@@ -7,6 +7,7 @@
 #include <vector>
 
 namespace CoreEngine {
+    class UIText;
 }
 
 namespace ResultScene
@@ -21,5 +22,12 @@ namespace ResultScene
         void OnUpdate() override;
 
     private:
+        enum class Selection { Retry, Title };
+        void RefreshSelection();
+
+        Selection selection_ = Selection::Retry;
+        CoreEngine::UIText* retryText_ = nullptr;
+        CoreEngine::UIText* titleText_ = nullptr;
+        bool returnRequested_ = false;
     };
 }

@@ -21,6 +21,8 @@
 #include "Components/Train/TrainMovementComponent.h"
 #include "Components/UI/RailResourceUIComponent.h"
 
+#include "Components/GameCore/GameManagerComponent.h"
+
 GameScene::GameScene::~GameScene() = default;
 
 void GameScene::GameScene::OnInitialize() {
@@ -41,6 +43,11 @@ void GameScene::GameScene::OnInitialize() {
     uint32_t renderWorldDistance = 20; // 描画するワールドの距離を設定
 
     // ========== オブジェクトの生成 ==========
+    //　ゲームマスターの追加
+    auto* gameManager = CreateObject("GameManager");
+    auto* gameManagerComponent =
+        gameManager->AddComponent<GameComponents::GameManagerComponent>(sceneManager_);
+
     // 床のオブジェクトプールを生成
     auto* groundPoolManager = CreateObject("GroundPoolManager");
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -104,7 +111,8 @@ void GameScene::GameScene::OnInitialize() {
     auto* trainTransform = train->AddComponent<CoreEngine::TransformComponent>();
     train->AddComponent<GameComponents::TrainMovementComponent>(
         gridSize, 0.5f, initialBuilderPosX, initialBuilderPosZ,
-        railPath->GetComponent<GameComponents::RailPathComponent>());
+        railPath->GetComponent<GameComponents::RailPathComponent>(),
+        gameManagerComponent);
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
     // 列車の描画は、列車の移動ロジックを持つコンポーネントとは別のコンポーネントで行う。
@@ -116,6 +124,10 @@ void GameScene::GameScene::OnInitialize() {
         train->GetComponent<GameComponents::TrainMovementComponent>());
 
     railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
+
+    gameManagerComponent->SetGameplayComponents(
+        train->GetComponent<GameComponents::TrainMovementComponent>(),
+        railBuilder->GetComponent<GameComponents::RailBuilderComponent>());
 
     // 列車に乗るサル
     auto* monkey = CreateObject("Monkey");
@@ -130,6 +142,9 @@ void GameScene::GameScene::OnInitialize() {
         train->GetComponent<CoreEngine::TransformComponent>(),
         railBuilder->GetComponent<CoreEngine::TransformComponent>(),
         0.4f); // カメラX位置: 0.0 = 列車側、0.5 = 中間、1.0 = ビルダー側
+
+    gameManagerComponent->SetEndingCamera(
+        cameraController->GetComponent<GameComponents::CameraManagerComponent>());
 
     railView->AddComponent<GameComponents::RailViewComponent>(
         gridSize,
