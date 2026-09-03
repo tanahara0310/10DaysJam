@@ -97,11 +97,22 @@ namespace CoreEngine
             return;
         }
 
-        ImGuiIO& io = ImGui::GetIO();
-        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Z, false)) {
+        // 掴んでいたウィジェットが消えた（タブを切り替えた・キーを選び直した）ときの
+        // 取り残しを掃除する。ここは今フレームのウィジェットを出す前なので、
+        // ActiveId は前フレームの続きを正しく指している。
+        if (!ImGui::IsAnyItemActive()) {
+            activeEditItemId_ = 0;
+            hasPendingEditState_ = false;
+        }
+
+        // Ctrl+Z / Ctrl+Y はシーンのオブジェクト Undo と同じキー。素で拾うと両方が
+        // 同じフレームで戻ってしまうので、ImGui の入力ルーティングに任せる。
+        // RouteFocused はこのウィンドウにフォーカスがあるときだけ勝ち、
+        // それ以外は SceneDebugEditor 側の RouteGlobal へ流れる。
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteFocused)) {
             Undo();
         }
-        if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Y, false)) {
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteFocused)) {
             Redo();
         }
 
@@ -220,7 +231,7 @@ namespace CoreEngine
 
         UI::SameLine();
         ImGui::SetNextItemWidth(100.0f);
-        if (UI::DragFloat("全体長", sequence_.timelineLength, 0.1f, 0.1f, 600.0f, "%.1f 秒")) {
+        if (TrackEdit(UI::DragFloat("全体長", sequence_.timelineLength, 0.1f, 0.1f, 600.0f, "%.1f 秒"))) {
             sequence_.timelineLength = (std::max)(sequence_.timelineLength, CameraSequenceAsset::kMinTimelineLength);
         }
 
@@ -375,8 +386,7 @@ namespace CoreEngine
         UI::SameLine();
         ImGui::SetNextItemWidth(110.0f);
         float keyTime = key.time;
-        if (UI::DragFloat("時刻", keyTime, 0.02f, 0.0f, sequence_.timelineLength, "%.2f 秒")) {
-            PushUndoState();
+        if (TrackEdit(UI::DragFloat("時刻", keyTime, 0.02f, 0.0f, sequence_.timelineLength, "%.2f 秒"))) {
             key.time = std::clamp(keyTime, 0.0f, sequence_.timelineLength);
             const float movedTime = key.time;
             sequence_.SortKeyframes();
@@ -420,8 +430,7 @@ namespace CoreEngine
     {
         // 選んだキーの値を直接いじる。別モジュールへスクロールして戻る必要をなくす。
         Vector3 position = key.snapshot.position;
-        if (UI::DragVec3("位置", position, 0.1f)) {
-            PushUndoState();
+        if (TrackEdit(UI::DragVec3("位置", position, 0.1f))) {
             key.snapshot.position = position;
             playheadChanged = true;
         }
@@ -432,8 +441,7 @@ namespace CoreEngine
                 key.snapshot.rotation.y * kRadToDeg,
                 key.snapshot.rotation.z * kRadToDeg
             };
-            if (UI::DragVec3("回転 (度)", rotationDegrees, 0.5f, -360.0f, 360.0f)) {
-                PushUndoState();
+            if (TrackEdit(UI::DragVec3("回転 (度)", rotationDegrees, 0.5f, -360.0f, 360.0f))) {
                 key.snapshot.rotation = {
                     rotationDegrees.x * kDegToRad,
                     rotationDegrees.y * kDegToRad,
@@ -446,8 +454,7 @@ namespace CoreEngine
         }
 
         float fovDegrees = key.snapshot.parameters.GetFovDegrees();
-        if (UI::SliderFloat("視野角 (度)", fovDegrees, 10.0f, 120.0f, "%.1f")) {
-            PushUndoState();
+        if (TrackEdit(UI::SliderFloat("視野角 (度)", fovDegrees, 10.0f, 120.0f, "%.1f"))) {
             key.snapshot.parameters.SetFovDegrees(fovDegrees);
             playheadChanged = true;
         }
@@ -493,8 +500,7 @@ namespace CoreEngine
 
         if (key.aimMode == CameraSequenceAimMode::LookAtPoint) {
             Vector3 aimPoint = key.aimPoint;
-            if (UI::DragVec3("注視点", aimPoint, 0.1f)) {
-                PushUndoState();
+            if (TrackEdit(UI::DragVec3("注視点", aimPoint, 0.1f))) {
                 key.aimPoint = aimPoint;
                 playheadChanged = true;
             }
@@ -553,15 +559,13 @@ namespace CoreEngine
         }
 
         Vector3 aimOffset = key.aimOffset;
-        if (UI::DragVec3("オフセット", aimOffset, 0.05f)) {
-            PushUndoState();
+        if (TrackEdit(UI::DragVec3("オフセット", aimOffset, 0.05f))) {
             key.aimOffset = aimOffset;
             playheadChanged = true;
         }
 
         float rollDegrees = key.aimRoll * kRadToDeg;
-        if (UI::SliderFloat("ロール (度)", rollDegrees, -45.0f, 45.0f, "%.1f")) {
-            PushUndoState();
+        if (TrackEdit(UI::SliderFloat("ロール (度)", rollDegrees, -45.0f, 45.0f, "%.1f"))) {
             key.aimRoll = rollDegrees * kDegToRad;
             playheadChanged = true;
         }
@@ -701,15 +705,13 @@ namespace CoreEngine
         }
 
         float startTime = shot.startTime;
-        if (UI::DragFloat("開始", startTime, 0.05f, 0.0f, sequence_.timelineLength, "%.2f 秒")) {
-            PushUndoState();
+        if (TrackEdit(UI::DragFloat("開始", startTime, 0.05f, 0.0f, sequence_.timelineLength, "%.2f 秒"))) {
             shot.startTime = startTime;
             sequence_.Sanitize();
         }
 
         float endTime = shot.endTime;
-        if (UI::DragFloat("終了", endTime, 0.05f, 0.0f, sequence_.timelineLength, "%.2f 秒")) {
-            PushUndoState();
+        if (TrackEdit(UI::DragFloat("終了", endTime, 0.05f, 0.0f, sequence_.timelineLength, "%.2f 秒"))) {
             shot.endTime = endTime;
             sequence_.Sanitize();
         }
@@ -734,8 +736,7 @@ namespace CoreEngine
 
         if (shot.transitionType == CameraSequenceTransitionType::Blend) {
             float blendDuration = shot.blendDuration;
-            if (UI::DragFloat("ブレンド時間", blendDuration, 0.01f, 0.0f, sequence_.timelineLength, "%.2f 秒")) {
-                PushUndoState();
+            if (TrackEdit(UI::DragFloat("ブレンド時間", blendDuration, 0.01f, 0.0f, sequence_.timelineLength, "%.2f 秒"))) {
                 shot.blendDuration = (std::max)(blendDuration, 0.0f);
             }
         }
@@ -1067,8 +1068,7 @@ namespace CoreEngine
         }
 
         float time = event.time;
-        if (UI::DragFloat("時刻 (秒)", time, 0.02f, 0.0f, sequence_.timelineLength, "%.2f")) {
-            PushUndoState();
+        if (TrackEdit(UI::DragFloat("時刻 (秒)", time, 0.02f, 0.0f, sequence_.timelineLength, "%.2f"))) {
             event.time = std::clamp(time, 0.0f, sequence_.timelineLength);
             // 並べ替えると添字がずれるので、同じイベントを選び直す。
             const CameraSequenceEvent moved = event;
@@ -1123,8 +1123,7 @@ namespace CoreEngine
             }
 
             float scale = event.value;
-            if (UI::SliderFloat("強さ倍率", scale, 0.0f, 3.0f, "%.2f")) {
-                PushUndoState();
+            if (TrackEdit(UI::SliderFloat("強さ倍率", scale, 0.0f, 3.0f, "%.2f"))) {
                 event.value = scale;
             }
 
@@ -1136,8 +1135,7 @@ namespace CoreEngine
 
         case CameraSequenceEventType::Trauma: {
             float amount = event.value;
-            if (UI::SliderFloat("加算量", amount, 0.0f, 1.0f, "%.2f")) {
-                PushUndoState();
+            if (TrackEdit(UI::SliderFloat("加算量", amount, 0.0f, 1.0f, "%.2f"))) {
                 event.value = amount;
             }
             if (ImGui::Button("試す")) {
@@ -1148,13 +1146,11 @@ namespace CoreEngine
 
         case CameraSequenceEventType::TimeScale: {
             float scale = event.value;
-            if (UI::SliderFloat("時間スケール", scale, 0.0f, 2.0f, "%.2f")) {
-                PushUndoState();
+            if (TrackEdit(UI::SliderFloat("時間スケール", scale, 0.0f, 2.0f, "%.2f"))) {
                 event.value = scale;
             }
             float duration = event.duration;
-            if (UI::DragFloat("継続 (秒)", duration, 0.01f, 0.0f, 10.0f, "%.2f")) {
-                PushUndoState();
+            if (TrackEdit(UI::DragFloat("継続 (秒)", duration, 0.01f, 0.0f, 10.0f, "%.2f"))) {
                 event.duration = (std::max)(duration, 0.0f);
             }
             UI::Hint("継続が過ぎると等倍へ戻ります。");
@@ -1170,8 +1166,7 @@ namespace CoreEngine
                 event.name = eventNameBuffer_;
             }
             float value = event.value;
-            if (UI::DragFloat("値", value, 0.05f, -1000.0f, 1000.0f, "%.2f")) {
-                PushUndoState();
+            if (TrackEdit(UI::DragFloat("値", value, 0.05f, -1000.0f, 1000.0f, "%.2f"))) {
                 event.value = value;
             }
             UI::Hint("CameraSequenceCallbackEvent として EventBus へ流れます。");
@@ -1527,9 +1522,6 @@ namespace CoreEngine
         state.playhead = playhead_;
         state.selectedIndex = selectedIndex_;
         state.selectedShotIndex = selectedShotIndex_;
-        state.isPlaying = isPlaying_;
-        state.loopPlayback = loopPlayback_;
-        state.playbackSpeed = playbackSpeed_;
         return state;
     }
 
@@ -1539,19 +1531,57 @@ namespace CoreEngine
         playhead_ = state.playhead;
         selectedIndex_ = state.selectedIndex;
         selectedShotIndex_ = state.selectedShotIndex;
-        isPlaying_ = state.isPlaying;
-        loopPlayback_ = state.loopPlayback;
-        playbackSpeed_ = state.playbackSpeed;
         editingShotNameIndex_ = -1;
     }
 
     void CameraKeyframeEditorModule::PushUndoState()
     {
-        undoStack_.push_back(CaptureEditorState());
+        PushUndoState(CaptureEditorState());
+    }
+
+    void CameraKeyframeEditorModule::PushUndoState(const EditorState& state)
+    {
+        undoStack_.push_back(state);
         if (undoStack_.size() > maxHistoryCount_) {
             undoStack_.erase(undoStack_.begin());
         }
         redoStack_.clear();
+    }
+
+    bool CameraKeyframeEditorModule::TrackEdit(bool changed)
+    {
+        // グループになっている DragFloat3 でも、ImGui 側が掴んでいる要素の ID を
+        // 最後の項目として転送してくれるので、この 2 つで足りる。
+        const unsigned int itemId = static_cast<unsigned int>(ImGui::GetItemID());
+        const bool active = ImGui::IsItemActive();
+
+        if (active && itemId != 0 && itemId != activeEditItemId_) {
+            // 掴み始め。ここではまだ積まない。掴んだだけで動かさなかった操作を
+            // 履歴に残すと、Ctrl+Z が「何も変わらない 1 手」になってしまう。
+            activeEditItemId_ = itemId;
+            pendingEditState_ = CaptureEditorState();
+            hasPendingEditState_ = true;
+        }
+
+        if (changed) {
+            if (hasPendingEditState_ && itemId == activeEditItemId_) {
+                // ドラッグ中の最初の変更。掴む前の状態を 1 件だけ積む。
+                PushUndoState(pendingEditState_);
+                hasPendingEditState_ = false;
+            } else if (!hasPendingEditState_ && itemId != activeEditItemId_) {
+                // 掴まずに 1 回で終わる変更（想定外の経路）。履歴を落とすより
+                // 積んでおく方がまし。
+                PushUndoState();
+            }
+        }
+
+        if (!active && itemId == activeEditItemId_) {
+            // 手を離した。控えは捨てる。
+            activeEditItemId_ = 0;
+            hasPendingEditState_ = false;
+        }
+
+        return changed;
     }
 
     void CameraKeyframeEditorModule::Undo()

@@ -242,11 +242,14 @@ namespace CoreEngine
             cameraManager_->UpdateDebugModules();
         }
 
-        // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）
-        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) {
+        // Ctrl+Z / Ctrl+Y によるキーボードショートカット（ウィンドウ外でも反応）。
+        // RouteGlobal にしてあるので、カメラエディタのように自分で Undo を持つ
+        // ウィンドウにフォーカスがあるときはそちらへ譲る。素の IsKeyChordPressed だと
+        // 両方が同じフレームで戻ってしまう。
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Z, ImGuiInputFlags_RouteGlobal)) {
             undoRedoHistory_.Undo(gameObjectManager_);
         }
-        if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Y)) {
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_Y, ImGuiInputFlags_RouteGlobal)) {
             undoRedoHistory_.Redo(gameObjectManager_);
         }
 

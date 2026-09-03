@@ -32,14 +32,14 @@ namespace CoreEngine
 
     private:
         /// @brief Undo/Redo で退避する編集状態
+        /// @details 持つのは「シーケンスの中身」と「どこを見ていたか」だけ。再生中か・
+        ///          ループするか・速度は画面側の都合なので入れない。入れると Undo で
+        ///          勝手に再生が始まったり止まったりする。
         struct EditorState {
             CameraSequenceAsset sequence;
             float playhead = 0.0f;
             int selectedIndex = -1;
             int selectedShotIndex = -1;
-            bool isPlaying = false;
-            bool loopPlayback = true;
-            float playbackSpeed = 1.0f;
         };
 
         /// @brief アクティブ3Dカメラからスナップショットを取得
@@ -145,6 +145,19 @@ namespace CoreEngine
         /// @brief Undo用に現在状態を保存
         void PushUndoState();
 
+        /// @brief 指定した状態を Undo 履歴へ積む
+        /// @details ドラッグを掴んだ時点で控えておいた状態を、値が動いてから積むために使う。
+        void PushUndoState(const EditorState& state);
+
+        /// @brief 直前のウィジェットの編集を履歴 1 件へまとめる
+        /// @param changed そのウィジェットが値を変えたか
+        /// @return changed をそのまま返す（if の条件へ差し込める）
+        /// @details Drag / Slider は掴んでいる間ずっと「変更あり」を返すので、そのまま
+        ///          PushUndoState を呼ぶと 1 回のドラッグで履歴が埋まり、Ctrl+Z が
+        ///          効かなくなる。掴んだ時点の状態を控え、値が動いた最初のフレームだけ
+        ///          積むことで、ドラッグ 1 回 = 履歴 1 件にする。
+        bool TrackEdit(bool changed);
+
         /// @brief Undoを実行
         void Undo();
 
@@ -192,6 +205,12 @@ namespace CoreEngine
         std::vector<EditorState> undoStack_;
         std::vector<EditorState> redoStack_;
         size_t maxHistoryCount_ = 64;
+
+        // 掴んでいるウィジェットの ImGui ID と、掴んだ時点の状態。
+        // ImGuiID を持つためだけにヘッダへ imgui.h を引き込みたくないので素の型で持つ。
+        unsigned int activeEditItemId_ = 0;
+        EditorState pendingEditState_{};
+        bool hasPendingEditState_ = false;
 
         // Auto Key
         bool autoKeyEnabled_ = false;
