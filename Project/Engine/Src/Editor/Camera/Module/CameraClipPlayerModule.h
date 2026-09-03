@@ -3,7 +3,7 @@
 #ifdef USE_IMGUI
 
 #include "ICameraEditorModule.h"
-#include "Camera/CameraStructs.h"
+#include "Camera/Sequence/CameraSequence.h"
 #include "Math/Easing/EasingUtil.h"
 
 #include <string>
@@ -24,28 +24,6 @@ namespace CoreEngine
         void Draw(const CameraEditorContext& context) override;
 
     private:
-        /// @brief クリップ内の 1 キーフレーム（時刻とカメラ姿勢）
-        struct ClipKeyframe {
-            float time = 0.0f;
-            CameraSnapshot snapshot{};
-        };
-
-        /// @brief クリップ内ショットの遷移方式
-        enum class ShotTransitionType {
-            Cut = 0,
-            Blend = 1
-        };
-
-        /// @brief クリップ内ショット情報
-        struct ClipShot {
-            std::string name;
-            float startTime = 0.0f;
-            float endTime = 1.0f;
-            bool enabled = true;
-            ShotTransitionType transitionType = ShotTransitionType::Cut;
-            float blendDuration = 0.2f;
-        };
-
         /// @brief シーケンス一覧を更新
         void RefreshClipFileList();
 
@@ -71,13 +49,13 @@ namespace CoreEngine
         bool ApplyToActiveCamera(const CameraEditorContext& context, const CameraSnapshot& snapshot) const;
 
     private:
-        std::string clipDirectoryPath_ = "Application/Assets/Presets/CameraClips/";
+        std::string clipDirectoryPath_ = CameraSequencePaths::kDirectory;
         std::vector<std::string> clipFileList_;
         int selectedClipFileIndex_ = -1;
         bool needRefreshClipFileList_ = true;
 
-        std::vector<ClipKeyframe> clipKeyframes_;
-        std::vector<ClipShot> clipShots_;
+        std::vector<CameraSequenceKeyframe> clipKeyframes_;
+        std::vector<CameraSequenceShot> clipShots_;
         std::string loadedClipName_;
         float timelineLength_ = 10.0f;
         float playhead_ = 0.0f;

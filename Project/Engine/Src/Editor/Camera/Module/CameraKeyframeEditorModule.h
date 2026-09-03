@@ -3,7 +3,7 @@
 #ifdef USE_IMGUI
 
 #include "ICameraEditorModule.h"
-#include "Camera/CameraStructs.h"
+#include "Camera/Sequence/CameraSequence.h"
 #include "Math/Easing/EasingUtil.h"
 
 #include <string>
@@ -24,32 +24,10 @@ namespace CoreEngine
         void Draw(const CameraEditorContext& context) override;
 
     private:
-        /// @brief タイムライン上の 1 キーフレーム（時刻とカメラ姿勢）
-        struct Keyframe {
-            float time = 0.0f;
-            CameraSnapshot snapshot{};
-        };
-
-        /// @brief ショット間の遷移方式
-        enum class ShotTransitionType {
-            Cut = 0,
-            Blend = 1
-        };
-
-        /// @brief タイムライン上のショット定義
-        struct Shot {
-            std::string name;
-            float startTime = 0.0f;
-            float endTime = 1.0f;
-            bool enabled = true;
-            ShotTransitionType transitionType = ShotTransitionType::Cut;
-            float blendDuration = 0.2f;
-        };
-
         /// @brief タイムライン編集中の状態（キーフレーム列・再生位置・選択）
         struct EditorState {
-            std::vector<Keyframe> keyframes;
-            std::vector<Shot> shots;
+            std::vector<CameraSequenceKeyframe> keyframes;
+            std::vector<CameraSequenceShot> shots;
             float timelineLength = 10.0f;
             float playhead = 0.0f;
             int selectedIndex = -1;
@@ -128,8 +106,8 @@ namespace CoreEngine
         void Redo();
 
     private:
-        std::vector<Keyframe> keyframes_;
-        std::vector<Shot> shots_;
+        std::vector<CameraSequenceKeyframe> keyframes_;
+        std::vector<CameraSequenceShot> shots_;
         float timelineLength_ = 10.0f;
         float playhead_ = 0.0f;
         int selectedIndex_ = -1;
@@ -146,7 +124,7 @@ namespace CoreEngine
 
         // シーケンス保存/読み込み
         char clipFileNameBuffer_[128] = "新規カメラシーケンス";
-        std::string clipDirectoryPath_ = "Application/Assets/Presets/CameraClips/";
+        std::string clipDirectoryPath_ = CameraSequencePaths::kDirectory;
         std::vector<std::string> clipFileList_;
         int selectedClipFileIndex_ = -1;
         bool needRefreshClipFileList_ = true;

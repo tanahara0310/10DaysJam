@@ -1,11 +1,9 @@
 #include "pch.h"
-#include "CameraSequenceAssetIO.h"
-
-#ifdef USE_IMGUI
+#include "CameraSequenceIO.h"
 
 #include "Utility/JsonManager/JsonManager.h"
-#include "Camera/Control/OrbitFlyController.h"
 #include "Math/MathCore.h"
+
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
@@ -14,11 +12,10 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief スナップショットをJSONへ変換
+        /// @brief スナップショットを JSON へ変換
         json SnapshotToJson(const CameraSnapshot& snapshot)
         {
             // カメラが 1 種類になったため、スナップショットは常に Transform + 投影パラメータ。
-            // 旧フォーマット（isDebugCamera + target/distance/pitch/yaw）も読めるようにしてある。
             json jsonData;
             jsonData["position"] = JsonManager::Vector3ToJson(snapshot.position);
             jsonData["rotation"] = JsonManager::Vector3ToJson(snapshot.rotation);
@@ -33,7 +30,7 @@ namespace CoreEngine
             return jsonData;
         }
 
-        /// @brief JSONからスナップショットを復元
+        /// @brief JSON からスナップショットを復元
         CameraSnapshot JsonToSnapshot(const json& jsonData)
         {
             CameraSnapshot snapshot{};
@@ -71,7 +68,7 @@ namespace CoreEngine
             return snapshot;
         }
 
-        /// @brief ショット情報をJSONへ変換
+        /// @brief ショット情報を JSON へ変換
         json ShotToJson(const CameraSequenceShot& shot)
         {
             json jsonData;
@@ -84,7 +81,7 @@ namespace CoreEngine
             return jsonData;
         }
 
-        /// @brief JSONからショット情報を復元
+        /// @brief JSON からショット情報を復元
         CameraSequenceShot JsonToShot(const json& jsonData)
         {
             CameraSequenceShot shot{};
@@ -102,7 +99,7 @@ namespace CoreEngine
         }
     }
 
-    std::vector<std::string> CameraSequenceAssetIO::GetSequenceFileList(const std::string& directoryPath)
+    std::vector<std::string> CameraSequenceIO::GetSequenceFileList(const std::string& directoryPath)
     {
         std::vector<std::string> fileList;
 
@@ -120,7 +117,7 @@ namespace CoreEngine
         return fileList;
     }
 
-    bool CameraSequenceAssetIO::Save(const std::string& filePath, const CameraSequenceAsset& asset)
+    bool CameraSequenceIO::Save(const std::string& filePath, const CameraSequenceAsset& asset)
     {
         json root;
         root["version"] = asset.version;
@@ -146,7 +143,7 @@ namespace CoreEngine
         return JsonManager::GetInstance().SaveJson(filePath, root);
     }
 
-    bool CameraSequenceAssetIO::Load(const std::string& filePath, CameraSequenceAsset& outAsset)
+    bool CameraSequenceIO::Load(const std::string& filePath, CameraSequenceAsset& outAsset)
     {
         // 欠けたキーは SafeGet の既定値で補う。古いバージョンのファイルも読めるようにするため
         if (!JsonManager::GetInstance().FileExists(filePath)) {
@@ -164,13 +161,9 @@ namespace CoreEngine
         asset.easingTypeIndex = JsonManager::SafeGet(root, "easingTypeIndex", 0);
         asset.shotsEnabled = JsonManager::SafeGet(root, "shotsEnabled", true);
 
-        if (asset.timelineLength < 0.1f) {
-            asset.timelineLength = 0.1f;
-        }
-
         if (root.contains("keyframes") && root["keyframes"].is_array()) {
             for (const auto& keyJson : root["keyframes"]) {
-                CameraSequenceAsset::Keyframe key{};
+                CameraSequenceKeyframe key{};
                 key.time = JsonManager::SafeGet(keyJson, "time", 0.0f);
                 if (keyJson.contains("snapshot")) {
                     key.snapshot = JsonToSnapshot(keyJson["snapshot"]);
@@ -179,29 +172,17 @@ namespace CoreEngine
             }
         }
 
-        std::sort(asset.keyframes.begin(), asset.keyframes.end(),
-            [](const CameraSequenceAsset::Keyframe& lhs, const CameraSequenceAsset::Keyframe& rhs) {
-                return lhs.time < rhs.time;
-            });
-
         if (root.contains("shots") && root["shots"].is_array()) {
             for (const auto& shotJson : root["shots"]) {
-                CameraSequenceShot shot = JsonToShot(shotJson);
-                shot.startTime = std::clamp(shot.startTime, 0.0f, asset.timelineLength);
-                shot.endTime = std::clamp(shot.endTime, 0.0f, asset.timelineLength);
-                if (shot.endTime <= shot.startTime) {
-                    shot.endTime = std::clamp(shot.startTime + 0.01f, 0.01f, asset.timelineLength);
-                }
-                if (shot.blendDuration < 0.0f) {
-                    shot.blendDuration = 0.0f;
-                }
-                asset.shots.push_back(shot);
+                asset.shots.push_back(JsonToShot(shotJson));
             }
         }
+
+        // 時刻の並びと範囲はここで整えておく。読み手が毎回気にしなくて済む。
+        asset.Sanitize();
+        asset.SortKeyframes();
 
         outAsset = std::move(asset);
         return !outAsset.keyframes.empty();
     }
 }
-
-#endif // _DEBUG

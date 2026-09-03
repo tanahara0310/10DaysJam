@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -267,6 +267,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequence.cpp" />
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceIO.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\CameraDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraFollowEditorModule.cpp" />
@@ -274,7 +276,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp" />
-    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Collision\Collider.cpp" />
     <ClCompile Include="Engine\Src\Collision\ColliderComponent.cpp" />
@@ -762,6 +763,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.h" />
     <ClInclude Include="Engine\Src\Camera\CameraManager.h" />
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequence.h" />
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceIO.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\CameraDebugUI.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraEditorContext.h" />
@@ -770,7 +773,6 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h" />
-    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\ICameraEditorModule.h" />
     <ClInclude Include="Engine\Src\Collision\Collider.h" />

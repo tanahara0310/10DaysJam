@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "CameraClipPlayerModule.h"
-#include "CameraSequenceAssetIO.h"
+#include "Camera/Sequence/CameraSequenceIO.h"
 
 #ifdef USE_IMGUI
 
@@ -10,7 +10,6 @@
 #include <filesystem>
 
 #include "Camera/CameraManager.h"
-#include "Camera/Camera.h"
 #include "Camera/Camera.h"
 
 namespace CoreEngine
@@ -162,7 +161,7 @@ namespace CoreEngine
 
     void CameraClipPlayerModule::RefreshClipFileList()
     {
-        clipFileList_ = CameraSequenceAssetIO::GetSequenceFileList(clipDirectoryPath_);
+        clipFileList_ = CameraSequenceIO::GetSequenceFileList(clipDirectoryPath_);
         needRefreshClipFileList_ = false;
     }
 
@@ -170,41 +169,16 @@ namespace CoreEngine
     {
         // 読み込み成功時だけ内部状態を差し替える。失敗しても再生中のクリップは壊さない
         CameraSequenceAsset asset{};
-        if (!CameraSequenceAssetIO::Load(filePath, asset)) {
+        if (!CameraSequenceIO::Load(filePath, asset)) {
             return false;
         }
 
+        // タイムライン長の下限・時刻の並びは CameraSequenceIO::Load が保証する。
         timelineLength_ = asset.timelineLength;
         easingTypeIndex_ = asset.easingTypeIndex;
         shotsEnabled_ = asset.shotsEnabled;
-        if (timelineLength_ < 0.1f) {
-            timelineLength_ = 0.1f;
-        }
-
-        clipKeyframes_.clear();
-        for (const auto& key : asset.keyframes) {
-            ClipKeyframe localKey{};
-            localKey.time = key.time;
-            localKey.snapshot = key.snapshot;
-            clipKeyframes_.push_back(localKey);
-        }
-
-        std::sort(clipKeyframes_.begin(), clipKeyframes_.end(),
-            [](const ClipKeyframe& a, const ClipKeyframe& b) { return a.time < b.time; });
-
-        clipShots_.clear();
-        for (const auto& shot : asset.shots) {
-            ClipShot localShot{};
-            localShot.name = shot.name;
-            localShot.startTime = shot.startTime;
-            localShot.endTime = shot.endTime;
-            localShot.enabled = shot.enabled;
-            localShot.transitionType = (shot.transitionType == CameraSequenceTransitionType::Blend)
-                ? ShotTransitionType::Blend
-                : ShotTransitionType::Cut;
-            localShot.blendDuration = shot.blendDuration;
-            clipShots_.push_back(localShot);
-        }
+        clipKeyframes_ = std::move(asset.keyframes);
+        clipShots_ = std::move(asset.shots);
 
         playhead_ = 0.0f;
         isPlaying_ = false;
@@ -231,8 +205,8 @@ namespace CoreEngine
             return true;
         }
 
-        const ClipShot& currentShot = clipShots_[shotIndex];
-        if (!currentShot.enabled || currentShot.transitionType != ShotTransitionType::Blend) {
+        const CameraSequenceShot& currentShot = clipShots_[shotIndex];
+        if (!currentShot.enabled || currentShot.transitionType != CameraSequenceTransitionType::Blend) {
             return true;
         }
 
@@ -248,7 +222,7 @@ namespace CoreEngine
             return true;
         }
 
-        const ClipShot& previousShot = clipShots_[previousShotIndex];
+        const CameraSequenceShot& previousShot = clipShots_[previousShotIndex];
         const float currentShotDuration = (std::max)(currentShot.endTime - currentShot.startTime, 0.0f);
         const float blendDuration = std::clamp(currentShot.blendDuration, 0.0f, currentShotDuration);
         if (blendDuration <= 0.0001f) {
@@ -302,8 +276,8 @@ namespace CoreEngine
 
         // 指定時刻が含まれる区間を見つけ、補間結果を返す。
         for (size_t i = 0; i + 1 < clipKeyframes_.size(); ++i) {
-            const ClipKeyframe& from = clipKeyframes_[i];
-            const ClipKeyframe& to = clipKeyframes_[i + 1];
+            const CameraSequenceKeyframe& from = clipKeyframes_[i];
+            const CameraSequenceKeyframe& to = clipKeyframes_[i + 1];
 
             if (clampedTime >= from.time && clampedTime <= to.time) {
                 const float span = to.time - from.time;
@@ -358,7 +332,7 @@ namespace CoreEngine
     {
         int found = -1;
         for (int i = 0; i < static_cast<int>(clipShots_.size()); ++i) {
-            const ClipShot& shot = clipShots_[i];
+            const CameraSequenceShot& shot = clipShots_[i];
             if (!shot.enabled) {
                 continue;
             }

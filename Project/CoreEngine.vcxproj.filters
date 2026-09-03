@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp">
@@ -250,6 +250,12 @@
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequence.cpp">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceIO.cpp">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -272,9 +278,6 @@
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp">
@@ -1368,6 +1371,12 @@
     <ClInclude Include="Engine\Src\Camera\CameraManager.h">
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequence.h">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceIO.h">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Camera\CameraStructs.h">
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
@@ -1393,9 +1402,6 @@
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraSequenceAssetIO.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h">
@@ -2993,6 +2999,9 @@
     </Filter>
     <Filter Include="Engine\Src\Camera\Debug">
       <UniqueIdentifier>{08318A63-7E81-4992-88CF-85F136FCA598}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Camera\Sequence">
+      <UniqueIdentifier>{5e2b9d47-3c81-4f6a-b09d-71a4c8e35d02}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Camera\View">
       <UniqueIdentifier>{F5ABBF85-A32B-4EA0-9D89-C0AD772A11EC}</UniqueIdentifier>

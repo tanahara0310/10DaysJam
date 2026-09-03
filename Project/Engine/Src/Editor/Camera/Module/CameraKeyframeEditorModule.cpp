@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "CameraKeyframeEditorModule.h"
-#include "CameraSequenceAssetIO.h"
+#include "Camera/Sequence/CameraSequenceIO.h"
 
 #ifdef USE_IMGUI
 
@@ -12,7 +12,6 @@
 #include <string>
 
 #include "Camera/CameraManager.h"
-#include "Camera/Camera.h"
 #include "Camera/Camera.h"
 #include "Graphics/Line/LineManager.h"
 #include "Utility/JsonManager/JsonManager.h"
@@ -274,12 +273,12 @@ namespace CoreEngine
                     keyframes_[nearest].snapshot = snapshot;
                     selectedIndex_ = nearest;
                 } else {
-                    Keyframe key{};
+                    CameraSequenceKeyframe key{};
                     key.time = playhead_;
                     key.snapshot = snapshot;
                     keyframes_.push_back(key);
                     std::sort(keyframes_.begin(), keyframes_.end(),
-                        [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
+                        [](const CameraSequenceKeyframe& a, const CameraSequenceKeyframe& b) { return a.time < b.time; });
 
                     selectedIndex_ = FindNearestKeyframeIndex(playhead_);
                 }
@@ -291,7 +290,7 @@ namespace CoreEngine
             if (selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(keyframes_.size())) {
                 PushUndoState();
 
-                Keyframe duplicated = keyframes_[selectedIndex_];
+                CameraSequenceKeyframe duplicated = keyframes_[selectedIndex_];
                 duplicated.time = std::clamp(duplicated.time + 0.1f, 0.0f, timelineLength_);
                 if (std::fabs(duplicated.time - keyframes_[selectedIndex_].time) <= updateThreshold_) {
                     duplicated.time = std::clamp(duplicated.time + updateThreshold_, 0.0f, timelineLength_);
@@ -299,7 +298,7 @@ namespace CoreEngine
 
                 keyframes_.push_back(duplicated);
                 std::sort(keyframes_.begin(), keyframes_.end(),
-                    [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
+                    [](const CameraSequenceKeyframe& a, const CameraSequenceKeyframe& b) { return a.time < b.time; });
 
                 selectedIndex_ = FindNearestKeyframeIndex(duplicated.time);
                 playhead_ = duplicated.time;
@@ -335,7 +334,7 @@ namespace CoreEngine
             if (ImGui::Button("現在位置にショットを追加")) {
                 PushUndoState();
 
-                Shot shot{};
+                CameraSequenceShot shot{};
                 shot.name = "ショット" + std::to_string(shots_.size() + 1);
                 shot.startTime = std::clamp(playhead_ - 0.5f, 0.0f, timelineLength_);
                 shot.endTime = std::clamp(playhead_ + 0.5f, 0.0f, timelineLength_);
@@ -392,7 +391,7 @@ namespace CoreEngine
             }
 
             if (selectedShotIndex_ >= 0 && selectedShotIndex_ < static_cast<int>(shots_.size())) {
-                Shot& shot = shots_[selectedShotIndex_];
+                CameraSequenceShot& shot = shots_[selectedShotIndex_];
 
                 if (editingShotNameIndex_ != selectedShotIndex_) {
                     std::snprintf(shotNameBuffer_, sizeof(shotNameBuffer_), "%s", shot.name.c_str());
@@ -404,7 +403,7 @@ namespace CoreEngine
                     shot.name = shotNameBuffer_;
                 }
 
-                Shot editedShot = shot;
+                CameraSequenceShot editedShot = shot;
                 bool shotChanged = false;
 
                 shotChanged |= UI::Widgets::ToggleSwitch("ショットを有効", &editedShot.enabled);
@@ -429,9 +428,9 @@ namespace CoreEngine
                     }
                     ImGui::EndCombo();
                 }
-                editedShot.transitionType = static_cast<ShotTransitionType>(transitionIndex);
+                editedShot.transitionType = static_cast<CameraSequenceTransitionType>(transitionIndex);
 
-                if (editedShot.transitionType == ShotTransitionType::Blend) {
+                if (editedShot.transitionType == CameraSequenceTransitionType::Blend) {
                     shotChanged |= UI::DragFloat("ブレンド時間", editedShot.blendDuration, 0.01f, 0.0f, timelineLength_, "%.2f 秒");
                 }
 
@@ -495,7 +494,7 @@ namespace CoreEngine
                 PushUndoState();
                 keyframes_[selectedIndex_].time = std::clamp(selectedTime, 0.0f, timelineLength_);
                 std::sort(keyframes_.begin(), keyframes_.end(),
-                    [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
+                    [](const CameraSequenceKeyframe& a, const CameraSequenceKeyframe& b) { return a.time < b.time; });
                 selectedIndex_ = FindNearestKeyframeIndex(selectedTime);
                 playhead_ = std::clamp(selectedTime, 0.0f, timelineLength_);
                 playheadChanged = true;
@@ -587,8 +586,8 @@ namespace CoreEngine
             return true;
         }
 
-        const Shot& currentShot = shots_[shotIndex];
-        if (!currentShot.enabled || currentShot.transitionType != ShotTransitionType::Blend) {
+        const CameraSequenceShot& currentShot = shots_[shotIndex];
+        if (!currentShot.enabled || currentShot.transitionType != CameraSequenceTransitionType::Blend) {
             return true;
         }
 
@@ -604,7 +603,7 @@ namespace CoreEngine
             return true;
         }
 
-        const Shot& previousShot = shots_[previousShotIndex];
+        const CameraSequenceShot& previousShot = shots_[previousShotIndex];
         const float currentShotDuration = (std::max)(currentShot.endTime - currentShot.startTime, 0.0f);
         const float blendDuration = std::clamp(currentShot.blendDuration, 0.0f, currentShotDuration);
         if (blendDuration <= 0.0001f) {
@@ -657,8 +656,8 @@ namespace CoreEngine
 
         // 区間を探索して線形補間する。
         for (size_t i = 0; i + 1 < keyframes_.size(); ++i) {
-            const Keyframe& from = keyframes_[i];
-            const Keyframe& to = keyframes_[i + 1];
+            const CameraSequenceKeyframe& from = keyframes_[i];
+            const CameraSequenceKeyframe& to = keyframes_[i + 1];
 
             if (clampedTime >= from.time && clampedTime <= to.time) {
                 const float span = to.time - from.time;
@@ -810,12 +809,12 @@ namespace CoreEngine
             keyframes_[nearest].snapshot = current;
             selectedIndex_ = nearest;
         } else {
-            Keyframe key{};
+            CameraSequenceKeyframe key{};
             key.time = playhead_;
             key.snapshot = current;
             keyframes_.push_back(key);
             std::sort(keyframes_.begin(), keyframes_.end(),
-                [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
+                [](const CameraSequenceKeyframe& a, const CameraSequenceKeyframe& b) { return a.time < b.time; });
 
             selectedIndex_ = FindNearestKeyframeIndex(playhead_);
         }
@@ -834,8 +833,8 @@ namespace CoreEngine
         if (viewportShowTrajectory_ && keyframes_.size() >= 2) {
             // 区間ごとの補間結果を細かくサンプルし、Sceneビュー上で軌跡として可視化する。
             for (size_t i = 0; i + 1 < keyframes_.size(); ++i) {
-                const Keyframe& from = keyframes_[i];
-                const Keyframe& to = keyframes_[i + 1];
+                const CameraSequenceKeyframe& from = keyframes_[i];
+                const CameraSequenceKeyframe& to = keyframes_[i + 1];
 
                 if (to.time <= from.time) {
                     continue;
@@ -892,7 +891,7 @@ namespace CoreEngine
     {
         int found = -1;
         for (int i = 0; i < static_cast<int>(shots_.size()); ++i) {
-            const Shot& shot = shots_[i];
+            const CameraSequenceShot& shot = shots_[i];
             if (!shot.enabled) {
                 continue;
             }
@@ -930,76 +929,37 @@ namespace CoreEngine
 
     void CameraKeyframeEditorModule::RefreshClipFileList()
     {
-        clipFileList_ = CameraSequenceAssetIO::GetSequenceFileList(clipDirectoryPath_);
+        clipFileList_ = CameraSequenceIO::GetSequenceFileList(clipDirectoryPath_);
         needRefreshClipFileList_ = false;
     }
 
     bool CameraKeyframeEditorModule::SaveCurrentClipToFile(const std::string& filePath) const
     {
+        // 編集中の状態とシーケンスは同じ型なので、そのまま渡すだけでよい。
         CameraSequenceAsset asset{};
         asset.timelineLength = timelineLength_;
         asset.easingTypeIndex = easingTypeIndex_;
         asset.shotsEnabled = shotsEnabled_;
+        asset.keyframes = keyframes_;
+        asset.shots = shots_;
 
-        for (const auto& key : keyframes_) {
-            CameraSequenceAsset::Keyframe sequenceKey{};
-            sequenceKey.time = key.time;
-            sequenceKey.snapshot = key.snapshot;
-            asset.keyframes.push_back(sequenceKey);
-        }
-
-        for (const auto& shot : shots_) {
-            CameraSequenceShot sequenceShot{};
-            sequenceShot.name = shot.name;
-            sequenceShot.startTime = shot.startTime;
-            sequenceShot.endTime = shot.endTime;
-            sequenceShot.enabled = shot.enabled;
-            sequenceShot.transitionType = (shot.transitionType == ShotTransitionType::Blend)
-                ? CameraSequenceTransitionType::Blend
-                : CameraSequenceTransitionType::Cut;
-            sequenceShot.blendDuration = shot.blendDuration;
-            asset.shots.push_back(sequenceShot);
-        }
-
-        return CameraSequenceAssetIO::Save(filePath, asset);
+        return CameraSequenceIO::Save(filePath, asset);
     }
 
     bool CameraKeyframeEditorModule::LoadClipFromFile(const std::string& filePath)
     {
         // 読み込み成功時だけ内部状態を差し替える。失敗しても編集中のタイムラインは壊さない
         CameraSequenceAsset asset{};
-        if (!CameraSequenceAssetIO::Load(filePath, asset)) {
+        if (!CameraSequenceIO::Load(filePath, asset)) {
             return false;
         }
 
+        // 時刻の並び・範囲は CameraSequenceIO::Load が整えて返す。
         timelineLength_ = asset.timelineLength;
         easingTypeIndex_ = asset.easingTypeIndex;
         shotsEnabled_ = asset.shotsEnabled;
-
-        keyframes_.clear();
-        for (const auto& key : asset.keyframes) {
-            Keyframe localKey{};
-            localKey.time = key.time;
-            localKey.snapshot = key.snapshot;
-            keyframes_.push_back(localKey);
-        }
-
-        std::sort(keyframes_.begin(), keyframes_.end(),
-            [](const Keyframe& a, const Keyframe& b) { return a.time < b.time; });
-
-        shots_.clear();
-        for (const auto& shot : asset.shots) {
-            Shot localShot{};
-            localShot.name = shot.name;
-            localShot.startTime = shot.startTime;
-            localShot.endTime = shot.endTime;
-            localShot.enabled = shot.enabled;
-            localShot.transitionType = (shot.transitionType == CameraSequenceTransitionType::Blend)
-                ? ShotTransitionType::Blend
-                : ShotTransitionType::Cut;
-            localShot.blendDuration = shot.blendDuration;
-            shots_.push_back(localShot);
-        }
+        keyframes_ = std::move(asset.keyframes);
+        shots_ = std::move(asset.shots);
 
         selectedIndex_ = keyframes_.empty() ? -1 : 0;
         selectedShotIndex_ = shots_.empty() ? -1 : 0;
