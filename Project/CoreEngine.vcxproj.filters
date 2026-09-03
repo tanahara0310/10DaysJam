@@ -1291,6 +1291,7 @@
     <ClCompile Include="Engine\Src\UI\UIText.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Components\Building\MapChipData.h">
@@ -2922,6 +2923,7 @@
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Build\Scripts\SyncFilters.ps1">
