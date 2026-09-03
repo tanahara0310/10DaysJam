@@ -6,7 +6,7 @@
 #include "Graphics/PostEffect/Effect/LoadingScreen/LoadingScreenEffect.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Utility/FrameRate/FrameRateController.h"
-#include "Audio/SoundManager.h"
+#include "Audio/AudioSystem.h"
 #include "Utility/CVar/CVar.h"
 
 
@@ -37,8 +37,8 @@ fadeEffect_ = postEffectManager_->GetEffect<FadeEffect>(PostEffectNames::FadeEff
 // ローディング画面エフェクトを取得
 loadingScreenEffect_ = postEffectManager_->GetEffect<LoadingScreenEffect>(PostEffectNames::LoadingScreen);
 
-// SoundManagerを取得
-soundManager_ = engine_->GetService<SoundManager>();
+// AudioSystem を取得（BGM バスのダッキングに使う）
+audioSystem_ = engine_->GetService<AudioSystem>();
 
 // 初期状態：完全に透明（フェードなし）
 fadeEffect_->SetFadeAlpha(0.0f);
@@ -164,6 +164,10 @@ void SceneTransition::OnSceneChanged() {
         waitFrameCounter_ = 0;
         fadeEffect_->SetFadeAlpha(0.0f);
         fadeEffect_->SetEnabled(false);
+
+        // Update() は Idle だと即 return するので、ここで自分でダッキングを戻す。
+        // 忘れると Loading 中に 0 まで絞った BGM バスがそのまま無音で残る
+        ApplyBGMVolume();
     } else {
         // フェードイン開始
         phase_ = TransitionPhase::FadeIn;
@@ -195,6 +199,9 @@ void SceneTransition::SkipTransition() {
     fadeEffect_->SetFadeAlpha(0.0f);
     fadeEffect_->SetEnabled(false);
     ApplyLoadingScreen();
+
+    // Update() は Idle だと即 return するので、ここで自分でダッキングを戻す
+    ApplyBGMVolume();
 }
 
 float SceneTransition::CalculateFadeAlpha() const {
@@ -281,16 +288,8 @@ float SceneTransition::CalculateGaugeAlpha() const {
         * CalculateLoadingAlpha();
 }
 
-void SceneTransition::SetBGMVolumeCallback(std::function<void(float)> callback) {
-    bgmVolumeCallback_ = callback;
-}
-
-void SceneTransition::ClearBGMVolumeCallback() {
-    bgmVolumeCallback_ = nullptr;
-}
-
 void SceneTransition::ApplyBGMVolume() {
-    if (!bgmVolumeCallback_) {
+    if (!audioSystem_) {
         return;
     }
 
@@ -324,7 +323,8 @@ void SceneTransition::ApplyBGMVolume() {
         break;
     }
 
-    // コールバックを呼び出して音量倍率を通知
-    bgmVolumeCallback_(volumeMultiplier);
+    // BGM バスを丸ごと絞る。ダッキングはユーザー設定（SetBusVolume）とは
+    // 別枠の倍率なので、オプション画面の設定値を壊さずに演出だけ掛かる
+    audioSystem_->SetBusDuck(AudioBus::BGM, volumeMultiplier);
 }
 }

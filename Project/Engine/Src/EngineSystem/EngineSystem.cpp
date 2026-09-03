@@ -29,6 +29,7 @@
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Model/ModelManager.h"
+#include "Audio/AudioSystem.h"
 #include "Input/InputManager.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
@@ -265,6 +266,12 @@ namespace CoreEngine
         //  本体ウィンドウに結び付いており、別ウィンドウにフォーカスがある間は拾えないため）
         if (auto* inputManager = GetService<InputManager>()) {
             inputManager->Update();
+        }
+
+        // オーディオの更新（フェードの進行と、鳴り終わった再生スロットの回収）。
+        // ポーズ中もフェードは進めたいので UnscaledDeltaTime を渡す
+        if (auto* audioSystem = GetService<AudioSystem>()) {
+            audioSystem->Update(Time::UnscaledDeltaTime());
         }
 
         // 全サブシステムのフレーム開始処理

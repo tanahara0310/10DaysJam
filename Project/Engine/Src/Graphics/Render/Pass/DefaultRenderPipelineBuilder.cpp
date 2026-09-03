@@ -23,6 +23,7 @@
 #include "Graphics/Render/Pass/VolumetricCloudNoisePass.h"
 #include "Graphics/Render/Pass/VolumetricCloudPass.h"
 #include "Graphics/Render/Pass/GodRayPass.h"
+#include "Graphics/Render/Pass/FogPass.h"
 #include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/SceneColorCopyPass.h"
@@ -96,6 +97,10 @@ namespace CoreEngine
 
         // ゴッドレイ: 雲シャドウマップ生成 + 内散乱の遮蔽差分を SceneColor へ合成（GameView のみ）
         pipeline.AddPass(std::make_unique<GodRayPass>(), RenderPassPhase::Sky, 30);
+
+        // 高さフォグ: 空・雲・ゴッドレイまで載った SceneColor へフォグを合成（GameView のみ）
+        // 背景（穴・世界の縁）も対象にするため SkyBox 描画より後、半透明より前に置く
+        pipeline.AddPass(std::make_unique<FogPass>(), RenderPassPhase::Sky, 40);
 
         pipeline.AddPass(std::make_unique<TransparentQueuePass>(), RenderPassPhase::Transparent, 0);
 

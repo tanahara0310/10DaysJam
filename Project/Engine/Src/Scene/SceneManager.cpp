@@ -113,9 +113,6 @@ namespace CoreEngine
         }
 
         if (currentScene_) {
-            if (sceneTransition_) {
-                sceneTransition_->ClearBGMVolumeCallback();
-            }
             if (auto* pipeline = engine_->GetRenderPipeline()) {
                 pipeline->RemovePassesByOwner(currentScene_.get());
             }
@@ -154,12 +151,6 @@ namespace CoreEngine
     void SceneManager::SkipTransition() {
         if (sceneTransition_) {
             sceneTransition_->SkipTransition();
-        }
-    }
-
-    void SceneManager::RegisterSceneBGMCallback(std::function<void(float)> callback) {
-        if (sceneTransition_) {
-            sceneTransition_->SetBGMVolumeCallback(callback);
         }
     }
 
@@ -285,11 +276,6 @@ namespace CoreEngine
         }
 
         if (currentScene_) {
-            // BGMコールバックをクリア
-            if (sceneTransition_) {
-                sceneTransition_->ClearBGMVolumeCallback();
-            }
-
             // シーンが登録したユーザーレンダーパスを一括除去
             if (auto* pipeline = engine_->GetRenderPipeline()) {
                 pipeline->RemovePassesByOwner(currentScene_.get());
