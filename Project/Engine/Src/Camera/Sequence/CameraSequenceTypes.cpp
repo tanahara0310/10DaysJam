@@ -23,14 +23,18 @@ namespace CoreEngine
             key.time = std::clamp(key.time, 0.0f, timelineLength);
         }
 
+        // 開始をタイムライン終端まで許すと、終了を開始より後に置く余地が無くなる。
+        // 先に開始の上限を「終端 - 最小長」まで引いておく。
+        const float maxShotStart = (std::max)(timelineLength - kMinShotDuration, 0.0f);
+
         for (auto& shot : shots) {
-            shot.startTime = std::clamp(shot.startTime, 0.0f, timelineLength);
+            shot.startTime = std::clamp(shot.startTime, 0.0f, maxShotStart);
             shot.endTime = std::clamp(shot.endTime, 0.0f, timelineLength);
 
             // 終了が開始以下だと区間の長さがゼロ以下になり、
-            // 「この時刻はどのショットか」の判定が破綻する。
+            // 「この時刻はどのショットか」の判定とブレンド長のクランプが破綻する。
             if (shot.endTime <= shot.startTime) {
-                shot.endTime = std::clamp(shot.startTime + kMinShotDuration, kMinShotDuration, timelineLength);
+                shot.endTime = (std::min)(shot.startTime + kMinShotDuration, timelineLength);
             }
 
             if (shot.blendDuration < 0.0f) {
