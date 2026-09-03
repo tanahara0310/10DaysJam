@@ -81,6 +81,19 @@ namespace CoreEngine
             }
         }
 
+        /// @brief 保存された番号を向きの決め方へ戻す（未知の値は Euler 扱い）
+        CameraSequenceAimMode ToAimMode(int value)
+        {
+            switch (value) {
+            case static_cast<int>(CameraSequenceAimMode::LookAtPoint):
+                return CameraSequenceAimMode::LookAtPoint;
+            case static_cast<int>(CameraSequenceAimMode::LookAtObject):
+                return CameraSequenceAimMode::LookAtObject;
+            default:
+                return CameraSequenceAimMode::Euler;
+            }
+        }
+
         /// @brief ショット情報を JSON へ変換
         json ShotToJson(const CameraSequenceShot& shot)
         {
@@ -146,6 +159,11 @@ namespace CoreEngine
             keyJson["snapshot"] = SnapshotToJson(key.snapshot);
             keyJson["easingTypeIndex"] = key.easingTypeIndex;
             keyJson["interpolation"] = static_cast<int>(key.interpolation);
+            keyJson["aimMode"] = static_cast<int>(key.aimMode);
+            keyJson["aimPoint"] = JsonManager::Vector3ToJson(key.aimPoint);
+            keyJson["aimObjectName"] = key.aimObjectName;
+            keyJson["aimOffset"] = JsonManager::Vector3ToJson(key.aimOffset);
+            keyJson["aimRoll"] = key.aimRoll;
             keyframesJson.push_back(keyJson);
         }
         root["keyframes"] = keyframesJson;
@@ -191,6 +209,15 @@ namespace CoreEngine
                 key.interpolation = ToInterpolation(
                     JsonManager::SafeGet(keyJson, "interpolation",
                         static_cast<int>(CameraSequenceInterpolation::Linear)));
+
+                // 注視の指定はバージョン 2.2 から。持っていないファイルは Euler になり、
+                // 保存された回転がそのまま使われる（従来どおりの見た目）。
+                key.aimMode = ToAimMode(JsonManager::SafeGet(keyJson, "aimMode",
+                    static_cast<int>(CameraSequenceAimMode::Euler)));
+                key.aimPoint = JsonManager::SafeGetVector3(keyJson, "aimPoint");
+                key.aimObjectName = JsonManager::SafeGet(keyJson, "aimObjectName", std::string());
+                key.aimOffset = JsonManager::SafeGetVector3(keyJson, "aimOffset");
+                key.aimRoll = JsonManager::SafeGet(keyJson, "aimRoll", 0.0f);
 
                 asset.keyframes.push_back(key);
             }

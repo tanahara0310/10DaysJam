@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Camera/Sequence/CameraSequenceTypes.h"
+#include "Camera/Sequence/CameraSequenceEvaluator.h"
 
 #include <cstdint>
 #include <memory>
@@ -68,8 +68,10 @@ namespace CoreEngine
         void Update(float scaledDeltaTime, float unscaledDeltaTime);
 
         /// @brief 現在の再生ヘッド位置のカメラ姿勢を求める
+        /// @param aim 注視対象の解決口（nullptr 可）
         /// @return 停止中・シーケンス未設定なら false
-        bool Evaluate(CameraSnapshot& outSnapshot) const;
+        bool Evaluate(CameraSnapshot& outSnapshot,
+            const CameraSequenceAimContext* aim = nullptr) const;
 
         /// @brief 再生ヘッドを直接動かす（スクラブ用）
         void Seek(float time);

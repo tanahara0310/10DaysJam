@@ -4,6 +4,7 @@
 #include "Math/MathCore.h"
 
 #include <algorithm>
+#include <cmath>
 #include <vector>
 
 namespace CoreEngine
@@ -109,6 +110,58 @@ namespace CoreEngine
             }
         }
 
+        /// @brief 単一キーの注視を解決し、向きだけ差し替える
+        void ApplyKeyAim(const CameraSequenceKeyframe& key, const CameraSequenceAimContext* aim,
+            CameraSnapshot& snapshot)
+        {
+            Vector3 target{};
+            if (CameraSequenceEvaluator::ResolveAimTarget(key, aim, target)) {
+                snapshot.rotation = CameraSequenceEvaluator::LookRotation(snapshot.position, target, key.aimRoll);
+            }
+        }
+
+        /// @brief 区間の向きを決める
+        ///
+        /// @details
+        /// 両端のキーそれぞれについて「この視点から見たときの向き」を求め、その 2 つを補間する。
+        /// 注視キーなら注視先を向く角度、Euler キーなら保存された角度。
+        ///
+        /// 区間の向きを始点キーだけで決めると、次のキーが Euler のときに境界で向きが飛ぶ。
+        /// 終端では次の区間が始点キー（= こちらの終点キー）の指定で向きを決めるためで、
+        /// 両端から求めて混ぜるとその食い違いが原理的に起きない。
+        ///
+        /// @param position 補間後の視点ワールド座標（向きはここから測る）
+        /// @param t 緩急を適用済みの 0..1
+        /// @return 両端とも Euler なら false（補間済みの回転をそのまま使うべき）
+        bool ResolveSegmentRotation(const CameraSequenceKeyframe& from, const CameraSequenceKeyframe& to,
+            const CameraSequenceAimContext* aim, const Vector3& position, float t, Vector3& outRotation)
+        {
+            Vector3 targetFrom{};
+            Vector3 targetTo{};
+            const bool fromAims = CameraSequenceEvaluator::ResolveAimTarget(from, aim, targetFrom);
+            const bool toAims = CameraSequenceEvaluator::ResolveAimTarget(to, aim, targetTo);
+
+            if (!fromAims && !toAims) {
+                return false;
+            }
+
+            const Vector3 rotationFrom = fromAims
+                ? CameraSequenceEvaluator::LookRotation(position, targetFrom, from.aimRoll)
+                : from.snapshot.rotation;
+            const Vector3 rotationTo = toAims
+                ? CameraSequenceEvaluator::LookRotation(position, targetTo, to.aimRoll)
+                : to.snapshot.rotation;
+
+            // t は緩急を適用済みなので、ここでは素直に線形で混ぜる。
+            // 角度は LerpAngle で最短経路を通す。
+            outRotation = {
+                EasingUtil::LerpAngle(rotationFrom.x, rotationTo.x, t, EasingUtil::Type::Linear),
+                EasingUtil::LerpAngle(rotationFrom.y, rotationTo.y, t, EasingUtil::Type::Linear),
+                EasingUtil::LerpAngle(rotationFrom.z, rotationTo.z, t, EasingUtil::Type::Linear)
+            };
+            return true;
+        }
+
         /// @brief 区間 [index, index+1] を Catmull-Rom で評価する
         CameraSnapshot InterpolateSmooth(const std::vector<CameraSequenceKeyframe>& keys,
             int index, float t, EasingUtil::Type easing)
@@ -162,9 +215,10 @@ namespace CoreEngine
         return IsValidEasingIndex(index) ? kEasingOptions[index].label : kEasingOptions[0].label;
     }
 
-    bool CameraSequenceEvaluator::Evaluate(const CameraSequenceAsset& asset, float time, CameraSnapshot& outSnapshot)
+    bool CameraSequenceEvaluator::Evaluate(const CameraSequenceAsset& asset, float time,
+        CameraSnapshot& outSnapshot, const CameraSequenceAimContext* aim)
     {
-        if (!EvaluateRaw(asset, time, outSnapshot)) {
+        if (!EvaluateRaw(asset, time, outSnapshot, aim)) {
             return false;
         }
 
@@ -212,12 +266,12 @@ namespace CoreEngine
         }
 
         CameraSnapshot fromSnapshot{};
-        if (!EvaluateRaw(asset, previousShot.endTime, fromSnapshot)) {
+        if (!EvaluateRaw(asset, previousShot.endTime, fromSnapshot, aim)) {
             return true;
         }
 
         CameraSnapshot toSnapshot{};
-        if (!EvaluateRaw(asset, clampedTime, toSnapshot)) {
+        if (!EvaluateRaw(asset, clampedTime, toSnapshot, aim)) {
             return true;
         }
 
@@ -228,7 +282,8 @@ namespace CoreEngine
         return true;
     }
 
-    bool CameraSequenceEvaluator::EvaluateRaw(const CameraSequenceAsset& asset, float time, CameraSnapshot& outSnapshot)
+    bool CameraSequenceEvaluator::EvaluateRaw(const CameraSequenceAsset& asset, float time,
+        CameraSnapshot& outSnapshot, const CameraSequenceAimContext* aim)
     {
         const auto& keyframes = asset.keyframes;
 
@@ -238,18 +293,22 @@ namespace CoreEngine
 
         if (keyframes.size() == 1) {
             outSnapshot = keyframes.front().snapshot;
+            ApplyKeyAim(keyframes.front(), aim, outSnapshot);
             return true;
         }
 
         const float clampedTime = std::clamp(time, 0.0f, asset.timelineLength);
 
-        // 範囲外は端のキーフレームを返す。
+        // 範囲外は端のキーフレームを返す。注視指定があれば向きだけ解決する
+        // （対象が動いていれば、端で止まっていても目は追い続ける）。
         if (clampedTime <= keyframes.front().time) {
             outSnapshot = keyframes.front().snapshot;
+            ApplyKeyAim(keyframes.front(), aim, outSnapshot);
             return true;
         }
         if (clampedTime >= keyframes.back().time) {
             outSnapshot = keyframes.back().snapshot;
+            ApplyKeyAim(keyframes.back(), aim, outSnapshot);
             return true;
         }
 
@@ -282,10 +341,19 @@ namespace CoreEngine
             } else {
                 outSnapshot = Interpolate(from.snapshot, to.snapshot, t, easing);
             }
+
+            // 向きは位置が決まった「後」に解決する。視線は補間後の視点から測るため、
+            // ここで上書きしないと、回り込みの途中で対象から目が離れる。
+            Vector3 aimedRotation{};
+            if (ResolveSegmentRotation(from, to, aim, outSnapshot.position,
+                    EasingUtil::Apply(t, easing), aimedRotation)) {
+                outSnapshot.rotation = aimedRotation;
+            }
             return true;
         }
 
         outSnapshot = keyframes.back().snapshot;
+        ApplyKeyAim(keyframes.back(), aim, outSnapshot);
         return true;
     }
 
@@ -323,6 +391,54 @@ namespace CoreEngine
             ? asset.easingTypeIndex
             : key.easingTypeIndex;
         return CameraSequenceEasing::TypeAt(index);
+    }
+
+    bool CameraSequenceEvaluator::ResolveAimTarget(const CameraSequenceKeyframe& key,
+        const CameraSequenceAimContext* aim, Vector3& outTarget)
+    {
+        switch (key.aimMode) {
+        case CameraSequenceAimMode::LookAtPoint:
+            outTarget = key.aimPoint + key.aimOffset;
+            return true;
+
+        case CameraSequenceAimMode::LookAtObject: {
+            // 解決できないときは false。呼び出し側は保存された回転へ落ちるので、
+            // 対象が消えてもシーケンスは authored の向きで再生され続ける。
+            if (!aim || !aim->resolveObject || key.aimObjectName.empty()) {
+                return false;
+            }
+            Vector3 objectPosition{};
+            if (!aim->resolveObject(key.aimObjectName, objectPosition)) {
+                return false;
+            }
+            outTarget = objectPosition + key.aimOffset;
+            return true;
+        }
+
+        case CameraSequenceAimMode::Euler:
+        default:
+            return false;
+        }
+    }
+
+    Vector3 CameraSequenceEvaluator::LookRotation(const Vector3& eye, const Vector3& target, float roll)
+    {
+        const Vector3 delta = target - eye;
+        if (LengthSquared(delta) <= 1.0e-12f) {
+            // 視点と注視先が重なると向きが決まらない。真正面を向かせて発散を防ぐ。
+            return { 0.0f, 0.0f, roll };
+        }
+
+        const Vector3 forward = Normalize(delta);
+
+        // MakeAffine の回転は Rx * Ry * Rz（行ベクトル規約）。roll = 0 のとき
+        // 第 3 行（前方軸）は (cosX sinY, -sinX, cosX cosY) になるので、
+        // yaw = atan2(f.x, f.z) / pitch = asin(-f.y) が Camera::LookAt と厳密に一致する。
+        return {
+            std::asin(std::clamp(-forward.y, -1.0f, 1.0f)),
+            std::atan2(forward.x, forward.z),
+            roll
+        };
     }
 
     int CameraSequenceEvaluator::FindShotIndexAt(const CameraSequenceAsset& asset, float time)

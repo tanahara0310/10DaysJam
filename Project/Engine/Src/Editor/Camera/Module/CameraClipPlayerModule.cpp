@@ -11,9 +11,34 @@
 
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 名前でシーンのオブジェクトを引く注視解決口を作る
+        CameraSequenceAimContext MakeAimContext(GameObjectManager* objects)
+        {
+            CameraSequenceAimContext context{};
+            if (!objects) {
+                return context;
+            }
+
+            context.resolveObject = [objects](const std::string& name, Vector3& outPosition) {
+                for (const auto& object : objects->GetAllObjects()) {
+                    if (object && object->GetName() == name) {
+                        outPosition = object->GetWorldPosition();
+                        return true;
+                    }
+                }
+                return false;
+            };
+            return context;
+        }
+    }
+
     // 再生中だけ playhead を進め、補間したカメラ姿勢をゲームカメラへ書き込む
     void CameraClipPlayerModule::Update(const CameraEditorContext& context)
     {
@@ -33,8 +58,10 @@ namespace CoreEngine
             }
         }
 
+        const CameraSequenceAimContext aimContext = MakeAimContext(context.gameObjectManager);
+
         CameraSnapshot evaluated{};
-        if (CameraSequenceEvaluator::Evaluate(clip_, playhead_, evaluated)) {
+        if (CameraSequenceEvaluator::Evaluate(clip_, playhead_, evaluated, &aimContext)) {
             ApplyToActiveCamera(context, evaluated);
         }
     }
@@ -120,8 +147,10 @@ namespace CoreEngine
         }
 
         if (!isPlaying_ && playheadChanged) {
+            const CameraSequenceAimContext aimContext = MakeAimContext(context.gameObjectManager);
+
             CameraSnapshot evaluated{};
-            if (CameraSequenceEvaluator::Evaluate(clip_, playhead_, evaluated)) {
+            if (CameraSequenceEvaluator::Evaluate(clip_, playhead_, evaluated, &aimContext)) {
                 ApplyToActiveCamera(context, evaluated);
             }
         }

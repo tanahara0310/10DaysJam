@@ -1,8 +1,6 @@
 #include "pch.h"
 #include "CameraSequencePlayer.h"
 
-#include "Camera/Sequence/CameraSequenceEvaluator.h"
-
 #include <algorithm>
 #include <cmath>
 
@@ -104,13 +102,14 @@ namespace CoreEngine
         state_ = options_.holdAtEnd ? State::Paused : State::Finishing;
     }
 
-    bool CameraSequencePlayer::Evaluate(CameraSnapshot& outSnapshot) const
+    bool CameraSequencePlayer::Evaluate(CameraSnapshot& outSnapshot,
+        const CameraSequenceAimContext* aim) const
     {
         if (state_ == State::Stopped || !asset_) {
             return false;
         }
 
-        return CameraSequenceEvaluator::Evaluate(*asset_, time_, outSnapshot);
+        return CameraSequenceEvaluator::Evaluate(*asset_, time_, outSnapshot, aim);
     }
 
     void CameraSequencePlayer::Seek(float time)

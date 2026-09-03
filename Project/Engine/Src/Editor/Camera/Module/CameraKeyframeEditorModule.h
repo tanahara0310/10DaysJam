@@ -3,7 +3,7 @@
 #ifdef USE_IMGUI
 
 #include "ICameraEditorModule.h"
-#include "Camera/Sequence/CameraSequenceTypes.h"
+#include "Camera/Sequence/CameraSequenceEvaluator.h"
 
 #include <string>
 #include <vector>
@@ -45,6 +45,9 @@ namespace CoreEngine
         /// @brief 指定時刻を評価してアクティブ3Dカメラへ反映
         void ApplyEvaluatedAt(const CameraEditorContext& context, float time);
 
+        /// @brief 注視対象をシーンから引く解決口を組み立てる
+        CameraSequenceAimContext MakeAimContext(const CameraEditorContext& context) const;
+
         /// @brief スナップショットが同一かを誤差込みで判定
         bool IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const;
 
@@ -52,7 +55,7 @@ namespace CoreEngine
         void UpdateAutoKey(const CameraEditorContext& context);
 
         /// @brief Sceneビュー向けのカメラワーク可視化を描画
-        void DrawViewportVisualization();
+        void DrawViewportVisualization(const CameraEditorContext& context);
 
         /// @brief 指定時刻に最も近いキーフレームを検索
         int FindNearestKeyframeIndex(float time) const;

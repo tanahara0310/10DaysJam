@@ -5,10 +5,37 @@
 #include "Camera/CameraManager.h"
 #include "Camera/Sequence/CameraSequence.h"
 #include "Camera/Sequence/CameraSequenceEvaluator.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
 #include "Utility/FrameRate/Time.h"
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 名前でシーンのオブジェクトを引く注視解決口を作る
+        /// @details 評価器はシーンを知らないので、ここで橋渡しする。
+        ///          対象が消えていれば false を返し、そのキーは保存された回転へ落ちる。
+        CameraSequenceAimContext MakeAimContext(GameObjectManager* objects)
+        {
+            CameraSequenceAimContext context{};
+            if (!objects) {
+                return context;
+            }
+
+            context.resolveObject = [objects](const std::string& name, Vector3& outPosition) {
+                for (const auto& object : objects->GetAllObjects()) {
+                    if (object && object->GetName() == name) {
+                        outPosition = object->GetWorldPosition();
+                        return true;
+                    }
+                }
+                return false;
+            };
+            return context;
+        }
+    }
+
     void CameraSequenceFeature::Initialize(SceneContext&)
     {
         CameraSequence::SetActivePlayer(&player_);
@@ -47,8 +74,11 @@ namespace CoreEngine
             hasBlendFrom_ = true;
         }
 
+        // 注視対象は毎フレーム引き直す。対象が動けばカメラの目もついていく。
+        const CameraSequenceAimContext aimContext = MakeAimContext(ctx.gameObjectManager);
+
         CameraSnapshot pose{};
-        if (!player_.Evaluate(pose)) {
+        if (!player_.Evaluate(pose, &aimContext)) {
             return;
         }
 

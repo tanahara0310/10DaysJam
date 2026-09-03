@@ -53,6 +53,17 @@ namespace CoreEngine
     /// @brief キーごとの緩急指定で「シーケンス既定に従う」を表す値
     inline constexpr int kUseSequenceEasing = -1;
 
+    /// @brief カメラの向きの決め方
+    /// @note 値は JSON の "aimMode" にそのまま入る。番号を変えると既存アセットが壊れる。
+    enum class CameraSequenceAimMode {
+        /// @brief キーに保存された回転をそのまま使う
+        Euler = 0,
+        /// @brief 指定したワールド座標を向く
+        LookAtPoint = 1,
+        /// @brief 指定した名前のオブジェクトを向く（動く対象を追える）
+        LookAtObject = 2
+    };
+
     /// @brief シーケンス上の 1 キーフレーム（時刻とカメラ姿勢）
     struct CameraSequenceKeyframe {
         float time = 0.0f;
@@ -64,12 +75,32 @@ namespace CoreEngine
 
         /// @brief このキーから次のキーへの補間方式
         CameraSequenceInterpolation interpolation = CameraSequenceInterpolation::Linear;
+
+        // ===== 向きの決め方 =====
+        // 注視を使うと、位置だけ打てば向きは評価時に計算される。対象を捉えたまま
+        // 回り込むショットが、位置と回転を手で合わせずに作れる。
+
+        /// @brief 向きの決め方（既定はキーの回転をそのまま使う）
+        CameraSequenceAimMode aimMode = CameraSequenceAimMode::Euler;
+
+        /// @brief LookAtPoint で向くワールド座標
+        Vector3 aimPoint = { 0.0f, 0.0f, 0.0f };
+
+        /// @brief LookAtObject で向くオブジェクト名
+        std::string aimObjectName;
+
+        /// @brief 注視先に足すオフセット（足元ではなく頭を見る、など）
+        Vector3 aimOffset = { 0.0f, 0.0f, 0.0f };
+
+        /// @brief 注視時のロール [ラジアン]（画面を傾ける）
+        /// @note Euler のときはこの値ではなく snapshot.rotation.z がロールになる。
+        float aimRoll = 0.0f;
     };
 
     /// @brief カメラシーケンス 1 本分のデータ
     struct CameraSequenceAsset {
         /// @brief 保存時に書き込むフォーマットバージョン
-        static constexpr const char* kCurrentVersion = "2.1";
+        static constexpr const char* kCurrentVersion = "2.2";
 
         /// @brief タイムライン長の下限（0 秒だと時刻の正規化がゼロ除算になる）
         static constexpr float kMinTimelineLength = 0.1f;

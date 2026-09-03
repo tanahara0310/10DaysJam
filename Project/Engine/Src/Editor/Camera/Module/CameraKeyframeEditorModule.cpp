@@ -14,6 +14,8 @@
 
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
+#include "GameObject/GameObject.h"
+#include "GameObject/GameObjectManager.h"
 #include "Graphics/Line/LineManager.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -37,13 +39,25 @@ namespace CoreEngine
         };
 
         constexpr int kInterpolationLabelCount = static_cast<int>(sizeof(kInterpolationLabels) / sizeof(kInterpolationLabels[0]));
+
+        // 向きの決め方の表示名。CameraSequenceAimMode の値をそのまま添字に使う。
+        constexpr const char* kAimModeLabels[] = {
+            "キーの回転を使う",
+            "注視点を向く",
+            "オブジェクトを向く"
+        };
+
+        constexpr int kAimModeLabelCount = static_cast<int>(sizeof(kAimModeLabels) / sizeof(kAimModeLabels[0]));
+
+        constexpr float kRadToDeg = 180.0f / 3.14159265358979323846f;
+        constexpr float kDegToRad = 3.14159265358979323846f / 180.0f;
     }
 
     void CameraKeyframeEditorModule::Update(const CameraEditorContext& context)
     {
         if (!context.cameraManager || !isPlaying_ || sequence_.keyframes.size() < 2) {
             UpdateAutoKey(context);
-            DrawViewportVisualization();
+            DrawViewportVisualization(context);
             return;
         }
 
@@ -62,7 +76,7 @@ namespace CoreEngine
         ApplyEvaluatedAt(context, playhead_);
 
         UpdateAutoKey(context);
-        DrawViewportVisualization();
+        DrawViewportVisualization(context);
     }
 
     void CameraKeyframeEditorModule::Draw(const CameraEditorContext& context)
@@ -514,6 +528,112 @@ namespace CoreEngine
                 ? defaultLabel
                 : CameraSequenceEasing::LabelAt(selectedKey.easingTypeIndex);
 
+            // ---- 向きの決め方 ----
+            UI::SectionHeader("向きの決め方");
+
+            int aimIndex = static_cast<int>(selectedKey.aimMode);
+            if (aimIndex < 0 || aimIndex >= kAimModeLabelCount) {
+                aimIndex = static_cast<int>(CameraSequenceAimMode::Euler);
+            }
+
+            if (ImGui::BeginCombo("注視モード", kAimModeLabels[aimIndex])) {
+                for (int i = 0; i < kAimModeLabelCount; ++i) {
+                    const bool selected = (i == aimIndex);
+                    if (ImGui::Selectable(kAimModeLabels[i], selected)) {
+                        PushUndoState();
+                        selectedKey.aimMode = static_cast<CameraSequenceAimMode>(i);
+                        playheadChanged = true;
+                    }
+                    if (selected) {
+                        ImGui::SetItemDefaultFocus();
+                    }
+                }
+                ImGui::EndCombo();
+            }
+
+            if (selectedKey.aimMode == CameraSequenceAimMode::LookAtPoint) {
+                Vector3 aimPoint = selectedKey.aimPoint;
+                if (UI::DragVec3("注視点", aimPoint, 0.1f)) {
+                    PushUndoState();
+                    selectedKey.aimPoint = aimPoint;
+                    playheadChanged = true;
+                }
+
+                if (ImGui::Button("今のカメラの正面を注視点にする")) {
+                    CameraSnapshot current{};
+                    if (CaptureFromActiveCamera(context, current)) {
+                        PushUndoState();
+                        // 視線方向へ 10m 先を注視点として置く（Camera::LookAt と同じ前方軸）。
+                        const float pitch = current.rotation.x;
+                        const float yaw = current.rotation.y;
+                        const Vector3 forward = {
+                            std::cos(pitch) * std::sin(yaw),
+                            -std::sin(pitch),
+                            std::cos(pitch) * std::cos(yaw)
+                        };
+                        selectedKey.aimPoint = current.position + forward * 10.0f;
+                        selectedKey.aimOffset = { 0.0f, 0.0f, 0.0f };
+                        playheadChanged = true;
+                    }
+                }
+            }
+
+            if (selectedKey.aimMode == CameraSequenceAimMode::LookAtObject) {
+                if (!context.gameObjectManager) {
+                    UI::Hint("GameObjectManager が未設定のため対象を選択できません。");
+                } else {
+                    const char* preview = selectedKey.aimObjectName.empty()
+                        ? "未選択"
+                        : selectedKey.aimObjectName.c_str();
+
+                    if (ImGui::BeginCombo("注視オブジェクト", preview)) {
+                        for (const auto& object : context.gameObjectManager->GetAllObjects()) {
+                            if (!object) {
+                                continue;
+                            }
+                            const std::string& name = object->GetName();
+                            const bool selected = (selectedKey.aimObjectName == name);
+                            if (ImGui::Selectable(name.c_str(), selected)) {
+                                PushUndoState();
+                                selectedKey.aimObjectName = name;
+                                playheadChanged = true;
+                            }
+                            if (selected) {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+
+                    if (!selectedKey.aimObjectName.empty()) {
+                        Vector3 resolved{};
+                        const CameraSequenceAimContext probe = MakeAimContext(context);
+                        if (!CameraSequenceEvaluator::ResolveAimTarget(selectedKey, &probe, resolved)) {
+                            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.3f, 1.0f),
+                                "対象が見つかりません。保存された回転で再生されます。");
+                        }
+                    }
+                }
+            }
+
+            if (selectedKey.aimMode != CameraSequenceAimMode::Euler) {
+                Vector3 aimOffset = selectedKey.aimOffset;
+                if (UI::DragVec3("注視オフセット", aimOffset, 0.05f)) {
+                    PushUndoState();
+                    selectedKey.aimOffset = aimOffset;
+                    playheadChanged = true;
+                }
+
+                float rollDegrees = selectedKey.aimRoll * kRadToDeg;
+                if (UI::SliderFloat("ロール (度)", rollDegrees, -45.0f, 45.0f, "%.1f")) {
+                    PushUndoState();
+                    selectedKey.aimRoll = rollDegrees * kDegToRad;
+                    playheadChanged = true;
+                }
+
+                UI::Hint("注視中は向きが自動計算されます。位置だけ打てば対象を捉え続けます。");
+            }
+
             if (ImGui::BeginCombo("この区間の緩急", currentEasingLabel)) {
                 if (ImGui::Selectable(defaultLabel, usesDefault)) {
                     PushUndoState();
@@ -624,10 +744,34 @@ namespace CoreEngine
 
     void CameraKeyframeEditorModule::ApplyEvaluatedAt(const CameraEditorContext& context, float time)
     {
+        const CameraSequenceAimContext aimContext = MakeAimContext(context);
+
         CameraSnapshot evaluated{};
-        if (CameraSequenceEvaluator::Evaluate(sequence_, time, evaluated)) {
+        if (CameraSequenceEvaluator::Evaluate(sequence_, time, evaluated, &aimContext)) {
             ApplyToActiveCamera(context, evaluated);
         }
+    }
+
+    CameraSequenceAimContext CameraKeyframeEditorModule::MakeAimContext(const CameraEditorContext& context) const
+    {
+        // 編集中も再生時と同じ解決をしないと、エディタで見た向きと
+        // ゲーム中の向きが食い違う。
+        CameraSequenceAimContext aimContext{};
+        GameObjectManager* objects = context.gameObjectManager;
+        if (!objects) {
+            return aimContext;
+        }
+
+        aimContext.resolveObject = [objects](const std::string& name, Vector3& outPosition) {
+            for (const auto& object : objects->GetAllObjects()) {
+                if (object && object->GetName() == name) {
+                    outPosition = object->GetWorldPosition();
+                    return true;
+                }
+            }
+            return false;
+        };
+        return aimContext;
     }
 
     bool CameraKeyframeEditorModule::IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const
@@ -722,13 +866,14 @@ namespace CoreEngine
         observedSnapshot_ = current;
     }
 
-    void CameraKeyframeEditorModule::DrawViewportVisualization()
+    void CameraKeyframeEditorModule::DrawViewportVisualization(const CameraEditorContext& context)
     {
         if (!viewportVisualizationEnabled_ || sequence_.keyframes.empty()) {
             return;
         }
 
         auto& lineManager = LineManager::GetInstance();
+        const CameraSequenceAimContext aimContext = MakeAimContext(context);
 
         // スナップショットの position はそのまま視点のワールド座標（軌道パラメータは持たない）。
         if (viewportShowTrajectory_ && sequence_.keyframes.size() >= 2) {
@@ -749,7 +894,7 @@ namespace CoreEngine
                     const float sampleTime = from.time + (to.time - from.time) * localT;
 
                     CameraSnapshot sampled{};
-                    if (!CameraSequenceEvaluator::EvaluateRaw(sequence_, sampleTime, sampled)) {
+                    if (!CameraSequenceEvaluator::EvaluateRaw(sequence_, sampleTime, sampled, &aimContext)) {
                         break;
                     }
 
@@ -765,6 +910,20 @@ namespace CoreEngine
                 const Vector3 position = sequence_.keyframes[i].snapshot.position;
                 const Vector3 color = (i == selectedIndex_) ? viewportSelectedKeyColor_ : viewportKeyMarkerColor_;
                 lineManager.DrawWireSphere(position, viewportMarkerSize_, 8, color, 0.95f);
+            }
+        }
+
+        if (viewportShowDebugTarget_) {
+            // 注視を使っているキーは、視点から注視先へ線を引く。
+            // どこを見ているつもりのキーなのかが、画面を切り替えずに分かる。
+            for (const auto& key : sequence_.keyframes) {
+                Vector3 target{};
+                if (!CameraSequenceEvaluator::ResolveAimTarget(key, &aimContext, target)) {
+                    continue;
+                }
+
+                lineManager.DrawLine(key.snapshot.position, target, viewportDebugTargetColor_, 0.7f);
+                lineManager.DrawWireSphere(target, viewportMarkerSize_ * 0.75f, 8, viewportDebugTargetColor_, 0.95f);
             }
         }
     }
