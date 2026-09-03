@@ -154,6 +154,10 @@ namespace CoreEngine
         /// @brief モジュール状態のみ更新（描画なし）
         void UpdateDebugModules();
 
+        /// @brief ゲームビューポート上のカメラ編集ギズモを描画
+        /// @param viewCamera いま覗いているカメラ
+        void DrawDebugViewportGizmo(const Camera& viewCamera);
+
         /// @brief カメラUIの内容のみ描画（ImGui::Begin/Endなし、Inspectorパネル埋め込み用）
         void DrawImGuiContent();
 

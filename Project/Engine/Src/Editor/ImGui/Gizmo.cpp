@@ -114,6 +114,40 @@ namespace CoreEngine
         return changed;
     }
 
+    bool Gizmo::ManipulatePoint(Vector3& position, const Camera* camera)
+    {
+        if (!camera) {
+            return false;
+        }
+
+        Matrix4x4 viewMatrix = camera->GetViewMatrix();
+        Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
+
+        // 点なので回転とスケールは単位のまま。平行移動だけを行列へ載せる。
+        // 回転はオイラー角の版を明示する（クォータニオン版と曖昧になるため）。
+        const Vector3 noRotation{ 0.0f, 0.0f, 0.0f };
+        Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(
+            Vector3{ 1.0f, 1.0f, 1.0f }, noRotation, position);
+
+        ImGuizmo::SetOrthographic(false);
+
+        const bool changed = ImGuizmo::Manipulate(
+            &viewMatrix.m[0][0],
+            &projectionMatrix.m[0][0],
+            ImGuizmo::TRANSLATE,
+            ImGuizmo::WORLD,
+            &worldMatrix.m[0][0]);
+
+        if (changed) {
+            Vector3 translation, rotationDegrees, scale;
+            ImGuizmo::DecomposeMatrixToComponents(
+                &worldMatrix.m[0][0], &translation.x, &rotationDegrees.x, &scale.x);
+            position = translation;
+        }
+
+        return changed;
+    }
+
     bool Gizmo::Manipulate2D(SpriteObject* sprite, const Camera* camera, Mode mode)
     {
         if (!sprite || !camera) {

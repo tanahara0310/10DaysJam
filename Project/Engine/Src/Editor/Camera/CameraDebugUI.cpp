@@ -67,6 +67,20 @@ namespace CoreEngine {
         }
     }
 
+    void CameraDebugUI::DrawViewportGizmo(const Camera& viewCamera)
+    {
+        if (!cameraManager_) {
+            return;
+        }
+
+        CameraEditorContext context = BuildContext();
+        for (const auto& module : modules_) {
+            if (module) {
+                module->DrawViewportGizmo(context, viewCamera);
+            }
+        }
+    }
+
     void CameraDebugUI::DrawToolbar(const CameraEditorContext& context)
     {
         CameraManager* cameraManager = context.cameraManager;

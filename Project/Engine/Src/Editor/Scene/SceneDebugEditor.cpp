@@ -298,6 +298,12 @@ namespace CoreEngine
         if (camera3D) {
             objectSelector_.Update(gameObjectManager_, camera3D, normalizedMousePos, isViewportHovered);
             objectSelector_.DrawGizmo(camera3D);
+
+            // カメラ編集のギズモ（キー位置・注視点）はオブジェクト選択の後。
+            // 同じフレームで両方が掴めると、どちらが動いたのか分からなくなる。
+            if (cameraManager_ && !Gizmo::IsUsing()) {
+                cameraManager_->DrawDebugViewportGizmo(*camera3D);
+            }
         }
 
         if (camera2D) {

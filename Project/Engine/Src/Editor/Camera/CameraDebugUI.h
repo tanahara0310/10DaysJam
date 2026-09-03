@@ -11,6 +11,7 @@
 namespace CoreEngine {
 
     // 前方宣言
+    class Camera;
     class CameraManager;
     class GameObjectManager;
     class EngineSystem;
@@ -38,6 +39,10 @@ namespace CoreEngine {
 
         /// @brief モジュールの状態更新のみ実行（描画なし）
         void UpdateModules();
+
+        /// @brief ゲームビューポート上のギズモを各モジュールへ描かせる
+        /// @param viewCamera いま覗いているカメラ
+        void DrawViewportGizmo(const Camera& viewCamera);
 
         /// @brief カメラUIの内容を描画（ImGui::Begin/Endなし、外部ウィンドウへの埋め込み用）
         void DrawContent();

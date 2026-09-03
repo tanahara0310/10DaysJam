@@ -17,6 +17,7 @@
 #include "Camera/Shake/CameraShake.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
+#include "Editor/ImGui/Gizmo.h"
 #include "Graphics/Line/LineManager.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -804,6 +805,9 @@ namespace CoreEngine
         UI::Widgets::ToggleSwitch("カメラ軌跡", &viewportShowTrajectory_);
         UI::Widgets::ToggleSwitch("キーフレーム位置", &viewportShowKeyMarkers_);
         UI::Widgets::ToggleSwitch("注視先への線", &viewportShowDebugTarget_);
+        UI::Widgets::ToggleSwitch("視錐台", &viewportShowFrustum_);
+        UI::Widgets::ToggleSwitch("ビューポートのギズモ", &viewportGizmoEnabled_);
+        UI::DragFloat("視錐台の長さ", viewportFrustumLength_, 0.1f, 0.5f, 100.0f, "%.1f m");
 
         UI::DragInt("軌跡サンプル/区間", viewportTrajectorySamplesPerSegment_, 1.0f, 2, 64);
         UI::DragFloat("マーカーサイズ", viewportMarkerSize_, 0.01f, 0.02f, 2.0f, "%.2f");
@@ -1204,7 +1208,7 @@ namespace CoreEngine
                         break;
                     }
 
-                    lineManager.DrawLine(prev, sampled.position, viewportTrajectoryColor_, viewportTrajectoryAlpha_);
+                    lineManager.DrawLine(prev, sampled.position, viewportTrajectoryColor_, viewportTrajectoryAlpha_, false);
                     prev = sampled.position;
                 }
             }
@@ -1215,7 +1219,23 @@ namespace CoreEngine
             for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
                 const Vector3 position = sequence_.keyframes[i].snapshot.position;
                 const Vector3 color = (i == selectedIndex_) ? viewportSelectedKeyColor_ : viewportKeyMarkerColor_;
-                lineManager.DrawWireSphere(position, viewportMarkerSize_, 8, color, 0.95f);
+
+                // ワイヤ球は深度テストを切れないので、3 軸の十字で描く。
+                // 地形の向こうにあるキーも見えないと、位置合わせができない。
+                const float size = viewportMarkerSize_;
+                lineManager.DrawLine(position - Vector3{ size, 0.0f, 0.0f }, position + Vector3{ size, 0.0f, 0.0f }, color, 0.95f, false);
+                lineManager.DrawLine(position - Vector3{ 0.0f, size, 0.0f }, position + Vector3{ 0.0f, size, 0.0f }, color, 0.95f, false);
+                lineManager.DrawLine(position - Vector3{ 0.0f, 0.0f, size }, position + Vector3{ 0.0f, 0.0f, size }, color, 0.95f, false);
+            }
+        }
+
+        if (viewportShowFrustum_) {
+            // 選択キーは濃く、他は薄く。どのキーを触っているのかを色で分ける。
+            for (int i = 0; i < static_cast<int>(sequence_.keyframes.size()); ++i) {
+                const bool selected = (i == selectedIndex_);
+                DrawKeyFrustum(sequence_.keyframes[i], aimContext,
+                    selected ? viewportSelectedKeyColor_ : viewportKeyMarkerColor_,
+                    selected ? 0.9f : 0.25f);
             }
         }
 
@@ -1228,10 +1248,89 @@ namespace CoreEngine
                     continue;
                 }
 
-                lineManager.DrawLine(key.snapshot.position, target, viewportDebugTargetColor_, 0.7f);
-                lineManager.DrawWireSphere(target, viewportMarkerSize_ * 0.75f, 8, viewportDebugTargetColor_, 0.95f);
+                lineManager.DrawLine(key.snapshot.position, target, viewportDebugTargetColor_, 0.7f, false);
+                                const float targetSize = viewportMarkerSize_ * 0.75f;
+                lineManager.DrawLine(target - Vector3{ targetSize, 0.0f, 0.0f }, target + Vector3{ targetSize, 0.0f, 0.0f }, viewportDebugTargetColor_, 0.95f, false);
+                lineManager.DrawLine(target - Vector3{ 0.0f, targetSize, 0.0f }, target + Vector3{ 0.0f, targetSize, 0.0f }, viewportDebugTargetColor_, 0.95f, false);
             }
         }
+    }
+
+    void CameraKeyframeEditorModule::DrawKeyFrustum(const CameraSequenceKeyframe& key,
+        const CameraSequenceAimContext& aim, const Vector3& color, float alpha) const
+    {
+        // 注視キーは保存された回転ではなく、注視先を向いた回転で描く。
+        // そうしないと画に写る範囲が実際の再生とずれる。
+        Vector3 rotation = key.snapshot.rotation;
+        Vector3 target{};
+        if (CameraSequenceEvaluator::ResolveAimTarget(key, &aim, target)) {
+            rotation = CameraSequenceEvaluator::LookRotation(key.snapshot.position, target, key.aimRoll);
+        }
+
+        const Matrix4x4 basis = MathCore::Matrix::MakeAffine(
+            { 1.0f, 1.0f, 1.0f }, rotation, { 0.0f, 0.0f, 0.0f });
+        const Vector3 forward = basis.GetAxisZ();
+        const Vector3 right = basis.GetAxisX();
+        const Vector3 up = basis.GetAxisY();
+
+        // 遠クリップまで描くと線が画面を埋めるので、見て分かる長さで打ち切る。
+        const float length = viewportFrustumLength_;
+        const float halfHeight = std::tan(key.snapshot.parameters.fov * 0.5f) * length;
+        // アスペクトは 0（自動）のことが多いので、読めれば十分な 16:9 で描く。
+        const float aspect = (key.snapshot.parameters.aspectRatio > 0.0f)
+            ? key.snapshot.parameters.aspectRatio : (16.0f / 9.0f);
+        const float halfWidth = halfHeight * aspect;
+
+        const Vector3 origin = key.snapshot.position;
+        const Vector3 center = origin + forward * length;
+        const Vector3 corners[4] = {
+            center + up * halfHeight - right * halfWidth,
+            center + up * halfHeight + right * halfWidth,
+            center - up * halfHeight + right * halfWidth,
+            center - up * halfHeight - right * halfWidth
+        };
+
+        auto& lineManager = LineManager::GetInstance();
+        for (int i = 0; i < 4; ++i) {
+            // 地形に隠れると構図の確認にならないので、常に手前へ描く。
+            lineManager.DrawLine(origin, corners[i], color, alpha, false);
+            lineManager.DrawLine(corners[i], corners[(i + 1) % 4], color, alpha, false);
+        }
+    }
+
+    void CameraKeyframeEditorModule::DrawViewportGizmo(const CameraEditorContext& context, const Camera& viewCamera)
+    {
+        if (!viewportGizmoEnabled_
+            || selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(sequence_.keyframes.size())) {
+            return;
+        }
+
+        CameraSequenceKeyframe& key = sequence_.keyframes[selectedIndex_];
+
+        // 注視点キーは注視先を掴めたほうが早い。位置は数値でも追えるが、
+        // 「どこを見るか」は空間で決めたい。
+        const bool editAimPoint = (key.aimMode == CameraSequenceAimMode::LookAtPoint);
+        Vector3 handle = editAimPoint ? (key.aimPoint + key.aimOffset) : key.snapshot.position;
+        const Vector3 before = handle;
+
+        if (!Gizmo::ManipulatePoint(handle, &viewCamera)) {
+            gizmoDragging_ = false;
+            return;
+        }
+
+        // 掴んだ最初のフレームだけ履歴を積む。毎フレーム積むと履歴が埋まる。
+        if (!gizmoDragging_) {
+            gizmoDragging_ = true;
+            PushUndoState();
+        }
+
+        if (editAimPoint) {
+            key.aimPoint += (handle - before);
+        } else {
+            key.snapshot.position = handle;
+        }
+
+        ApplyEvaluatedAt(context, playhead_);
     }
 
     int CameraKeyframeEditorModule::FindNearestKeyframeIndex(float time) const

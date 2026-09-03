@@ -25,6 +25,9 @@ namespace CoreEngine
         /// @brief タブ内容を描画
         void Draw(const CameraEditorContext& context) override;
 
+        /// @brief ビューポート上で選択キーの位置と注視点を掴めるようにする
+        void DrawViewportGizmo(const CameraEditorContext& context, const Camera& viewCamera) override;
+
     private:
         /// @brief Undo/Redo で退避する編集状態
         struct EditorState {
@@ -84,6 +87,11 @@ namespace CoreEngine
 
         /// @brief 件数と保存先を出す最下段
         void DrawStatusBar();
+
+        /// @brief キーの視錐台を線で描く
+        /// @details そのキーが何を画に収めるつもりなのかを、覗き込まずに読めるようにする。
+        void DrawKeyFrustum(const CameraSequenceKeyframe& key, const CameraSequenceAimContext& aim,
+            const Vector3& color, float alpha) const;
 
         /// @brief スナップショットが同一かを誤差込みで判定
         bool IsSameSnapshot(const CameraSnapshot& lhs, const CameraSnapshot& rhs) const;
@@ -181,6 +189,14 @@ namespace CoreEngine
         bool viewportShowTrajectory_ = true;
         bool viewportShowKeyMarkers_ = true;
         bool viewportShowDebugTarget_ = true;
+        bool viewportShowFrustum_ = true;
+        bool viewportGizmoEnabled_ = true;
+
+        /// @brief 視錐台を描く長さ [m]（遠クリップまで描くと画面が埋まる）
+        float viewportFrustumLength_ = 6.0f;
+
+        // ギズモを掴んでいる最中か（履歴を 1 回だけ積むための印）
+        bool gizmoDragging_ = false;
         int viewportTrajectorySamplesPerSegment_ = 12;
         float viewportMarkerSize_ = 0.2f;
         Vector3 viewportTrajectoryColor_ = { 1.0f, 0.8f, 0.2f };
