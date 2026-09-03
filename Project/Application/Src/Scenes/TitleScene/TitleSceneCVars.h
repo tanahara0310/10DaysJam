@@ -23,6 +23,20 @@ namespace TitleSceneCVars
     extern CoreEngine::CVar<float> RotationAmplitude;
     extern CoreEngine::CVar<float> ShakeStrength;
 
+    // ===== トロッコ登場演出 =====
+    extern CoreEngine::CVar<CoreEngine::Vector3> TrolleyPosition;
+    extern CoreEngine::CVar<float> TrolleyIntroDelay;
+    extern CoreEngine::CVar<float> TrolleyIntroDuration;
+    extern CoreEngine::CVar<float> TrolleyIntroOffset;
+    extern CoreEngine::CVar<CoreEngine::Vector3> TrolleyBobStart;
+    extern CoreEngine::CVar<CoreEngine::Vector3> TrolleyBobEnd;
+    extern CoreEngine::CVar<float> TrolleyBobDuration;
+
+    // ===== monkey.obj の配置・登場演出 =====
+    extern CoreEngine::CVar<float> MonkeyDistance;
+    extern CoreEngine::CVar<float> MonkeyIntroDuration;
+    extern CoreEngine::CVar<float> MonkeyIntroOffset;
+
     // ===== 操作ヒント UI =====
     extern CoreEngine::CVar<float> HintFontSize;
     extern CoreEngine::CVar<CoreEngine::Vector2> HintPosition;
@@ -40,6 +54,12 @@ namespace TitleSceneCVars
 
     /// @brief タイトルモデルに属さないカメラシェイク設定を表示する CVar 接頭辞。
     inline constexpr const char* kCameraShakeCVarPrefix = "Title.CameraShake";
+
+    /// @brief トロッコ登場演出を表示する CVar 接頭辞。
+    inline constexpr const char* kTrolleyCVarPrefix = "Title.Trolley";
+
+    /// @brief monkey.obj の配置・登場演出を表示する CVar 接頭辞。
+    inline constexpr const char* kMonkeyCVarPrefix = "Title.Monkey";
 
     /// @brief 操作ヒントUITextを表示する CVar 接頭辞。
     inline constexpr const char* kHintCVarPrefix = "Title.UI";
