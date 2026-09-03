@@ -51,6 +51,7 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
       <Filter>Application\Src\Scenes\TestScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp">
       <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClCompile>
