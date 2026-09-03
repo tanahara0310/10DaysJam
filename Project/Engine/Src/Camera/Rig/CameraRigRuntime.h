@@ -80,6 +80,11 @@ namespace CoreEngine
         ///          そのまま渡せば、リグが決める 3 つだけが差し替わる。
         bool Evaluate(float deltaTime, const CameraRigContext* context, CameraSnapshot& inOutSnapshot);
 
+        /// @brief 動作中のリグの中身だけ差し替える
+        /// @details 繋ぎの重みも減衰の続きも保つので、切り替え直しにはならない。
+        ///          エディタで値をいじりながら結果を見るためのもの。止まっている間は何もしない。
+        void ReplaceAsset(std::shared_ptr<const CameraRigAsset> asset);
+
         /// @brief 減衰の状態を捨てる（次フレームは理想の姿勢へ直接置かれる）
         void ResetState() { state_.Reset(); }
 

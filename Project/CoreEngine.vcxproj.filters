@@ -310,6 +310,9 @@
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraRigEditorModule.cpp">
+      <Filter>Engine\Src\Editor\Camera\Module</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
@@ -1486,6 +1489,9 @@
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.h">
+      <Filter>Engine\Src\Editor\Camera\Module</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraRigEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.h">

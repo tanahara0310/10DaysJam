@@ -118,7 +118,7 @@ namespace CoreEngine
             jsonData["orbitYaw"] = body.orbitYaw;
             jsonData["orbitPitch"] = body.orbitPitch;
             jsonData["targets"] = TargetsToJson(body.targets);
-            jsonData["frameBias"] = body.frameBias;
+            jsonData["frameBias"] = JsonManager::Vector3ToJson(body.frameBias);
             jsonData["framePullBackPerMeter"] = body.framePullBackPerMeter;
 
             json railPoints = json::array();
@@ -160,7 +160,16 @@ namespace CoreEngine
             body.orbitPitch = JsonManager::SafeGet(jsonData, "orbitPitch", body.orbitPitch);
 
             body.targets = JsonToTargets(jsonData, "targets");
-            body.frameBias = JsonManager::SafeGet(jsonData, "frameBias", body.frameBias);
+            if (jsonData.contains("frameBias")) {
+                // 軸ごとにする前は 1 つの数値だった。古いファイルは全軸へ配る。
+                const auto& biasJson = jsonData["frameBias"];
+                if (biasJson.is_number()) {
+                    const float bias = biasJson.get<float>();
+                    body.frameBias = { bias, bias, bias };
+                } else {
+                    body.frameBias = JsonManager::JsonToVector3(biasJson);
+                }
+            }
             body.framePullBackPerMeter = JsonManager::SafeGet(jsonData,
                 "framePullBackPerMeter", body.framePullBackPerMeter);
 

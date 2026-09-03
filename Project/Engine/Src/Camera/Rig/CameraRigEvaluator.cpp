@@ -322,9 +322,15 @@ namespace CoreEngine
             }
 
             // 寄り 0.5 は先頭と末尾の中点＝重み一定なら中心と一致する。既定で「まん中」。
+            // 軸ごとに寄せられるので、「Y と Z は中点のまま X だけ片方へ寄せる」が作れる。
+            const Vector3 span = last - first;
             const Vector3 anchor = (first == last)
                 ? center
-                : (first + (last - first) * asset.body.frameBias);
+                : Vector3{
+                    first.x + span.x * asset.body.frameBias.x,
+                    first.y + span.y * asset.body.frameBias.y,
+                    first.z + span.z * asset.body.frameBias.z
+                  };
 
             pose.position = anchor + asset.body.offset;
 

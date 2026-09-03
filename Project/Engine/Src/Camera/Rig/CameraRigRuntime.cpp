@@ -39,6 +39,15 @@ namespace CoreEngine
         activationId_ = 0;
     }
 
+    void CameraRigRuntime::ReplaceAsset(std::shared_ptr<const CameraRigAsset> asset)
+    {
+        // 止まっている間に入れ替えると、動かしていないリグが動き出したように見える。
+        if (!asset_ || !asset) {
+            return;
+        }
+        asset_ = std::move(asset);
+    }
+
     void CameraRigRuntime::Update(float deltaTime, float unscaledDeltaTime)
     {
         if (!asset_ || blendWeight_ >= 1.0f || options_.blendSeconds <= 0.0f) {

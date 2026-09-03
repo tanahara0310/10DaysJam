@@ -286,6 +286,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraFollowEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraGameViewControlModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraRigEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.cpp" />
@@ -801,6 +802,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraFollowEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraGameViewControlModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraKeyframeEditorModule.h" />
+    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraRigEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.h" />

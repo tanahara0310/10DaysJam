@@ -23,7 +23,9 @@ namespace CoreEngine
             SanitizeTarget(target);
         }
 
-        body.frameBias = std::clamp(body.frameBias, 0.0f, 1.0f);
+        body.frameBias.x = std::clamp(body.frameBias.x, 0.0f, 1.0f);
+        body.frameBias.y = std::clamp(body.frameBias.y, 0.0f, 1.0f);
+        body.frameBias.z = std::clamp(body.frameBias.z, 0.0f, 1.0f);
         body.framePullBackPerMeter = (std::max)(body.framePullBackPerMeter, 0.0f);
         body.orbitDistance = (std::max)(body.orbitDistance, 0.0f);
         body.railPosition = std::clamp(body.railPosition, 0.0f, 1.0f);

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "CameraDebugUI.h"
 #include "Module/CameraKeyframeEditorModule.h"
+#include "Module/CameraRigEditorModule.h"
 #include "Module/CameraClipPlayerModule.h"
 #include "Module/CameraFollowEditorModule.h"
 #include "Module/CameraListEditorModule.h"
@@ -13,6 +14,7 @@
 
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Camera/CameraManager.h"
+#include "Camera/Rig/CameraRig.h"
 #include "Camera/Sequence/CameraSequence.h"
 
 namespace CoreEngine {
@@ -35,6 +37,7 @@ namespace CoreEngine {
             RegisterModule(std::make_unique<CameraFollowEditorModule>());
             RegisterModule(std::make_unique<CameraParametersEditorModule>());
             RegisterModule(std::make_unique<CameraGameViewControlModule>());
+            RegisterModule(std::make_unique<CameraRigEditorModule>());
             RegisterModule(std::make_unique<CameraKeyframeEditorModule>());
             RegisterModule(std::make_unique<CameraClipPlayerModule>());
             RegisterModule(std::make_unique<CameraShakeEditorModule>());
@@ -118,6 +121,16 @@ namespace CoreEngine {
             UI::SameLine();
             if (ImGui::SmallButton("停止")) {
                 CameraSequence::Stop();
+            }
+        } else if (CameraRig::IsActive()) {
+            // シーケンスはリグの上に重なるので、両方動いていればシーケンスが見える。
+            // ここへ来るのはリグだけが握っているとき。
+            const std::string rigName = CameraRig::GetActiveName();
+            ImGui::TextColored(ImVec4(0.98f, 0.72f, 0.26f, 1.0f), "駆動: リグ \"%s\"",
+                rigName.empty() ? "(無名)" : rigName.c_str());
+            UI::SameLine();
+            if (ImGui::SmallButton("停止")) {
+                CameraRig::Deactivate();
             }
         } else {
             ImGui::TextDisabled("駆動: ゲーム / カメラコントローラ");
