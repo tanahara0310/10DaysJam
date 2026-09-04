@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp">
@@ -34,10 +34,10 @@
     <ClCompile Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp">
+    <ClCompile Include="Application\Src\Components\Title\TitleLogoAnimationComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Components\Title\TitleLogoAnimationComponent.cpp">
+    <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp">
@@ -51,6 +51,15 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp">
       <Filter>Application\Src\Components\Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Editor\Stage\StageCsvDocument.cpp">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Editor\Stage\StageEditorPanel.cpp">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp">
+      <Filter>Application\Src\Editor\Stage</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\MyGame.cpp">
       <Filter>Application\Src</Filter>
@@ -265,6 +274,15 @@
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\CameraSceneStateIO.cpp">
+      <Filter>Engine\Src\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
+      <Filter>Engine\Src\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequence.cpp">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.cpp">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClCompile>
@@ -295,20 +313,11 @@
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceLibrary.cpp">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequence.cpp">
-      <Filter>Engine\Src\Camera\Sequence</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.cpp">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Sequence\CameraSequenceIO.cpp">
       <Filter>Engine\Src\Camera\Sequence</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\CameraSceneStateIO.cpp">
-      <Filter>Engine\Src\Camera</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
-      <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
@@ -331,17 +340,17 @@
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp">
+      <Filter>Engine\Src\Editor\Camera\Module</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.cpp">
+      <Filter>Engine\Src\Editor\Camera\Module</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Widget\CameraIconOverlay.cpp">
       <Filter>Engine\Src\Editor\Camera\Widget</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.cpp">
       <Filter>Engine\Src\Editor\Camera\Widget</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.cpp">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
@@ -1392,10 +1401,10 @@
     <ClInclude Include="Application\Src\Components\Title\TitleCameraShakeSettingsComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h">
+    <ClInclude Include="Application\Src\Components\Title\TitleLogoAnimationComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Components\Title\TitleLogoAnimationComponent.h">
+    <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h">
@@ -1409,6 +1418,18 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h">
       <Filter>Application\Src\Components\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Editor\Stage\StageCsvDocument.h">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Editor\Stage\StageEditorPanel.h">
+      <Filter>Application\Src\Editor\Stage</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Editor\Stage\StageProject.h">
+      <Filter>Application\Src\Editor\Stage</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
@@ -1449,6 +1470,15 @@
     <ClInclude Include="Engine\Src\Camera\CameraManager.h">
       <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\CameraSceneStateIO.h">
+      <Filter>Engine\Src\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\CameraStructs.h">
+      <Filter>Engine\Src\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequence.h">
+      <Filter>Engine\Src\Camera\Sequence</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceTypes.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClInclude>
@@ -1479,23 +1509,14 @@
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceLibrary.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequence.h">
+    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceEvent.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceEvaluator.h">
-      <Filter>Engine\Src\Camera\Sequence</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Sequence\CameraSequenceIO.h">
       <Filter>Engine\Src\Camera\Sequence</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\CameraSceneStateIO.h">
-      <Filter>Engine\Src\Camera</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Camera\CameraStructs.h">
-      <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
@@ -1521,17 +1542,17 @@
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraListEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h">
+      <Filter>Engine\Src\Editor\Camera\Module</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.h">
+      <Filter>Engine\Src\Editor\Camera\Module</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Widget\CameraIconOverlay.h">
       <Filter>Engine\Src\Editor\Camera\Widget</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.h">
       <Filter>Engine\Src\Editor\Camera\Widget</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraShakeEditorModule.h">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.h">
-      <Filter>Engine\Src\Editor\Camera\Module</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h">
       <Filter>Engine\Src\Editor\Camera\Module</Filter>
@@ -3094,6 +3115,12 @@
     <Filter Include="Application\Src\Components\Utility">
       <UniqueIdentifier>{B56A6474-40F3-4A87-9128-F98DEC3E39BE}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Application\Src\Editor">
+      <UniqueIdentifier>{42B182AA-9788-4B19-AEF9-3C058897CF41}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Editor\Stage">
+      <UniqueIdentifier>{87B899BA-470C-4ECF-8906-4D036A2C89BE}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Application\Src\GameObjects">
       <UniqueIdentifier>{2762868A-A4D7-448F-BAAD-024F9AF8F891}</UniqueIdentifier>
     </Filter>
@@ -3151,11 +3178,12 @@
     <Filter Include="Engine\Src\Camera\Debug">
       <UniqueIdentifier>{08318A63-7E81-4992-88CF-85F136FCA598}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Camera\Rig">
+      <UniqueIdentifier>{b7e1c4a2-9d38-4f16-8c5b-3a7e0d924f61}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Camera\Sequence">
       <UniqueIdentifier>{5e2b9d47-3c81-4f6a-b09d-71a4c8e35d02}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Camera\Rig">
-      <UniqueIdentifier>{b7e1c4a2-9d38-4f16-8c5b-3a7e0d924f61}</UniqueIdentifier>
     <Filter Include="Engine\Src\Camera\Shake">
       <UniqueIdentifier>{3f7c1a52-8b64-4d19-9a0e-5c2d7e41b8a3}</UniqueIdentifier>
     </Filter>
@@ -3180,11 +3208,11 @@
     <Filter Include="Engine\Src\Editor\Camera">
       <UniqueIdentifier>{7948DDA0-E342-42C7-A7E4-7C26135423C2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Editor\Camera\Widget">
-      <UniqueIdentifier>{9c41f8d2-6b37-4e51-a2c8-0d59e7b41f36}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Editor\Camera\Module">
       <UniqueIdentifier>{931C7218-F1A0-427B-89D1-0C2266D82491}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Camera\Widget">
+      <UniqueIdentifier>{9c41f8d2-6b37-4e51-a2c8-0d59e7b41f36}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\Environment">
       <UniqueIdentifier>{3E7B1A54-9C2D-4F86-B1E0-5A6D42C8F913}</UniqueIdentifier>

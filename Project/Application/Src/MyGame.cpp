@@ -12,6 +12,8 @@
 #include "Scenes/TitleScene/TitleScene.h"
 #include "Scenes/ResultScene/ResultScene.h"
 
+#include "Editor/Stage/StageEditorPanel.h"
+
 using namespace CoreEngine;
 
 MyGame::~MyGame() = default;
@@ -89,6 +91,10 @@ void MyGame::ConnectDebugUI()
     if (gameDebugUI) {
         gameDebugUI->SetSceneManager(sceneManager_.get());
     }
+
+    // ステージ（区画CSV）エディタを Inspector のタブとして足す。
+    // 表示は Window > Application > Stage から。
+    GameEditors::StageEditorPanel::Register(gameDebugUI, sceneManager_.get());
 
     auto console = GetEngineSystem()->GetDebugSubsystem()->GetConsole();
     if (console) {
