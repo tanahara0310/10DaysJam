@@ -234,6 +234,49 @@ namespace CoreEngine {
             &CloudCVars::PaintEdgeFade,
         };
 
+        /// スタイル選択コンボの表示名（CloudStyle と同じ並び・同じ数にすること）
+        const char* const kCloudStyleNames[] = {
+            "リアル（ボリューメトリック）",
+            "ボクセル（3 軸を立方体化）",
+            "マイクラ（平らな板）",
+            "段々（高さだけ量子化）",
+        };
+        static_assert(std::size(kCloudStyleNames) == static_cast<size_t>(CloudStyle::Count),
+            "スタイル名の表は CloudStyle と同じ数にすること");
+
+        /// @brief 雲探索の粗ステップが最悪どこまで伸びるか [m]
+        /// @details マーチの細ステップは max(層厚 / 128, 4m)、雲を探す粗ステップはその 4 倍で、
+        ///          さらに距離で最大 16 倍まで伸びる。128 分割・4 倍・16 倍を畳むと
+        ///          最悪の粗ステップは「層厚 / 2」（層厚 512m 未満では下限 4m 由来の 256m で頭打ち）。
+        ///          これがボクセル 1 辺より大きいと、遠方で薄い雲層を丸ごと跨いで素通りし、
+        ///          カメラの動きに合わせて雲が点いたり消えたりする。
+        /// @note 定数は CloudTuning.hlsli の kCloudBaseStepDivisor / kCloudMinStepM /
+        ///       kCloudCoarseStepScale とストライド上限に対応させること。
+        float WorstCoarseStepM(float layerThicknessM)
+        {
+            constexpr float kBaseStepDivisor = 128.0f;    // kCloudBaseStepDivisor
+            constexpr float kMinStepM = 4.0f;             // kCloudMinStepM
+            constexpr float kMaxCoarseMultiple = 64.0f;   // kCloudCoarseStepScale(4) * ストライド上限(16)
+            return std::max(layerThicknessM / kBaseStepDivisor, kMinStepM) * kMaxCoarseMultiple;
+        }
+
+        /// @brief 現在のボクセル 1 辺（縦横の小さいほう）[m]
+        float BlockyCellMinM()
+        {
+            const float cellXZ = std::max(CloudCVars::VoxelSizeM.Get(), 1.0f);
+            const float cellYRaw = CloudCVars::VoxelHeightSizeM.Get();
+            return std::min(cellXZ, (cellYRaw > 0.0f) ? cellYRaw : cellXZ);
+        }
+
+        /// ブロック雲でのみ意味を持つ CVar（Realistic では UI に出さない）
+        ICVar* const kBlockyGroup[] = {
+            &CloudCVars::VoxelSizeM,
+            &CloudCVars::VoxelHeightSizeM,
+            &CloudCVars::DensityThreshold,
+            &CloudCVars::VoxelFaceBrightness,
+            &CloudCVars::VoxelFaceShadeMin,
+        };
+
         ICVar* const kLightingGroup[] = {
             &CloudCVars::SunLightScale,
             &CloudCVars::DropletDiameterUm,
@@ -297,6 +340,7 @@ namespace CoreEngine {
                     }
                 };
                 addAll(kShapeGroup, std::size(kShapeGroup));
+                addAll(kBlockyGroup, std::size(kBlockyGroup));
                 addAll(kLightingGroup, std::size(kLightingGroup));
                 addAll(kQualityGroup, std::size(kQualityGroup));
                 addAll(kCirrusGroup, std::size(kCirrusGroup));
@@ -686,13 +730,92 @@ namespace CoreEngine {
 #endif
     }
 
+    void VolumetricCloudEditor::DrawStyleSelector()
+    {
+#ifdef USE_IMGUI
+        int style = CloudCVars::Style.Get();
+        if (ImGui::Combo("雲のスタイル", &style, kCloudStyleNames,
+                static_cast<int>(CloudStyle::Count))) {
+            auto& undoStack = CVarUndoStack::Get();
+            undoStack.BeginEdit(&CloudCVars::Style);
+            CloudCVars::Style.Set(style);
+            undoStack.CommitEdit(&CloudCVars::Style);
+            CVarRegistry::Get().NotifyCommit();
+        }
+        HelpMarker("雲の形の作り方を切り替えます。天候・雲層・風・配置ペイントは全スタイル共通です。\n"
+            "ボクセル: 立方体で構成された塊。\n"
+            "マイクラ: 一定高度の平らな板。3D ノイズを引かないので最も軽い。\n"
+            "段々: 輪郭は雲のまま高さだけが段になります。");
+
+        if (!IsBlockyCloudStyle(static_cast<uint32_t>(style))) {
+            return;
+        }
+
+        ImGui::TextDisabled("ブロック雲では巻雲・縁の侵食・時間再投影が自動で切れます");
+        HelpMarker("CVar の値は書き換えないので、リアルへ戻せば元の設定がそのまま復帰します。");
+
+        // DDA でボクセルをたどるスタイルは、跨ぎも面の階段も構造的に起こらない
+        if (CloudStyleUsesVoxelMarch(static_cast<uint32_t>(style))) {
+            return;
+        }
+
+        // 固定ステップのままのスタイル（Terraced）だけ、雲探索の粗ステップがボクセルより
+        // 大きいと遠方で雲層を跨いで素通りし雲が点滅する。
+        // 気付きようがない噛み合わせなので、成立していないときだけ数字を出して知らせる
+        const float cellMin = BlockyCellMinM();
+        const float worstStep = WorstCoarseStepM(CloudCVars::LayerThicknessM.Get());
+        if (worstStep <= cellMin) {
+            return;
+        }
+
+        ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.35f, 1.0f),
+            "遠方で雲が点滅します（雲探索の粗ステップ %.0fm > ボクセル %.0fm）",
+            worstStep, cellMin);
+        HelpMarker("レイマーチが雲を探す歩幅は層の厚みに比例し、距離で最大 16 倍まで伸びます。\n"
+            "これがボクセル 1 辺より大きいと、薄い雲層を丸ごと跨いで素通りします。\n"
+            "「層の厚み」を下げるか「ボクセルの大きさ」を上げると解消します。\n"
+            "Phase 2 の DDA トラバーサルではこの制約自体が無くなります。");
+
+        // 層厚を下げても粗ステップは 256m で頭打ちなので、それ未満のボクセルは厚みでは救えない
+        constexpr float kCoarseStepFloorM = 256.0f;
+        if (cellMin < kCoarseStepFloorM) {
+            ImGui::TextDisabled("ボクセルを %.0fm 以上にしないと層の厚みでは解消できません",
+                kCoarseStepFloorM);
+            return;
+        }
+
+        // ボクセル × 2 だと粗ステップがボクセルとちょうど同値になり、境界上のサンプルが
+        // 取りこぼす余地が残る。1.5 倍にして粗ステップをボクセルの 3/4 に収める
+        const float fixedThicknessM = cellMin * 1.5f;
+        if (ImGui::SmallButton("層の厚みを下げて解消")) {
+            auto& undoStack = CVarUndoStack::Get();
+            undoStack.BeginEdit(&CloudCVars::LayerThicknessM);
+            CloudCVars::LayerThicknessM.Set(fixedThicknessM);
+            undoStack.CommitEdit(&CloudCVars::LayerThicknessM);
+            CVarRegistry::Get().NotifyCommit();
+        }
+        ImGui::SameLine();
+        ImGui::TextDisabled("層の厚み → %.0fm", fixedThicknessM);
+#endif
+    }
+
     void VolumetricCloudEditor::DrawAdvancedSection()
     {
 #ifdef USE_IMGUI
+        // 効かない CVar を並べないよう、スタイルで出し分ける。
+        // 隠したグループも CoveredCVarNames() には入っているので「その他（未分類）」へは落ちない
+        const bool blocky = IsBlockyCloudStyle(static_cast<uint32_t>(CloudCVars::Style.Get()));
+
         DrawCVarGroup("形状（ノイズ・雲層・風）", kShapeGroup, std::size(kShapeGroup));
+        if (blocky) {
+            DrawCVarGroup("ブロック雲（量子化）", kBlockyGroup, std::size(kBlockyGroup));
+        }
         DrawCVarGroup("ライティング", kLightingGroup, std::size(kLightingGroup));
         DrawCVarGroup("品質・負荷（マーチング）", kQualityGroup, std::size(kQualityGroup));
-        DrawCVarGroup("巻雲シェル", kCirrusGroup, std::size(kCirrusGroup));
+        if (!blocky) {
+            // ブロック雲では UploadConstants が巻雲を落とすので、触っても効かない
+            DrawCVarGroup("巻雲シェル", kCirrusGroup, std::size(kCirrusGroup));
+        }
         DrawCVarGroup("ゴッドレイ・雲影", kGodRayGroup, std::size(kGodRayGroup));
 
         // グループに載っていない CVar の受け皿（追加漏れでも UI から消えないようにする）
@@ -729,6 +852,10 @@ namespace CoreEngine {
         if (ImGui::Checkbox("雲を有効にする", &enabled)) {
             cloudManager->SetEnabled(enabled);
         }
+
+        // ===== ⓪ スタイル =====
+        ImGui::SeparatorText("スタイル");
+        DrawStyleSelector();
 
         // ===== ① 天候（プリセット + メタスライダー） =====
         ImGui::SeparatorText("天候");
