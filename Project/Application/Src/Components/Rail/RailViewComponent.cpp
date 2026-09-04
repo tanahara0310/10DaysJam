@@ -23,8 +23,30 @@
 
 using namespace CoreEngine;
 
+namespace
+{
+    constexpr float kConfirmationJumpHeight = 0.8f;
+    constexpr float kConfirmationJumpDuration = 0.35f;
+    constexpr float kConfirmationStaggerInterval = 0.06f;
+    constexpr float kConfirmationSeVolume = 0.45f;
+    constexpr float kConfirmationSeBasePitch = 0.9f;
+    constexpr float kConfirmationSePitchStep = 0.05f;
+    constexpr float kConfirmationSeMaxPitch = 1.35f;
+    constexpr float kPi = 3.14159265358979323846f;
+}
+
 void GameComponents::RailViewComponent::Start() {
     transform_ = Sibling<TransformComponent>();
+
+    // ゲーム開始時から存在する始点レールは確定演出の対象にしない。
+    if (railPath_) {
+        confirmationAnimationTimes_.assign(
+            railPath_->GetRailMap().size(),
+            kConfirmationJumpDuration);
+        confirmationSoundPitches_.assign(
+            railPath_->GetRailMap().size(),
+            kConfirmationSeBasePitch);
+    }
 }
 
 void GameComponents::RailViewComponent::Update() {
@@ -37,6 +59,7 @@ void GameComponents::RailViewComponent::Update() {
         return;
     }
 
+    UpdateConfirmationAnimations(Time::DeltaTime());
     DrawRailModels();
     
     // LineManager のインスタンスを取得する
@@ -76,6 +99,62 @@ void GameComponents::RailViewComponent::Update() {
         // ラインを描画する
         lines.DrawLine({ x, 1.0f, z }, { nextX, 1.0f, nextZ }, { 1.0f, 1.0f, 0.0f }, 1.0f, true);
     }
+}
+
+void GameComponents::RailViewComponent::UpdateConfirmationAnimations(float deltaTime) {
+    const std::size_t confirmedCount = railPath_->GetRailMap().size();
+
+    // 将来確定済みレールを巻き戻す処理が追加されても、添字を範囲内に保つ。
+    if (confirmationAnimationTimes_.size() > confirmedCount) {
+        confirmationAnimationTimes_.resize(confirmedCount);
+        confirmationSoundPitches_.resize(confirmedCount);
+    }
+
+    // 同じフレームに複数本確定した場合（駅到達時）は、順番に再生する。
+    const std::size_t firstNewIndex = confirmationAnimationTimes_.size();
+    for (std::size_t i = firstNewIndex; i < confirmedCount; ++i) {
+        const float delay = kConfirmationStaggerInterval *
+            static_cast<float>(i - firstNewIndex);
+        confirmationAnimationTimes_.push_back(-delay);
+        confirmationSoundPitches_.push_back(std::min(
+            kConfirmationSeBasePitch +
+                kConfirmationSePitchStep * static_cast<float>(i - firstNewIndex),
+            kConfirmationSeMaxPitch));
+    }
+
+    const float safeDeltaTime = std::max(deltaTime, 0.0f);
+    for (std::size_t i = 0; i < confirmationAnimationTimes_.size(); ++i) {
+        float& animationTime = confirmationAnimationTimes_[i];
+        if (animationTime < kConfirmationJumpDuration) {
+            const float previousTime = animationTime;
+            animationTime = std::min(
+                animationTime + safeDeltaTime,
+                kConfirmationJumpDuration);
+
+            // 待ち時間を越えてレールが跳ね始める瞬間に、一度だけSEを鳴らす。
+            if (previousTime <= 0.0f && animationTime > 0.0f && onRailBuildSE_) {
+                onRailBuildSE_(kConfirmationSeVolume, confirmationSoundPitches_[i]);
+            }
+        }
+    }
+}
+
+float GameComponents::RailViewComponent::GetConfirmationJumpOffset(
+    std::size_t railIndex) const {
+    if (railIndex >= confirmationAnimationTimes_.size()) {
+        return 0.0f;
+    }
+
+    const float animationTime = confirmationAnimationTimes_[railIndex];
+    if (animationTime < 0.0f || animationTime >= kConfirmationJumpDuration) {
+        return 0.0f;
+    }
+
+    const float progress = std::clamp(
+        animationTime / kConfirmationJumpDuration,
+        0.0f,
+        1.0f);
+    return std::sin(progress * kPi) * kConfirmationJumpHeight;
 }
 
 void GameComponents::RailViewComponent::DrawRailModels() {
@@ -144,9 +223,12 @@ void GameComponents::RailViewComponent::DrawRailModels() {
             outgoing = incoming;
         }
 
+        const float jumpOffset = i < confirmedRails.size()
+            ? GetConfirmationJumpOffset(i)
+            : 0.0f;
         const Vector3 position = {
             static_cast<float>(current.first) * gridSize_,
-            0.6f,
+            0.6f + jumpOffset,
             static_cast<float>(current.second) * gridSize_
         };
 

@@ -70,6 +70,16 @@ void GameScene::GameScene::OnInitialize() {
                 { .bus = AudioBus::SE });
         }
         };
+    std::function<void(float, float)> playRailBuildSe = [this](float volume, float pitch) {
+        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+            CoreEngine::PlayParams params;
+            params.bus = AudioBus::SE;
+            params.volume = volume;
+            params.pitch = pitch;
+            audioSystem->PlayOneShot(
+                "Application/Assets/Sounds/SE/rail_build.mp3", params);
+        }
+        };
 
     // ========== ゲームルールの設定 ==========
     float gridSize = 1.0f; // グリッドサイズを設定
@@ -216,6 +226,7 @@ void GameScene::GameScene::OnInitialize() {
         railLeftPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         railRightPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
+        playRailBuildSe,
         renderWorldDistance);
 
     // マップを描画するオブジェクトを追加
