@@ -358,18 +358,6 @@ void GameComponents::RailBuilderComponent::Update() {
             LogCategory::Game,
             "RailBuilder: 駅に到達しました (報酬={}, 駅までのレールを確定)",
             reward);
-    } else if (mapChip == MapChipType::Resource) {
-        const uint32_t reward = CalculateSpeedReward(resourceReward_);
-        resourceManager_->AddResource(reward);
-        // リソース床は一度だけ取得できるよう、通常のGroundへ戻す。
-        mapGenerator_->SetMapChip(
-            static_cast<std::size_t>(gridPosX_),
-            static_cast<std::size_t>(gridPosZ_),
-            MapChipType::Ground);
-        Logger::GetInstance().Infof(
-            LogCategory::Game,
-            "RailBuilder: リソースを取得しました (報酬={})",
-            reward);
     }
 
     Logger::GetInstance().Infof(
@@ -401,14 +389,7 @@ bool GameComponents::RailBuilderComponent::TryUndoLastRail() {
 
 uint32_t GameComponents::RailBuilderComponent::CalculateSpeedReward(
     uint32_t baseAmount) const {
-    const float speedRatio = trainMovement_
-        ? std::max(trainMovement_->GetSpeedRatio(), 1.0f)
-        : 1.0f;
-
-    float speedRatioClamped = std::clamp(speedRatio, 1.0f, maxSpeedRewardRatio_);
-
-    return static_cast<uint32_t>(
-        std::floor(static_cast<float>(baseAmount) * speedRatioClamped));
+    return baseAmount;
 }
 
 void GameComponents::RailBuilderComponent::SyncTransformToGrid() {

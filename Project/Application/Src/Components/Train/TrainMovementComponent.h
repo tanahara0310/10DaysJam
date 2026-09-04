@@ -87,6 +87,7 @@ namespace GameComponents
 
         float movementProgress_ = 0.0f;
         bool isMoving_ = false;
+        bool isMovingOnCompletedRail_ = false;
         bool hasStarted_ = false;
         bool hasDirection_ = false;
         bool isGameOver_ = false;
