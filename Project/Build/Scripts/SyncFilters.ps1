@@ -39,10 +39,6 @@ if (-not (Test-Path $ProjectFile)) {
     Write-Error "[SyncFilters] Not found: $ProjectFile"
     exit 1
 }
-if (-not (Test-Path $FiltersFile)) {
-    Write-Error "[SyncFilters] Not found: $FiltersFile"
-    exit 1
-}
 
 # ---------------------------------------------------------------------------
 # Item types to track
@@ -117,9 +113,47 @@ if ($staleNodes.Count -gt 0) {
 }
 
 # ---------------------------------------------------------------------------
-# Parse existing vcxproj.filters
+# Parse existing vcxproj.filters. The file is optional for MSBuild and may be
+# absent after project regeneration or while Visual Studio is replacing it.
+# In that case, start from an empty document and rebuild it from the vcxproj.
 # ---------------------------------------------------------------------------
-[xml]$filtersXml = [System.IO.File]::ReadAllText($FiltersFile, [System.Text.Encoding]::UTF8)
+$oldContent = ""
+if (Test-Path -LiteralPath $FiltersFile) {
+    try {
+        $oldContent = [System.IO.File]::ReadAllText($FiltersFile, [System.Text.Encoding]::UTF8)
+    }
+    catch [System.IO.FileNotFoundException] {
+        # The file can disappear between Test-Path and ReadAllText when another
+        # process replaces it. Rebuilding below is safe and avoids failing the build.
+        $oldContent = ""
+    }
+}
+
+$emptyFiltersXml = '<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" />'
+$recoveredGuids = @{}
+
+if ([string]::IsNullOrWhiteSpace($oldContent)) {
+    Write-Host "[SyncFilters] Filters file is missing or empty. Rebuilding: $FiltersFile"
+    [xml]$filtersXml = $emptyFiltersXml
+}
+else {
+    try {
+        [xml]$filtersXml = $oldContent
+    }
+    catch {
+        Write-Warning "[SyncFilters] Filters file contains invalid XML. Rebuilding: $FiltersFile"
+
+        # Preserve GUIDs from recognizable Filter declarations even when their
+        # closing tags are damaged. This keeps the repair diff small.
+        $filterPattern = '<Filter\s+Include="([^"]+)">\s*<UniqueIdentifier>(\{[0-9A-Fa-f-]+\})</UniqueIdentifier>'
+        foreach ($match in [System.Text.RegularExpressions.Regex]::Matches($oldContent, $filterPattern)) {
+            $recoveredGuids[$match.Groups[1].Value] = $match.Groups[2].Value
+        }
+
+        $oldContent = ""
+        [xml]$filtersXml = $emptyFiltersXml
+    }
+}
 
 # Include -> current filter string (or $null when no Filter element)
 $existingFilters = @{}
@@ -132,7 +166,6 @@ foreach ($ig in $filtersXml.Project.ItemGroup) {
         }
     }
 }
-
 # Preserve existing filter-hierarchy GUIDs: filterPath -> GUID string
 $existingGuids = @{}
 foreach ($ig in $filtersXml.Project.ItemGroup) {
@@ -140,6 +173,11 @@ foreach ($ig in $filtersXml.Project.ItemGroup) {
     foreach ($f in $nodes) {
         $guidNode = $f.ChildNodes | Where-Object { $_.LocalName -eq "UniqueIdentifier" } | Select-Object -First 1
         if ($guidNode) { $existingGuids[$f.Include] = $guidNode.InnerText }
+    }
+}
+foreach ($filterPath in $recoveredGuids.Keys) {
+    if (-not $existingGuids.ContainsKey($filterPath)) {
+        $existingGuids[$filterPath] = $recoveredGuids[$filterPath]
     }
 }
 
@@ -266,8 +304,6 @@ $newContent = $sb.ToString()
 # ---------------------------------------------------------------------------
 # Write only if content actually changed (avoid unnecessary file touches)
 # ---------------------------------------------------------------------------
-$oldContent = [System.IO.File]::ReadAllText($FiltersFile, [System.Text.Encoding]::UTF8)
-
 # Normalize line endings before comparing
 $normalizedOld = $oldContent -replace "`r`n", "`n" -replace "`r", "`n"
 $normalizedNew = $newContent -replace "`r`n", "`n"
