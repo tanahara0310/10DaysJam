@@ -74,7 +74,7 @@ void GameScene::GameScene::OnInitialize() {
     auto* groundPoolManager = CreateObject("GroundPoolManager");
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "box.obj", 600,false);
+        "ground.obj", 600,false);
     // 水場のオブジェクトプールを生成
     auto* waterPoolManager = CreateObject("WaterPoolManager");
     waterPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -145,7 +145,7 @@ void GameScene::GameScene::OnInitialize() {
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         train->GetComponent<GameComponents::TrainMovementComponent>());
 
-    railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
+    railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("arrow.obj");
 
     gameManagerComponent->SetGameplayComponents(
         train->GetComponent<GameComponents::TrainMovementComponent>(),

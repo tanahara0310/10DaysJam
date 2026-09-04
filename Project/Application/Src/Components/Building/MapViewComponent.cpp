@@ -42,6 +42,7 @@ void GameComponents::MapViewComponent::Update() {
     Vector3 rotate{ 0.0f, 0.0f, 0.0f };
     Vector3 stationScale{ 0.5f, 0.5f, 0.5f };
     Vector3 rockScale{ 0.7f, 0.7f, 0.7f };
+    Vector3 groundScale{ 0.6f, 0.6f, 0.6f };
 
     // マップチップの2D配列を取得する
     const auto& mapChips = mapGenerator_->GetMapChips();
@@ -52,7 +53,7 @@ void GameComponents::MapViewComponent::Update() {
             // チップの種類に応じて描画する
             if (chipType != MapChipType::Void && chipType != MapChipType::Water) {
                 // グラウンドチップの表示
-                groundRenderPool_->Draw({ x * gridSize_, 0.0f, z * gridSize_ });
+                groundRenderPool_->Draw({ x * gridSize_, -0.5f, z * gridSize_ }, rotate, groundScale);
             }
 
             // 水場チップの表示

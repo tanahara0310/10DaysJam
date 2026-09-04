@@ -41,7 +41,6 @@ void GameComponents::RailViewComponent::Update() {
     
     // LineManager のインスタンスを取得する
     auto& lines = LineManager::GetInstance();
-
     // 確定しているレールの座標を取得する
     const auto& railMap = railPath_->GetRailMap();
     for (size_t i = 0; i + 1 < railMap.size(); ++i) {
@@ -151,7 +150,7 @@ void GameComponents::RailViewComponent::DrawRailModels() {
             static_cast<float>(current.second) * gridSize_
         };
 
-        float scaleOffset = 0.7f;
+        float scaleOffset = 0.6f;
         const Vector3 scale = { scaleOffset, scaleOffset, scaleOffset };
 
         // XZ平面の外積。正なら進行方向に対して左折、負なら右折。

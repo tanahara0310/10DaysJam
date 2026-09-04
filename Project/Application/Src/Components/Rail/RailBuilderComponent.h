@@ -74,5 +74,7 @@ namespace GameComponents
         float undoPushMaxTime_ = 0.3f;
         float undoInterval_ = 0.05f;
         float undoIntervalTimer_ = 0.0f;
+
+        float timer_ = 0.0f;
     };
 }

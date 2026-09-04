@@ -57,6 +57,13 @@ void GameComponents::RailBuilderComponent::Update() {
         return;
     }
 
+    // タイマーを更新する
+    timer_ += Time::DeltaTime();
+
+    // TransformComponent のスケールと回転を更新する
+    transform_->Get().scale = { 1.0f, 0.8f + (sinf(timer_ * 5.0f) * 0.2f), 1.0f };
+    transform_->Get().rotate.y = timer_ * 2.0f;
+
     // ゲームオブジェクトのオーナーからエンジンシステムを取得し、入力マネージャーを取得する
     GameObject* owner = GetOwner();
     EngineSystem* engine =
