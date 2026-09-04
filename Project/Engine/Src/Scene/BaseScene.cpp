@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "BaseScene.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/PlaybackState.h"
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
 #include "Graphics/RHI/GraphicsCore.h"
@@ -115,23 +116,38 @@ namespace CoreEngine
 
     void BaseScene::Update()
     {
+        // メニューバーの再生 / 停止ボタンの状態。停止中はゲームロジックを飛ばす。
+        // Feature の取捨は DispatchUpdate() が RunsWhileStopped() を見て行うので、
+        // エディタカメラ・ギズモ・ライト・大気は止めている間も回り続ける
+        const bool advance = PlaybackStateManager::GetInstance().IsPlaying();
+
         // フレーム前処理（先頭でカメラ姿勢を確定 → ライト/影・グリッド・デバッグエディタ）
         DispatchUpdate(SceneUpdatePhase::FrameStart);
 
-        // 派生クラスの更新処理（GameObjectの更新前）
-        OnUpdate();
+        if (advance) {
+            // 派生クラスの更新処理（GameObjectの更新前）
+            OnUpdate();
+        }
 
         // GameObject 更新前の Feature 更新（床のカメラ追従、最後にトゥイーンの前進）
         DispatchUpdate(SceneUpdatePhase::PreObjectUpdate);
 
-        // ゲームオブジェクトの更新
-        gameObjectManager_.UpdateAll();
+        if (advance) {
+            // ゲームオブジェクトの更新
+            gameObjectManager_.UpdateAll();
+        } else {
+            // 停止中はワールド行列の転送だけを残す。
+            // インスペクタやギズモで動かした結果を画面へ出すために要る
+            gameObjectManager_.SyncTransforms();
+        }
 
         // GameObject 更新後の Feature 更新（コリジョン収集 → 判定、最後にイベントの一括配信）
         DispatchUpdate(SceneUpdatePhase::PostObjectUpdate);
 
-        // 派生クラスの後処理（クリーンアップ前）
-        OnLateUpdate();
+        if (advance) {
+            // 派生クラスの後処理（クリーンアップ前）
+            OnLateUpdate();
+        }
 
         // 全ロジック確定後の Feature 更新（大気→雲など最新の太陽・カメラ情報の反映）
         DispatchUpdate(SceneUpdatePhase::PostLogic);
@@ -283,9 +299,16 @@ namespace CoreEngine
 
     void BaseScene::DispatchUpdate(SceneUpdatePhase phase)
     {
+        // 停止中はゲームの進行に関わる Feature を飛ばす。
+        // どちらに属するかは Feature 自身が RunsWhileStopped() で答える
+        const bool stopped = PlaybackStateManager::GetInstance().IsStopped();
+
         // コンテキストは 1 体ごとに取り直す。先頭の CameraFeature が視点を切り替えた
         // フレームでも、後続の Feature が同じフレームで新しい視点カメラを見られるようにする。
         for (auto& entry : features_) {
+            if (stopped && !entry.feature->RunsWhileStopped()) {
+                continue;
+            }
             RefreshFeatureContext();
             entry.feature->Update(featureContext_, phase);
         }

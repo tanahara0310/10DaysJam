@@ -70,6 +70,14 @@ namespace CoreEngine
         /// @brief 毎フレーム更新（フェーズごとに 1 回ずつ呼ばれる）
         virtual void Update(SceneContext&, SceneUpdatePhase) {}
 
+        /// @brief メニューバーの停止ボタンで止めている間も Update を回すか
+        /// @details 既定は false。衝突判定・トゥイーン・イベント配信・カメラ演出など、
+        ///          ゲームの進行そのものである Feature はそのまま止める。
+        /// @note エディタから触るもの（カメラ・ライト・グリッド・ギズモ・床・大気）は
+        ///       true を返すこと。止めると停止中にパラメータを変えても画面が変わらず、
+        ///       「編集はできるが更新は進まない」という停止の意味が壊れる。
+        virtual bool RunsWhileStopped() const { return false; }
+
         /// @brief シーン終了時（登録の逆順で呼ばれる）
         /// @note この時点ではシーンの GameObject はまだ生きている。
         virtual void Finalize(SceneContext&) {}
