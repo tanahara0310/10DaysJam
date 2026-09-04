@@ -1,25 +1,25 @@
 #include "pch.h"
-#include "UIText.h"
+#include "Text3DObject.h"
 
-#include "Graphics/Render/RenderManager.h"
+#include "Camera/Camera.h"
+#include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineSystem.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
+#include "Graphics/Render/RenderManager.h"
+#include "Scene/SceneSaveSystem.h"
 #include "Text/FontManager.h"
 #include "Text/MsdfFont.h"
-#include "Text/TextGeometryBuilder.h"
-#include "Scene/SceneSaveSystem.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
-#include <array>
+#include <cmath>
 #include <cstring>
-#include <limits>
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "Editor/ImGui/Wrappers/ImGuiLayout.h"
 #include <imgui.h>
-#include <numbers>
 #endif
 
 namespace CoreEngine
@@ -31,6 +31,48 @@ namespace CoreEngine
         /// 距離場は輪郭の外側 pxRange/2 までしか情報を持たない。
         /// 端ぎりぎりは値が飽和しているので、少し内側を上限にする
         constexpr float kMaxOutlineSd = 0.45f;
+
+        /// @brief ビルボードの回転行列を作る（平行移動なし）
+        /// @param viewMatrix 描画に使うビューの行列
+        /// @note 式はパーティクルの `ParticleRenderDataBuilder::CreateBillboardMatrix` と同じ。
+        ///       あちらは private かつパーティクル固有のヘッダを引き連れているため、
+        ///       テキストが要る 2 方式だけをここに置いている。
+        Matrix4x4 MakeBillboardMatrix(const Matrix4x4& viewMatrix, Text3DBillboard mode)
+        {
+            // ビューの逆行列の 3x3 がそのままカメラの姿勢（right / up / forward）
+            const Matrix4x4 invView = Matrix::Inverse(viewMatrix);
+
+            if (mode == Text3DBillboard::ViewFacing) {
+                Matrix4x4 billboard = invView;
+                billboard.m[3][0] = 0.0f;
+                billboard.m[3][1] = 0.0f;
+                billboard.m[3][2] = 0.0f;
+                return billboard;
+            }
+
+            // YAxisOnly: 上方向は world up に固定し、水平成分だけカメラへ向ける。
+            // こうしないと見下ろし視点で文字が地面に寝てしまう
+            const Vector3 cameraPosition = { invView.m[3][0], invView.m[3][1], invView.m[3][2] };
+            const float horizontalLength =
+                std::sqrt(cameraPosition.x * cameraPosition.x + cameraPosition.z * cameraPosition.z);
+
+            Vector3 forward, right;
+            if (horizontalLength < 0.0001f) {
+                // 真上・真下から見ている。向きが決まらないので既定の姿勢にする
+                forward = { 0.0f, 0.0f, 1.0f };
+                right = { 1.0f, 0.0f, 0.0f };
+            }
+            else {
+                forward = { cameraPosition.x / horizontalLength, 0.0f, cameraPosition.z / horizontalLength };
+                right = { -forward.z, 0.0f, forward.x };
+            }
+
+            Matrix4x4 billboard = Matrix::Identity();
+            billboard.m[0][0] = right.x;   billboard.m[0][1] = right.y;   billboard.m[0][2] = right.z;
+            billboard.m[1][0] = 0.0f;      billboard.m[1][1] = 1.0f;      billboard.m[1][2] = 0.0f;
+            billboard.m[2][0] = forward.x; billboard.m[2][1] = forward.y; billboard.m[2][2] = forward.z;
+            return billboard;
+        }
     }
 
 #ifdef USE_IMGUI
@@ -55,25 +97,27 @@ namespace CoreEngine
 
     namespace
     {
-        /// @brief シーン JSON から UIText を復元できるように型を登録する
-        /// @note 静的初期化で 1 度だけ走る。エディタ上で追加したテキストが
-        ///       次回起動時に復活するのはこの登録があるため
-        const bool kUITextTypeRegistered = [] {
-            SceneSaveSystem::RegisterObjectType("UIText",
-                [] { return std::make_unique<UIText>(); });
+        /// @brief シーン JSON から Text3D を復元できるように型を登録する
+        const bool kText3DTypeRegistered = [] {
+            SceneSaveSystem::RegisterObjectType("Text3D",
+                [] { return std::make_unique<Text3DObject>(); });
             return true;
             }();
     }
 
-    void UIText::Initialize()
+    void Text3DObject::Initialize()
     {
         auto* engine = GetEngineSystem();
         if (!engine) { return; }
 
         if (auto* renderManager = engine->GetService<RenderManager>()) {
-            renderer_ = dynamic_cast<TextRenderer*>(
-                renderManager->GetRenderer(RenderPassType::UIText));
+            renderer_ = dynamic_cast<Text3DRenderer*>(
+                renderManager->GetRenderer(RenderPassType::Text3D));
         }
+
+        // 位置・回転・スケールはトランスフォームに持たせる。
+        // エディタのギズモとインスペクタがそのまま使えるようになる
+        transform_ = GetOrAddComponent<TransformComponent>();
 
         // フォントがまだ無いなら既定フォントを取る。
         // エディタ上で追加したテキストは指定が無い状態で生まれるため
@@ -84,13 +128,10 @@ namespace CoreEngine
             }
         }
 
-        // 文字の左上を基準にしたほうが HUD の配置は考えやすい
-        layout_.pivot = { 0.0f, 0.0f };
-
         RebuildGeometry();
     }
 
-    void UIText::Initialize(MsdfFont* font, const std::string& textUtf8, const std::string& name)
+    void Text3DObject::Initialize(MsdfFont* font, const std::string& textUtf8, const std::string& name)
     {
         if (!name.empty()) {
             SetName(name);
@@ -99,12 +140,12 @@ namespace CoreEngine
         font_ = font;
         textUtf8_ = textUtf8;
 
-        // 共通の初期化（レンダラー解決・pivot・頂点の構築）へ合流する。
+        // 共通の初期化（レンダラー解決・トランスフォーム・頂点の構築）へ合流する。
         // font_ を先に入れてあるので既定フォントの取得はスキップされる
         Initialize();
     }
 
-    void UIText::SetFontByName(const std::string& fontName)
+    void Text3DObject::SetFontByName(const std::string& fontName)
     {
         auto* engine = GetEngineSystem();
         if (!engine) { return; }
@@ -116,51 +157,53 @@ namespace CoreEngine
         if (!resolved) { return; }
 
         fontName_ = fontName;
-        font_ = resolved;
-        geometryDirty_ = true;
+        if (font_ != resolved) {
+            font_ = resolved;
+            geometryDirty_ = true;
+        }
     }
 
-    void UIText::SetText(const std::string& textUtf8)
+    void Text3DObject::SetText(const std::string& textUtf8)
     {
         if (textUtf8_ == textUtf8) { return; }
         textUtf8_ = textUtf8;
         geometryDirty_ = true;
     }
 
-    void UIText::SetFontSize(float pixelSize)
+    void Text3DObject::SetFontSize(float worldUnitsPerEm)
     {
-        if (fontSize_ == pixelSize) { return; }
-        fontSize_ = pixelSize;
+        if (fontSize_ == worldUnitsPerEm) { return; }
+        fontSize_ = worldUnitsPerEm;
 
-        // 折り返し幅もフィールドの大きさも px 指定なので、
-        // フォントサイズが変わると折り位置と枠内での揃え位置が変わる。
-        // どちらも使っていなければ頂点は em 単位のまま使い回せる
-        if (wrapWidthPx_ > 0.0f || !fieldAutoFit_) {
-            geometryDirty_ = true;
-            return;
-        }
-        // 自動調整なら、見た目の大きさだけ更新すれば足りる
-        layout_.size = GetMeasuredSize();
+        // 頂点は em 単位なので通常は組み直さない。
+        // 折り返し幅・フィールドはワールド単位で持っているので、
+        // それらが有効なときだけ em 換算が変わって折り位置が動く
+        if (wrapWidth_ > 0.0f || !fieldAutoFit_) { geometryDirty_ = true; }
     }
 
-    void UIText::SetFieldSize(const Vector2& sizePx)
+    void Text3DObject::SetWrapWidth(float worldUnits)
     {
-        // 大きさを明示した以上、文字列に合わせて縮められては困る
+        const float clamped = (std::max)(worldUnits, 0.0f);
+        if (wrapWidth_ == clamped) { return; }
+        wrapWidth_ = clamped;
+        geometryDirty_ = true;
+    }
+
+    void Text3DObject::SetFieldSize(const Vector2& sizeWorld)
+    {
         fieldAutoFit_ = false;
-
-        if (layout_.size.x == sizePx.x && layout_.size.y == sizePx.y) { return; }
-        layout_.size = sizePx;
-        geometryDirty_ = true; // 幅が変われば折り位置が変わる
+        fieldSize_ = sizeWorld;
+        geometryDirty_ = true;
     }
 
-    void UIText::SetFieldAutoFit(bool enable)
+    void Text3DObject::SetFieldAutoFit(bool enable)
     {
         if (fieldAutoFit_ == enable) { return; }
         fieldAutoFit_ = enable;
         geometryDirty_ = true;
     }
 
-    void UIText::SetAlign(TextAlignH horizontal, TextAlignV vertical)
+    void Text3DObject::SetAlign(TextAlignH horizontal, TextAlignV vertical)
     {
         if (alignH_ == horizontal && alignV_ == vertical) { return; }
         alignH_ = horizontal;
@@ -168,34 +211,27 @@ namespace CoreEngine
         geometryDirty_ = true;
     }
 
-    void UIText::SetWrapWidth(float pixelWidth)
-    {
-        if (wrapWidthPx_ == pixelWidth) { return; }
-        wrapWidthPx_ = pixelWidth;
-        geometryDirty_ = true;
-    }
-
-    void UIText::SetLineSpacing(float scale)
+    void Text3DObject::SetLineSpacing(float scale)
     {
         if (lineSpacing_ == scale) { return; }
         lineSpacing_ = scale;
         geometryDirty_ = true;
     }
 
-    void UIText::SetPivot(const Vector2& pivot)
+    void Text3DObject::SetPivot(const Vector2& pivot)
     {
-        if (layout_.pivot.x == pivot.x && layout_.pivot.y == pivot.y) { return; }
-        layout_.pivot = pivot;
+        if (pivot_.x == pivot.x && pivot_.y == pivot.y) { return; }
+        pivot_ = pivot;
         geometryDirty_ = true;
     }
 
-    void UIText::SetOutline(const Vector4& color, float widthEm)
+    void Text3DObject::SetOutline(const Vector4& color, float widthEm)
     {
         style_.outlineColor = color;
         style_.outlineWidthEm = (std::max)(widthEm, 0.0f);
     }
 
-    float UIText::GetMaxOutlineWidth() const
+    float Text3DObject::GetMaxOutlineWidth() const
     {
         if (!font_) { return 0.0f; }
         const float pxRange = font_->GetPxRange();
@@ -206,7 +242,7 @@ namespace CoreEngine
         return (sdUnitsPerEm > 0.0f) ? (kMaxOutlineSd / sdUnitsPerEm) : 0.0f;
     }
 
-    void UIText::RebuildGeometry()
+    void Text3DObject::RebuildGeometry()
     {
         geometryDirty_ = false;
         glyphVertices_.clear();
@@ -215,28 +251,26 @@ namespace CoreEngine
 
         if (!font_ || !font_->IsValid()) { return; }
 
-        // 折り返し幅とフィールドは px で持っているので em へ直す。
-        // 組版そのもの（折り返し・禁則・整列）は TextGeometry::Build が行い、
-        // ここは px と em の換算と、その結果を UILayout へ反映する係。
-        // フィールドを固定しているならその幅で折る
-        // （折り返し幅を別に持たせると「枠の幅」と食い違って直感に反するため）
-        const float wrapWidthPx = fieldAutoFit_ ? wrapWidthPx_ : layout_.size.x;
+        // 折り返し幅とフィールドはワールド単位で持っているので em へ直す。
+        // 組版は em で行うので、ここが唯一の単位変換になる
+        // （UI 版が px を em へ直しているのと同じ位置づけ）
+        const float wrapWidthWorld = fieldAutoFit_ ? wrapWidth_ : fieldSize_.x;
 
         TextGeometry::BuildParams params{};
         params.lineSpacing = lineSpacing_;
-        params.wrapWidthEm = (wrapWidthPx > 0.0f && fontSize_ > 0.0f)
-            ? wrapWidthPx / fontSize_
+        params.wrapWidthEm = (wrapWidthWorld > 0.0f && fontSize_ > 0.0f)
+            ? wrapWidthWorld / fontSize_
             : 0.0f;
         params.autoFitField = fieldAutoFit_;
         params.fieldEm = (fieldAutoFit_ || fontSize_ <= 0.0f)
             ? Vector2{ 0.0f, 0.0f }
-            : Vector2{ layout_.size.x / fontSize_, layout_.size.y / fontSize_ };
+            : Vector2{ fieldSize_.x / fontSize_, fieldSize_.y / fontSize_ };
         params.alignH = alignH_;
         params.alignV = alignV_;
-        params.pivot = layout_.pivot;
-        // UI のスクリーン座標は Y 下正
-        params.yAxisDown = true;
-        params.maxGlyphs = TextRenderer::kMaxGlyphsPerText;
+        params.pivot = pivot_;
+        // ワールド空間は Y 上正
+        params.yAxisDown = false;
+        params.maxGlyphs = Text3DRenderer::kMaxGlyphsPerText;
 
         const TextGeometry::BuildResult result =
             TextGeometry::Build(*font_, textUtf8_, params, glyphVertices_);
@@ -246,33 +280,76 @@ namespace CoreEngine
         lastGlyphGeneration_ = result.glyphGeneration;
 
         // 自動調整ならフィールドを文字列の大きさへ合わせる。
-        // 固定しているなら layout_.size がそのままフィールドの大きさ。
-        // 空文字列（行が 1 つも組めなかった）のときは触らない。
-        // 0 へ潰すと Canvas 上の当たり判定まで消えて、選び直せなくなる
+        // 空文字列（行が 1 つも組めなかった）のときは触らない
         if (fieldAutoFit_ && result.lineCount > 0) {
-            layout_.size = GetMeasuredSize();
+            fieldSize_ = GetMeasuredSize();
         }
 
         if (result.truncated && !glyphLimitWarned_) {
             glyphLimitWarned_ = true;
             Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
-                "UIText '{}': グリフ数が上限 {} を超えたため切り詰めました（要求 {}）",
-                GetName(), TextRenderer::kMaxGlyphsPerText, result.requestedGlyphCount);
+                "Text3D '{}': グリフ数が上限 {} を超えたため切り詰めました（要求 {}）",
+                GetName(), Text3DRenderer::kMaxGlyphsPerText, result.requestedGlyphCount);
         }
     }
 
-    void UIText::Draw(const Camera* /*camera*/)
+    Matrix4x4 Text3DObject::BuildWorldMatrix(const Matrix4x4& viewMatrix) const
     {
-        // RenderGraph を経由しない直接呼び出し（レガシー経路）
-        DrawViewInfo view{};
-        view.cmdList = renderer_ ? renderer_->GetGraphicsCore()->GetCommandList() : nullptr;
-        Draw(view);
+        // 頂点が em 単位なので、フォントサイズがそのままスケールになる
+        const Vector3 fontScale = { fontSize_, fontSize_, 1.0f };
+        constexpr Vector3 kNoRotation = { 0.0f, 0.0f, 0.0f };
+        constexpr Vector3 kNoTranslation = { 0.0f, 0.0f, 0.0f };
+
+        if (!transform_) {
+            return Matrix::MakeAffine(fontScale, kNoRotation, kNoTranslation);
+        }
+
+        const WorldTransform& worldTransform = transform_->Get();
+
+        if (billboard_ == Text3DBillboard::None) {
+            // トランスフォームのワールド行列（親の階層込み）へそのまま乗せる
+            return Matrix::MakeAffine(fontScale, kNoRotation, kNoTranslation)
+                * worldTransform.GetWorldMatrix();
+        }
+
+        // ビルボードは姿勢をカメラから作るので、トランスフォームの回転は使わない。
+        // 位置と拡縮だけを引き継ぐ
+        const Vector3 objectScale = transform_->GetWorldScale();
+        const Vector3 scale = {
+            fontScale.x * objectScale.x,
+            fontScale.y * objectScale.y,
+            fontScale.z * objectScale.z,
+        };
+
+        Matrix4x4 world = Matrix::MakeAffine(scale, kNoRotation, kNoTranslation)
+            * MakeBillboardMatrix(viewMatrix, billboard_);
+
+        const Vector3 position = worldTransform.GetWorldPosition();
+        world.m[3][0] = position.x;
+        world.m[3][1] = position.y;
+        world.m[3][2] = position.z;
+        return world;
     }
 
-    void UIText::Draw(const DrawViewInfo& view)
+    void Text3DObject::Draw(const Camera* camera)
+    {
+        // RenderGraph を経由しない直接呼び出し（レガシー経路）
+        if (!camera) { return; }
+        const Matrix4x4& viewMatrix = camera->GetViewMatrix();
+        SubmitToRenderer(viewMatrix, viewMatrix * camera->GetProjectionMatrix());
+    }
+
+    void Text3DObject::Draw(const DrawViewInfo& view)
+    {
+        // ビュー行列はここから取る。レンダラーがカメラを読み直すと、
+        // パスごとに違う行列を使う事故が起きる
+        if (!view.view || !view.view->isValid) { return; }
+        SubmitToRenderer(view.view->viewMatrix, view.view->viewProjection);
+    }
+
+    void Text3DObject::SubmitToRenderer(const Matrix4x4& viewMatrix, const Matrix4x4& viewProjection)
     {
         if (!IsActive() || !renderer_ || !font_ || !font_->IsValid()) { return; }
-        if (!view.cmdList) { return; }
 
         // 実行時ベイクで新しいグリフが増えていたら組み直す。
         // これが □ から本来の字へ差し替わる瞬間
@@ -282,20 +359,15 @@ namespace CoreEngine
         if (geometryDirty_) { RebuildGeometry(); }
         if (glyphVertices_.empty()) { return; }
 
-        const Vector2 screenPos = layout_.CalculateScreenPosition(renderer_->GetScreenSize());
-
-        const Vector3 position = { screenPos.x, screenPos.y, 0.0f };
-        // 頂点が em 単位なので、フォントサイズがそのままスケールになる
-        const Vector3 scale = { fontSize_, fontSize_, 1.0f };
-        const Vector3 rotation = { 0.0f, 0.0f, layout_.rotation };
-        const Matrix4x4 world = Matrix::MakeAffine(scale, rotation, position);
+        const Matrix4x4 world = BuildWorldMatrix(viewMatrix);
 
         // ここではドローコールを出さず、レンダラーのバッチへ積むだけ。
-        // 実際の描画は EndPass（またはフォント切り替え）で 1 本にまとめて出る
-        renderer_->Submit(font_, glyphVertices_.data(), glyphVertices_.size(), world, style_);
+        // 実際の描画は EndPass（またはフォント・深度モードの切り替え）でまとめて出る
+        renderer_->Submit(font_, glyphVertices_.data(), glyphVertices_.size(),
+            world, viewProjection, style_, depthMode_);
     }
 
-    json UIText::OnSerialize() const
+    json Text3DObject::OnSerialize() const
     {
         json j;
         j["active"] = IsActive();
@@ -305,31 +377,28 @@ namespace CoreEngine
         j["text"] = textUtf8_;
         j["fontSize"] = fontSize_;
         j["lineSpacing"] = lineSpacing_;
-        j["wrapWidth"] = wrapWidthPx_;
+        j["wrapWidth"] = wrapWidth_;
 
         j["fieldAutoFit"] = fieldAutoFit_;
-        j["fieldSize"]["x"] = layout_.size.x;
-        j["fieldSize"]["y"] = layout_.size.y;
+        j["fieldSize"]["x"] = fieldSize_.x;
+        j["fieldSize"]["y"] = fieldSize_.y;
         j["alignH"] = static_cast<int>(alignH_);
         j["alignV"] = static_cast<int>(alignV_);
+        j["pivot"]["x"] = pivot_.x;
+        j["pivot"]["y"] = pivot_.y;
 
         j["color"] = JsonManager::Vector4ToJson(style_.color);
         j["outlineColor"] = JsonManager::Vector4ToJson(style_.outlineColor);
         j["outlineWidth"] = style_.outlineWidthEm;
         j["weight"] = style_.weightEm;
 
-        j["anchor"] = static_cast<int>(layout_.anchor);
-        j["anchoredPos"]["x"] = layout_.anchoredPos.x;
-        j["anchoredPos"]["y"] = layout_.anchoredPos.y;
-        j["pivot"]["x"] = layout_.pivot.x;
-        j["pivot"]["y"] = layout_.pivot.y;
-        j["rotation"] = layout_.rotation;
-        j["sortOrder"] = layout_.sortOrder;
+        j["billboard"] = static_cast<int>(billboard_);
+        j["depthMode"] = static_cast<int>(depthMode_);
 
         return j;
     }
 
-    void UIText::OnDeserialize(const json& j)
+    void Text3DObject::OnDeserialize(const json& j)
     {
         if (j.contains("active")) { SetActive(j["active"].get<bool>()); }
 
@@ -341,12 +410,12 @@ namespace CoreEngine
         textUtf8_ = JsonManager::SafeGet<std::string>(j, "text", textUtf8_);
         fontSize_ = JsonManager::SafeGet<float>(j, "fontSize", fontSize_);
         lineSpacing_ = JsonManager::SafeGet<float>(j, "lineSpacing", lineSpacing_);
-        wrapWidthPx_ = JsonManager::SafeGet<float>(j, "wrapWidth", wrapWidthPx_);
+        wrapWidth_ = JsonManager::SafeGet<float>(j, "wrapWidth", wrapWidth_);
 
         fieldAutoFit_ = JsonManager::SafeGet<bool>(j, "fieldAutoFit", fieldAutoFit_);
         if (j.contains("fieldSize")) {
-            layout_.size.x = JsonManager::SafeGet<float>(j["fieldSize"], "x", layout_.size.x);
-            layout_.size.y = JsonManager::SafeGet<float>(j["fieldSize"], "y", layout_.size.y);
+            fieldSize_.x = JsonManager::SafeGet<float>(j["fieldSize"], "x", fieldSize_.x);
+            fieldSize_.y = JsonManager::SafeGet<float>(j["fieldSize"], "y", fieldSize_.y);
         }
         const int alignHIndex = JsonManager::SafeGet<int>(j, "alignH", static_cast<int>(alignH_));
         if (alignHIndex >= 0 && alignHIndex <= static_cast<int>(TextAlignH::Right)) {
@@ -356,75 +425,76 @@ namespace CoreEngine
         if (alignVIndex >= 0 && alignVIndex <= static_cast<int>(TextAlignV::Bottom)) {
             alignV_ = static_cast<TextAlignV>(alignVIndex);
         }
+        if (j.contains("pivot")) {
+            pivot_.x = JsonManager::SafeGet<float>(j["pivot"], "x", pivot_.x);
+            pivot_.y = JsonManager::SafeGet<float>(j["pivot"], "y", pivot_.y);
+        }
 
         style_.color = JsonManager::SafeGetVector4(j, "color", style_.color);
         style_.outlineColor = JsonManager::SafeGetVector4(j, "outlineColor", style_.outlineColor);
         style_.outlineWidthEm = JsonManager::SafeGet<float>(j, "outlineWidth", style_.outlineWidthEm);
         style_.weightEm = JsonManager::SafeGet<float>(j, "weight", style_.weightEm);
 
-        const int anchorIndex = JsonManager::SafeGet<int>(j, "anchor",
-            static_cast<int>(layout_.anchor));
-        if (anchorIndex >= 0 && anchorIndex <= static_cast<int>(UIAnchor::BottomRight)) {
-            layout_.anchor = static_cast<UIAnchor>(anchorIndex);
+        const int billboardIndex = JsonManager::SafeGet<int>(j, "billboard", static_cast<int>(billboard_));
+        if (billboardIndex >= 0 && billboardIndex <= static_cast<int>(Text3DBillboard::YAxisOnly)) {
+            billboard_ = static_cast<Text3DBillboard>(billboardIndex);
         }
-        if (j.contains("anchoredPos")) {
-            layout_.anchoredPos.x = JsonManager::SafeGet<float>(j["anchoredPos"], "x", layout_.anchoredPos.x);
-            layout_.anchoredPos.y = JsonManager::SafeGet<float>(j["anchoredPos"], "y", layout_.anchoredPos.y);
+        const int depthIndex = JsonManager::SafeGet<int>(j, "depthMode", static_cast<int>(depthMode_));
+        if (depthIndex >= 0 && depthIndex <= static_cast<int>(Text3DDepthMode::Overlay)) {
+            depthMode_ = static_cast<Text3DDepthMode>(depthIndex);
         }
-        if (j.contains("pivot")) {
-            layout_.pivot.x = JsonManager::SafeGet<float>(j["pivot"], "x", layout_.pivot.x);
-            layout_.pivot.y = JsonManager::SafeGet<float>(j["pivot"], "y", layout_.pivot.y);
-        }
-        layout_.rotation = JsonManager::SafeGet<float>(j, "rotation", layout_.rotation);
-        SetSortOrder(JsonManager::SafeGet<int>(j, "sortOrder", layout_.sortOrder));
 
         geometryDirty_ = true;
     }
 
 #ifdef USE_IMGUI
-    int UIText::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const
+    int Text3DObject::GetInspectorTabs(InspectorTabDef* outTabs, int maxTabs) const
     {
         if (maxTabs < 2) { return 0; }
-        outTabs[0] = { "object_data.png", "レイアウト", {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
-        outTabs[1] = { "material.png",    "テキスト",   {0.30f,0.70f,0.90f,1.0f}, {0.30f,0.70f,0.90f,0.25f} };
+        outTabs[0] = { "object_data.png", "配置",     {0.96f,0.65f,0.14f,1.0f}, {0.96f,0.65f,0.14f,0.25f} };
+        outTabs[1] = { "material.png",    "テキスト", {0.30f,0.70f,0.90f,1.0f}, {0.30f,0.70f,0.90f,0.25f} };
         return 2;
     }
 
-    bool UIText::DrawInspectorTabContent(int tabIndex)
+    bool Text3DObject::DrawInspectorTabContent(int tabIndex)
     {
         bool changed = false;
 
         switch (tabIndex)
         {
-            // ── 0: レイアウト ──────────────────────────────────────
+            // ── 0: 配置 ────────────────────────────────────────────
         case 0:
         {
-            UI::SectionHeader("アンカー");
+            UI::SectionHeader("ビルボード");
             {
-                static const char* kAnchorNames[] = {
-                    "TopLeft",    "TopCenter",    "TopRight",
-                    "MiddleLeft", "Center",       "MiddleRight",
-                    "BottomLeft", "BottomCenter", "BottomRight",
-                };
-                int anchorIdx = static_cast<int>(layout_.anchor);
-                if (ImGui::Combo("##anchor", &anchorIdx, kAnchorNames, 9)) {
-                    layout_.anchor = static_cast<UIAnchor>(anchorIdx);
+                static const char* kBillboardNames[] = { "なし", "カメラに向く", "Y軸のみ" };
+                int billboardIndex = static_cast<int>(billboard_);
+                if (ImGui::Combo("##billboard", &billboardIndex, kBillboardNames, 3)) {
+                    billboard_ = static_cast<Text3DBillboard>(billboardIndex);
                     changed = true;
                 }
+                ImGui::TextDisabled("「なし」ならトランスフォームの回転がそのまま効きます");
             }
 
-            UI::SectionHeader("AnchoredPosition");
-            if (UI::DragVec2("##anchoredPos", layout_.anchoredPos, 1.0f)) {
-                changed = true;
+            UI::SectionHeader("深度");
+            {
+                static const char* kDepthNames[] = { "遮蔽される", "常に手前（オーバーレイ）" };
+                int depthIndex = static_cast<int>(depthMode_);
+                if (ImGui::Combo("##depthMode", &depthIndex, kDepthNames, 2)) {
+                    depthMode_ = static_cast<Text3DDepthMode>(depthIndex);
+                    changed = true;
+                }
+                ImGui::TextDisabled("ダメージ数値やネームプレートはオーバーレイ向き");
             }
 
             UI::SectionHeader("Pivot");
             {
-                Vector2 pivotTmp = layout_.pivot;
+                Vector2 pivotTmp = pivot_;
                 if (UI::DragVec2("##pivot", pivotTmp, 0.01f, 0.0f, 1.0f)) {
                     SetPivot(pivotTmp);
                     changed = true;
                 }
+                ImGui::TextDisabled("0.5, 0.5 で置いた位置に文字の中心が来ます");
             }
 
             UI::SectionHeader("テキストフィールド");
@@ -437,23 +507,23 @@ namespace CoreEngine
 
                 if (fieldAutoFit_) {
                     // 枠が文字に追従するので、折り返し幅は別に指定する
-                    float wrapTmp = wrapWidthPx_;
-                    if (UI::DragFloat("折り返し幅 px（0 で無効）##wrap",
-                        wrapTmp, 1.0f, 0.0f, 4096.0f)) {
+                    float wrapTmp = wrapWidth_;
+                    if (UI::DragFloat("折り返し幅（0 で無効）##wrap",
+                        wrapTmp, 0.05f, 0.0f, 1000.0f)) {
                         SetWrapWidth(wrapTmp);
                         changed = true;
                     }
                     ImGui::TextDisabled("枠は文字列を囲む大きさになります");
                 }
                 else {
-                    Vector2 fieldTmp = layout_.size;
-                    if (UI::DragVec2("##fieldSize", fieldTmp, 1.0f, 1.0f, 8192.0f)) {
+                    Vector2 fieldTmp = fieldSize_;
+                    if (UI::DragVec2("##fieldSize", fieldTmp, 0.05f, 0.01f, 1000.0f)) {
                         SetFieldSize(fieldTmp);
                         changed = true;
                     }
                     ImGui::TextDisabled("枠の幅で折り返します");
                 }
-                ImGui::TextDisabled("Canvas の拡縮ギズモでも伸縮できます");
+                ImGui::TextDisabled("単位はワールド単位です");
 
                 static const char* kAlignHNames[] = { "左", "中央", "右" };
                 static const char* kAlignVNames[] = { "上", "中央", "下" };
@@ -464,24 +534,6 @@ namespace CoreEngine
                 if (alignChanged) {
                     SetAlign(static_cast<TextAlignH>(alignHIndex),
                         static_cast<TextAlignV>(alignVIndex));
-                    changed = true;
-                }
-            }
-
-            UI::SectionHeader("回転");
-            {
-                float rotDeg = layout_.rotation * (180.0f / static_cast<float>(std::numbers::pi));
-                if (UI::DragFloat("度##rot", rotDeg, 0.5f, -360.0f, 360.0f)) {
-                    layout_.rotation = rotDeg * (static_cast<float>(std::numbers::pi) / 180.0f);
-                    changed = true;
-                }
-            }
-
-            UI::SectionHeader("描画順序");
-            {
-                int sortTmp = layout_.sortOrder;
-                if (ImGui::DragInt("Sort Order##so", &sortTmp, 1, -9999, 9999)) {
-                    SetSortOrder(sortTmp);
                     changed = true;
                 }
             }
@@ -531,9 +583,6 @@ namespace CoreEngine
                     }
                 }
 
-                // 任意のフォント名を直接打ち込む。
-                // 未登録の名前は FontManager がシステムフォント名として解決し、
-                // 見つかればその場で登録するので、保存して開き直しても同じ字体になる
                 if (!editFontActive_) { CopyToEditBuffer(editFontBuffer_, fontName_); }
                 if (ImGui::InputText("##fontName", editFontBuffer_.data(),
                     editFontBuffer_.size(), ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -542,18 +591,14 @@ namespace CoreEngine
                 }
                 editFontActive_ = ImGui::IsItemActive();
                 ImGui::TextDisabled("フォント名を入力して Enter");
-                // path::string() は ANSI になるので、UTF-8 への変換は Logger を通す
-                ImGui::TextDisabled("%s のファイル名か、インストール済みフォント名",
-                    Logger::GetInstance().PathToUtf8(
-                        FontManager::GetFontDirectory()).c_str());
             }
 
-            UI::SectionHeader("フォントサイズ");
+            UI::SectionHeader("文字の大きさ");
             {
                 float sizeTmp = fontSize_;
-                if (UI::DragFloat("px##fontSize", sizeTmp, 0.5f, 1.0f, 512.0f)) {
+                if (UI::DragFloat("ワールド単位/em##fontSize", sizeTmp, 0.01f, 0.001f, 100.0f)) {
                     // 頂点は em 単位なので、折り返しが無ければ再構築不要。
-                    // ここが MSDF の効きどころで、何倍にしても輪郭は鋭いまま
+                    // ここが MSDF の効きどころで、近づいても輪郭は鋭いまま
                     SetFontSize(sizeTmp);
                     changed = true;
                 }
@@ -605,10 +650,10 @@ namespace CoreEngine
             UI::SectionHeader("情報");
             {
                 const Vector2 measured = GetMeasuredSize();
-                ImGui::Text("実寸: %.1f x %.1f px / %u 行", measured.x, measured.y, lineCount_);
-                ImGui::Text("グリフ数: %u / %u", GetGlyphCount(), TextRenderer::kMaxGlyphsPerText);
+                ImGui::Text("実寸: %.2f x %.2f / %u 行", measured.x, measured.y, lineCount_);
+                ImGui::Text("グリフ数: %u / %u", GetGlyphCount(), Text3DRenderer::kMaxGlyphsPerText);
                 if (renderer_) {
-                    ImGui::Text("テキスト全体: %u ドローコール / %u グリフ",
+                    ImGui::Text("3Dテキスト全体: %u ドローコール / %u グリフ",
                         renderer_->GetLastFrameDrawCallCount(),
                         renderer_->GetLastFrameGlyphCount());
                 }

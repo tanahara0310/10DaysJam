@@ -16,11 +16,8 @@ namespace CoreEngine
 {
     class MsdfFont;
 
-    /// @brief テキストフィールド内での横方向の揃え
-    enum class TextAlignH : uint8_t { Left, Center, Right };
-
-    /// @brief テキストフィールド内での縦方向の揃え
-    enum class TextAlignV : uint8_t { Top, Middle, Bottom };
+    // TextAlignH / TextAlignV は 3D テキストとも共通なので Text/TextGeometryBuilder.h にある
+    // （TextRenderer.h 経由で入る）
 
     /// @brief MSDF フォントで文字列を描く UI 要素
     /// @details
@@ -199,25 +196,10 @@ namespace CoreEngine
 #endif
 
     private:
-        /// @brief 行の範囲（コードポイント列への添字）と幅（em）
-        struct LineRange
-        {
-            size_t begin = 0;
-            size_t end = 0;   ///< 半開区間
-            float  width = 0.0f;
-        };
-
         /// @brief 文字列からグリフのクワッド列（CPU 側・em 単位）を組み立てる
+        /// @details 折り返し・禁則・整列そのものは `TextGeometry::Build` が行う。
+        ///          ここは px ↔ em の換算と、その結果を UILayout へ反映する係
         void RebuildGeometry();
-
-        /// @brief 折り返し位置を決めて行に分ける
-        /// @param codePoints 文字列
-        /// @param glyphs 各文字のグリフ情報（codePoints と同じ長さ）
-        /// @param wrapWidthEm 折り返し幅（em）。0 なら改行文字だけで分ける
-        static void BuildLines(const std::vector<char32_t>& codePoints,
-            const std::vector<MsdfGlyph>& glyphs,
-            float wrapWidthEm,
-            std::vector<LineRange>& outLines);
 
         TextRenderer* renderer_ = nullptr;
         MsdfFont* font_ = nullptr;

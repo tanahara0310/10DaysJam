@@ -204,6 +204,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\Text3DTestScene\Text3DTestScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.cpp" />
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneUi.cpp" />
@@ -758,6 +759,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Text\FontManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp" />
     <ClCompile Include="Engine\Src\UI\UIText.cpp" />
+    <ClCompile Include="Engine\Src\Text\TextGeometryBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Text3D\Text3DRenderer.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Text3D\Text3DObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Components\Building\MapChipData.h" />
@@ -1237,6 +1241,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Modules\SizeModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h" />
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h" />
+    <ClInclude Include="Application\Src\Scenes\Text3DTestScene\Text3DTestScene.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />
@@ -1328,6 +1333,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Text\FontManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h" />
     <ClInclude Include="Engine\Src\UI\UIText.h" />
+    <ClInclude Include="Engine\Src\Text\TextGeometryBuilder.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Text3D\Text3DRenderer.h" />
+    <ClInclude Include="Engine\Src\GameObject\Text3D\Text3DObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

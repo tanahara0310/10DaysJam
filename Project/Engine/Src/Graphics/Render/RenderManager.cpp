@@ -409,6 +409,7 @@ namespace CoreEngine
         passTypePriorities_[RenderPassType::Particle] = 600;
         passTypePriorities_[RenderPassType::GpuParticle] = 650;
         passTypePriorities_[RenderPassType::Sprite] = 700;
+        passTypePriorities_[RenderPassType::Text3D] = 750;   // ワールド空間の文字。3D の中身の最後・UI の下
         passTypePriorities_[RenderPassType::UI] = 800;       // UI は常に最後（最前面）
         passTypePriorities_[RenderPassType::UIText] = 850;   // テキストは UI の上に載せる
     }
