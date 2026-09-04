@@ -39,6 +39,14 @@ namespace GameComponents
             return "ModelRenderPool";
         }
 
+        json OnSerialize() const override;
+        void OnDeserialize(const json& j) override;
+
+#ifdef USE_IMGUI
+        const char* GetInspectorName() const override { return "モデルプール"; }
+        bool DrawInspector() override;
+#endif
+
         /// @brief initialCapacity 分のオブジェクトを生成する。
         void Awake() override;
         /// @brief このフレームに Draw() されなかった要素を非表示にする。
@@ -69,6 +77,8 @@ namespace GameComponents
 
         Entry* CreateEntry();
         Entry* FindAvailableEntry(std::uint64_t frame);
+        void ResizePool(std::size_t capacity);
+        void ApplyColorToEntries();
 
         std::string modelPath_;
         std::size_t initialCapacity_ = 32;

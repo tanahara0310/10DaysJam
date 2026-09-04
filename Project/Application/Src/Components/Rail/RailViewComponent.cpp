@@ -25,15 +25,61 @@ using namespace CoreEngine;
 
 namespace
 {
-    constexpr float kConfirmationJumpHeight = 0.8f;
-    constexpr float kConfirmationJumpDuration = 0.35f;
-    constexpr float kConfirmationStaggerInterval = 0.06f;
-    constexpr float kConfirmationSeVolume = 0.45f;
-    constexpr float kConfirmationSeBasePitch = 0.9f;
-    constexpr float kConfirmationSePitchStep = 0.05f;
-    constexpr float kConfirmationSeMaxPitch = 1.35f;
     constexpr float kPi = 3.14159265358979323846f;
 }
+
+#ifdef USE_IMGUI
+#include "Editor/ImGui/ImGuiAll.h"
+#endif
+
+json GameComponents::RailViewComponent::OnSerialize() const {
+    return {
+        { "gridSize", gridSize_ },
+        { "viewDistanceX", viewDistanceX_ },
+        { "railHeight", railHeight_ },
+        { "railScale", railScale_ },
+        { "jumpHeight", confirmationJumpHeight_ },
+        { "jumpDuration", confirmationJumpDuration_ },
+        { "staggerInterval", confirmationStaggerInterval_ },
+        { "seVolume", confirmationSeVolume_ },
+        { "seBasePitch", confirmationSeBasePitch_ },
+        { "sePitchStep", confirmationSePitchStep_ },
+        { "seMaxPitch", confirmationSeMaxPitch_ }
+    };
+}
+
+void GameComponents::RailViewComponent::OnDeserialize(const json& j) {
+    gridSize_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "gridSize", gridSize_));
+    viewDistanceX_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "viewDistanceX", viewDistanceX_));
+    railHeight_ = JsonManager::SafeGet<float>(j, "railHeight", railHeight_);
+    railScale_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "railScale", railScale_));
+    confirmationJumpHeight_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "jumpHeight", confirmationJumpHeight_));
+    confirmationJumpDuration_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "jumpDuration", confirmationJumpDuration_));
+    confirmationStaggerInterval_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "staggerInterval", confirmationStaggerInterval_));
+    confirmationSeVolume_ = std::clamp(JsonManager::SafeGet<float>(j, "seVolume", confirmationSeVolume_), 0.0f, 1.0f);
+    confirmationSeBasePitch_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "seBasePitch", confirmationSeBasePitch_));
+    confirmationSePitchStep_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "sePitchStep", confirmationSePitchStep_));
+    confirmationSeMaxPitch_ = std::max(confirmationSeBasePitch_, JsonManager::SafeGet<float>(j, "seMaxPitch", confirmationSeMaxPitch_));
+}
+
+#ifdef USE_IMGUI
+bool GameComponents::RailViewComponent::DrawInspector() {
+    bool changed = false;
+    changed |= ImGui::DragFloat("グリッドサイズ", &gridSize_, 0.05f, 0.01f, 20.0f);
+    int distance = static_cast<int>(viewDistanceX_);
+    if (ImGui::DragInt("描画距離X", &distance, 1.0f, 1, 500)) { viewDistanceX_ = static_cast<uint32_t>(std::max(distance, 1)); changed = true; }
+    changed |= ImGui::DragFloat("レール高さ", &railHeight_, 0.05f, -20.0f, 20.0f);
+    changed |= ImGui::DragFloat("レールスケール", &railScale_, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("確定ジャンプ高さ", &confirmationJumpHeight_, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("確定ジャンプ時間", &confirmationJumpDuration_, 0.01f, 0.01f, 10.0f);
+    changed |= ImGui::DragFloat("確定演出の時間差", &confirmationStaggerInterval_, 0.01f, 0.0f, 5.0f);
+    changed |= ImGui::SliderFloat("確定SE音量", &confirmationSeVolume_, 0.0f, 1.0f);
+    changed |= ImGui::DragFloat("確定SE基準ピッチ", &confirmationSeBasePitch_, 0.01f, 0.01f, 4.0f);
+    changed |= ImGui::DragFloat("確定SEピッチ増分", &confirmationSePitchStep_, 0.01f, 0.0f, 4.0f);
+    changed |= ImGui::DragFloat("確定SE最大ピッチ", &confirmationSeMaxPitch_, 0.01f, confirmationSeBasePitch_, 4.0f);
+    return changed;
+}
+#endif
 
 void GameComponents::RailViewComponent::Start() {
     transform_ = Sibling<TransformComponent>();
@@ -42,10 +88,10 @@ void GameComponents::RailViewComponent::Start() {
     if (railPath_) {
         confirmationAnimationTimes_.assign(
             railPath_->GetRailMap().size(),
-            kConfirmationJumpDuration);
+            confirmationJumpDuration_);
         confirmationSoundPitches_.assign(
             railPath_->GetRailMap().size(),
-            kConfirmationSeBasePitch);
+            confirmationSeBasePitch_);
     }
 }
 
@@ -113,27 +159,27 @@ void GameComponents::RailViewComponent::UpdateConfirmationAnimations(float delta
     // 同じフレームに複数本確定した場合（駅到達時）は、順番に再生する。
     const std::size_t firstNewIndex = confirmationAnimationTimes_.size();
     for (std::size_t i = firstNewIndex; i < confirmedCount; ++i) {
-        const float delay = kConfirmationStaggerInterval *
+        const float delay = confirmationStaggerInterval_ *
             static_cast<float>(i - firstNewIndex);
         confirmationAnimationTimes_.push_back(-delay);
         confirmationSoundPitches_.push_back(std::min(
-            kConfirmationSeBasePitch +
-                kConfirmationSePitchStep * static_cast<float>(i - firstNewIndex),
-            kConfirmationSeMaxPitch));
+            confirmationSeBasePitch_ +
+                confirmationSePitchStep_ * static_cast<float>(i - firstNewIndex),
+            confirmationSeMaxPitch_));
     }
 
     const float safeDeltaTime = std::max(deltaTime, 0.0f);
     for (std::size_t i = 0; i < confirmationAnimationTimes_.size(); ++i) {
         float& animationTime = confirmationAnimationTimes_[i];
-        if (animationTime < kConfirmationJumpDuration) {
+        if (animationTime < confirmationJumpDuration_) {
             const float previousTime = animationTime;
             animationTime = std::min(
                 animationTime + safeDeltaTime,
-                kConfirmationJumpDuration);
+                confirmationJumpDuration_);
 
             // 待ち時間を越えてレールが跳ね始める瞬間に、一度だけSEを鳴らす。
             if (previousTime <= 0.0f && animationTime > 0.0f && onRailBuildSE_) {
-                onRailBuildSE_(kConfirmationSeVolume, confirmationSoundPitches_[i]);
+                onRailBuildSE_(confirmationSeVolume_, confirmationSoundPitches_[i]);
             }
         }
     }
@@ -146,15 +192,15 @@ float GameComponents::RailViewComponent::GetConfirmationJumpOffset(
     }
 
     const float animationTime = confirmationAnimationTimes_[railIndex];
-    if (animationTime < 0.0f || animationTime >= kConfirmationJumpDuration) {
+    if (animationTime < 0.0f || animationTime >= confirmationJumpDuration_) {
         return 0.0f;
     }
 
     const float progress = std::clamp(
-        animationTime / kConfirmationJumpDuration,
+        animationTime / confirmationJumpDuration_,
         0.0f,
         1.0f);
-    return std::sin(progress * kPi) * kConfirmationJumpHeight;
+    return std::sin(progress * kPi) * confirmationJumpHeight_;
 }
 
 void GameComponents::RailViewComponent::DrawRailModels() {
@@ -228,11 +274,11 @@ void GameComponents::RailViewComponent::DrawRailModels() {
             : 0.0f;
         const Vector3 position = {
             static_cast<float>(current.first) * gridSize_,
-            0.6f + jumpOffset,
+            railHeight_ + jumpOffset,
             static_cast<float>(current.second) * gridSize_
         };
 
-        float scaleOffset = 0.6f;
+        float scaleOffset = railScale_;
         const Vector3 scale = { scaleOffset, scaleOffset, scaleOffset };
 
         // XZ平面の外積。正なら進行方向に対して左折、負なら右折。

@@ -48,6 +48,14 @@ namespace GameComponents
             return "RailView";
         }
 
+        json OnSerialize() const override;
+        void OnDeserialize(const json& j) override;
+
+#ifdef USE_IMGUI
+        const char* GetInspectorName() const override { return "レール描画"; }
+        bool DrawInspector() override;
+#endif
+
         // 最初の更新直前に一度だけ呼ばれる
         void Start() override;
         // 毎フレーム呼ばれる
@@ -75,6 +83,15 @@ namespace GameComponents
         GameComponents::CameraManagerComponent* cameraManager_ = nullptr;
         float gridSize_ = 5.0f;
         uint32_t viewDistanceX_ = 30;
+        float railHeight_ = 0.6f;
+        float railScale_ = 0.6f;
+        float confirmationJumpHeight_ = 0.8f;
+        float confirmationJumpDuration_ = 0.35f;
+        float confirmationStaggerInterval_ = 0.06f;
+        float confirmationSeVolume_ = 0.45f;
+        float confirmationSeBasePitch_ = 0.9f;
+        float confirmationSePitchStep_ = 0.05f;
+        float confirmationSeMaxPitch_ = 1.35f;
 
         // railMap のインデックスと対応する。負値は再生開始までの待ち時間
         std::vector<float> confirmationAnimationTimes_;

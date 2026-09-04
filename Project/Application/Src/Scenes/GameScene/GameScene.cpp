@@ -24,11 +24,19 @@
 #include "Components/UI/RailResourceUIComponent.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
+#include "Components/GameCore/GameSettingsComponent.h"
+#include "GameObjects/GameSceneObject.h"
+
+#include <algorithm>
 
 using namespace CoreEngine;
 
 namespace {
     constexpr const char* kGameBgmPath = "Application/Assets/Sounds/BGM/Game_bgm.mp3";
+
+    uint32_t ToUInt(int value, int minimum = 0) {
+        return static_cast<uint32_t>(std::max(value, minimum));
+    }
 }
 
 GameScene::GameScene::~GameScene() = default;
@@ -37,7 +45,9 @@ void GameScene::GameScene::OnInitialize() {
     // ========== シーンの設定 ==========
     SetSceneName("GameScene");
     SetDefaultGroundEnabled(true);
-    SetReleaseCameraTransform({ 0.0f, 2.0f, 0.0f }, { 0.3f, 0.0f, 0.0f });
+    SetReleaseCameraTransform(
+        GameComponents::GameSettings::ReleaseCameraPosition.Get(),
+        GameComponents::GameSettings::ReleaseCameraRotation.Get());
 
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
@@ -46,7 +56,8 @@ void GameScene::GameScene::OnInitialize() {
     }
     gameBgm_ = audioSystem->PlayScoped(
         kGameBgmPath,
-        { .bus = AudioBus::BGM, .loop = true, .volume = 1.0f / 3.0f });
+        { .bus = AudioBus::BGM, .loop = true,
+          .volume = GameComponents::GameSettings::BgmVolume.Get() });
 
     // ========== SEの登録 ==========
     std::function<void()> playDecisionSe = [this] {
@@ -82,21 +93,29 @@ void GameScene::GameScene::OnInitialize() {
         };
 
     // ========== ゲームルールの設定 ==========
-    float gridSize = 1.0f; // グリッドサイズを設定
-    uint32_t mapSizeZ = 9; // マップのZ方向のサイズを設定
+    const float gridSize = GameComponents::GameSettings::GridSize.Get();
+    const uint32_t mapSizeZ = ToUInt(
+        GameComponents::GameSettings::MapSizeZ.Get(), 1);
 
-    uint32_t railResourceCount = 15; // 初期のレールリソース数を設定
-    uint32_t initialBuilderPosX = 3; // 初期のビルダーのX座標を設定
-    uint32_t initialBuilderPosZ = mapSizeZ / 2; // 初期のビルダーのZ座標を設定
+    const uint32_t railResourceCount = ToUInt(
+        GameComponents::GameSettings::InitialRailResources.Get());
+    const uint32_t initialBuilderPosX = ToUInt(
+        GameComponents::GameSettings::BuilderStartX.Get());
+    const uint32_t initialBuilderPosZ = std::min(
+        ToUInt(GameComponents::GameSettings::BuilderStartZ.Get()),
+        mapSizeZ - 1);
 
-    uint32_t initialGenerateMapSizeX = 30; // 初期生成マップのX方向のサイズを設定
-    uint32_t renderWorldDistance = 20; // 描画するワールドの距離を設定
+    const uint32_t initialGenerateMapSizeX = ToUInt(
+        GameComponents::GameSettings::InitialMapSizeX.Get(), 1);
+    const uint32_t renderWorldDistance = ToUInt(
+        GameComponents::GameSettings::RenderDistance.Get(), 1);
 
     // FixedCsv にすると fixedCsvPath の1枚を使用し、終端以降はVoidになる。
     // Procedural にすると従来のチップ単位のランダム生成を使用する。
     GameComponents::MapGenerationSettings mapSettings;
     mapSettings.mode = GameComponents::MapGenerationMode::RandomCsvPool;
-    mapSettings.csvChunkSizeX = 10;
+    mapSettings.csvChunkSizeX = ToUInt(
+        GameComponents::GameSettings::CsvChunkSizeX.Get(), 1);
     // 1プール = 1エリアで使用する複数の区画CSV。地形の種類では分けない。
     // Area1中はArea1内だけ、Area2へ切替後はArea2内だけから区画を抽選する。
     mapSettings.csvPools = {
@@ -116,73 +135,82 @@ void GameScene::GameScene::OnInitialize() {
 
     // ========== オブジェクトの生成 ==========
     //　ゲームマスターの追加
-    auto* gameManager = CreateObject("GameManager");
+    auto* gameManager = CreateObject<GameSceneObject>("GameManager");
     auto* gameManagerComponent =
         gameManager->AddComponent<GameComponents::GameManagerComponent>(sceneManager_);
+    gameManager->AddComponent<GameComponents::GameSettingsComponent>();
 
     // 床のオブジェクトプールを生成
-    auto* groundPoolManager = CreateObject("GroundPoolManager");
+    auto* groundPoolManager = CreateObject<GameSceneObject>("GroundPoolManager");
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "ground.obj", 600,false);
+        "ground.obj",
+        ToUInt(GameComponents::GameSettings::GroundPoolCapacity.Get(), 1), false);
     // 水場のオブジェクトプールを生成
-    auto* waterPoolManager = CreateObject("WaterPoolManager");
+    auto* waterPoolManager = CreateObject<GameSceneObject>("WaterPoolManager");
     waterPoolManager->AddComponent<CoreEngine::TransformComponent>();
     waterPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "box.obj", 100, true,
+        "box.obj",
+        ToUInt(GameComponents::GameSettings::WaterPoolCapacity.Get(), 1), true,
         CoreEngine::Vector4{ 0.0f, 0.35f, 0.65f, 1.0f });
     // 駅のオブジェクトプールを生成
-    auto* stationPoolManager = CreateObject("StationPoolManager");
+    auto* stationPoolManager = CreateObject<GameSceneObject>("StationPoolManager");
     stationPoolManager->AddComponent<CoreEngine::TransformComponent>();
     stationPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "station.obj", 10, true);
+        "station.obj",
+        ToUInt(GameComponents::GameSettings::StationPoolCapacity.Get(), 1), true);
     // 岩のオブジェクトプールを生成
-    auto* rockPoolManager = CreateObject("RockPoolManager");
+    auto* rockPoolManager = CreateObject<GameSceneObject>("RockPoolManager");
     rockPoolManager->AddComponent<CoreEngine::TransformComponent>();
     rockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "rock.obj", 50, true);
+        "rock.obj",
+        ToUInt(GameComponents::GameSettings::RockPoolCapacity.Get(), 1), true);
     // レールのオブジェクトプールを生成
-    auto* railPoolManager = CreateObject("RailPoolManager");
+    auto* railPoolManager = CreateObject<GameSceneObject>("RailPoolManager");
     railPoolManager->AddComponent<CoreEngine::TransformComponent>();
     railPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "rail.obj", 100, false);
+        "rail.obj",
+        ToUInt(GameComponents::GameSettings::RailPoolCapacity.Get(), 1), false);
     // レール左のオブジェクトプールを生成
-    auto* railLeftPoolManager = CreateObject("RailLeftPoolManager");
+    auto* railLeftPoolManager = CreateObject<GameSceneObject>("RailLeftPoolManager");
     railLeftPoolManager->AddComponent<CoreEngine::TransformComponent>();
     railLeftPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "rail_l.obj", 50, false);
+        "rail_l.obj",
+        ToUInt(GameComponents::GameSettings::RailLeftPoolCapacity.Get(), 1), false);
     // レール右のオブジェクトプールを生成
-    auto* railRightPoolManager = CreateObject("RailRightPoolManager");
+    auto* railRightPoolManager = CreateObject<GameSceneObject>("RailRightPoolManager");
     railRightPoolManager->AddComponent<CoreEngine::TransformComponent>();
     railRightPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "rail_r.obj", 50, false);
+        "rail_r.obj",
+        ToUInt(GameComponents::GameSettings::RailRightPoolCapacity.Get(), 1), false);
 
     // マップを生成するコンポーネントを追加
-    auto* mapGenerator = CreateObject("MapGenerator");
+    auto* mapGenerator = CreateObject<GameSceneObject>("MapGenerator");
     mapGenerator->AddComponent<CoreEngine::TransformComponent>();
     mapGenerator->AddComponent<GameComponents::MapGeneratorComponent>(
         mapSizeZ, initialGenerateMapSizeX, mapSettings);
     
     // レールの配置を管理するコンポーネントを追加
-    auto* railPath = CreateObject("RailPath");
+    auto* railPath = CreateObject<GameSceneObject>("RailPath");
     railPath->AddComponent<CoreEngine::TransformComponent>();
     railPath->AddComponent<GameComponents::RailPathComponent>(
         mapSizeZ, initialBuilderPosX, initialBuilderPosZ);
 
     // レールを表示するコンポーネントを追加
-    auto* railView = CreateObject("RailView");
+    auto* railView = CreateObject<GameSceneObject>("RailView");
     railView->AddComponent<CoreEngine::TransformComponent>();
 
     // レールを配置するオブジェクトを生成
-    auto* railBuilder = CreateObject("RailBuilder");
+    auto* railBuilder = CreateObject<GameSceneObject>("RailBuilder");
     railBuilder->AddComponent<CoreEngine::TransformComponent>();
     railBuilder->AddComponent<GameComponents::RailResourceManagerComponent>(railResourceCount);
 
     // 列車の移動ロジックを持つオブジェクト。描画とアニメーションは別コンポーネントで追加する。
-    auto* train = CreateObject("Train");
+    auto* train = CreateObject<GameSceneObject>("Train");
     auto* trainTransform = train->AddComponent<CoreEngine::TransformComponent>();
     train->AddComponent<GameComponents::TrainMovementComponent>(
-        gridSize, 0.5f, initialBuilderPosX, initialBuilderPosZ,
+        gridSize, GameComponents::GameSettings::TrainMoveSpeed.Get(),
+        initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
         gameManagerComponent);
 
@@ -203,18 +231,24 @@ void GameScene::GameScene::OnInitialize() {
         railBuilder->GetComponent<GameComponents::RailBuilderComponent>());
 
     // 列車に乗るサル
-    auto* monkey = CreateObject("Monkey");
+    auto* monkey = CreateObject<GameSceneObject>("Monkey");
     auto* monkeyTransform = monkey->AddComponent<CoreEngine::TransformComponent>();
     monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
     monkeyTransform->Get().SetParent(&trainTransform->Get());
 
     // 列車とビルダーの中間を捉え、距離に応じて視野角を変えるゲームカメラ。
-    auto* cameraController = CreateObject("CameraManager");
+    auto* cameraController = CreateObject<GameSceneObject>("CameraManager");
     cameraController->AddComponent<GameComponents::CameraManagerComponent>(
         cameraManager_->GetCamera(CoreEngine::CameraNames::Game),
         train->GetComponent<CoreEngine::TransformComponent>(),
         railBuilder->GetComponent<CoreEngine::TransformComponent>(),
-        0.4f); // カメラX位置: 0.0 = 列車側、0.5 = 中間、1.0 = ビルダー側
+        GameComponents::GameSettings::CameraFocusRatio.Get(),
+        GameComponents::GameSettings::CameraOffset.Get(),
+        GameComponents::GameSettings::CameraMinTargetDistance.Get(),
+        GameComponents::GameSettings::CameraMaxTargetDistance.Get(),
+        GameComponents::GameSettings::CameraMinFovDegrees.Get(),
+        GameComponents::GameSettings::CameraMaxFovDegrees.Get(),
+        GameComponents::GameSettings::CameraFollowSpeed.Get());
 
     gameManagerComponent->SetEndingCamera(
         cameraController->GetComponent<GameComponents::CameraManagerComponent>());
@@ -230,7 +264,7 @@ void GameScene::GameScene::OnInitialize() {
         renderWorldDistance);
 
     // マップを描画するオブジェクトを追加
-    auto* mapRenderer = CreateObject("MapRenderer");
+    auto* mapRenderer = CreateObject<GameSceneObject>("MapRenderer");
     mapRenderer->AddComponent<CoreEngine::TransformComponent>();
     mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
@@ -255,12 +289,18 @@ void GameScene::GameScene::OnInitialize() {
             auto* railResourceText = CreateObject<CoreEngine::UIText>();
             railResourceText->Initialize(font, "残りレール: 0", "RailResourceText");
             railResourceText->SetAnchor(CoreEngine::UIAnchor::TopLeft);
-            railResourceText->SetAnchoredPosition({ 32.0f, 32.0f });
+            railResourceText->SetAnchoredPosition(
+                GameComponents::GameSettings::HudPosition.Get());
             railResourceText->SetPivot({ 0.0f, 0.0f });
-            railResourceText->SetFontSize(36.0f*3.0f);
-            railResourceText->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-            railResourceText->SetOutline({ 0.0f, 0.0f, 0.0f, 1.0f }, 0.035f);
-            railResourceText->SetSortOrder(1000);
+            railResourceText->SetFontSize(
+                GameComponents::GameSettings::HudFontSize.Get());
+            railResourceText->SetColor(
+                GameComponents::GameSettings::HudColor.Get());
+            railResourceText->SetOutline(
+                GameComponents::GameSettings::HudOutlineColor.Get(),
+                GameComponents::GameSettings::HudOutlineWidth.Get());
+            railResourceText->SetSortOrder(
+                GameComponents::GameSettings::HudSortOrder.Get());
             railResourceText->AddComponent<GameComponents::RailResourceUIComponent>(
                 railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>());
         }

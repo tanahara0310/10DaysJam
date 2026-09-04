@@ -24,15 +24,22 @@ namespace GameComponents
         const char* GetTypeName() const override {
             return "GameManager";
         }
+        json OnSerialize() const override;
+        void OnDeserialize(const json& j) override;
+
+#ifdef USE_IMGUI
+        const char* GetInspectorName() const override { return "ゲーム進行"; }
+        bool DrawInspector() override;
+#endif
         // 最初の更新直前に一度だけ呼ばれる
         void Start() override;
         // 全オブジェクトの移動後にゲーム進行を更新する
         void LateUpdate() override;
 
         // ゲームオーバーを要求する。時間はカメラ演出完了後の待機秒数。
-        void RequestGameOver(float changeDelayTime = 1.0f);
+        void RequestGameOver(float changeDelayTime = -1.0f);
         // ゲームクリアを要求する。時間はカメラ演出完了後の待機秒数。
-        void RequestGameClear(float changeDelayTime = 1.0f);
+        void RequestGameClear(float changeDelayTime = -1.0f);
 
         // GameScene の構築時に接続する。描画・カメラ更新は終了演出中も止めない。
         void SetGameplayComponents(TrainMovementComponent* train, RailBuilderComponent* builder);
@@ -58,5 +65,6 @@ namespace GameComponents
         bool isGameOver_ = false;
 
         float changeDelayTimer_ = 0.0f;
+        float defaultChangeDelay_ = 1.0f;
     };
 }

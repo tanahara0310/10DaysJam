@@ -47,6 +47,9 @@ namespace GameComponents
             return "MapGenerator";
         }
 
+        json OnSerialize() const override;
+        void OnDeserialize(const json& j) override;
+
         // 最初の更新直前に一度だけ呼ばれる
         void Start() override;
         // 毎フレーム呼ばれる
@@ -90,6 +93,7 @@ namespace GameComponents
         void AddCsvMapChips(std::size_t count);
 
         uint32_t mapSizeZ_ = 10;
+        uint32_t initialGenerateSizeX_ = 30;
         MapGenerationSettings settings_;
         std::mt19937 csvRandom_;
         MapData fixedCsv_;

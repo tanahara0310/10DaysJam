@@ -32,7 +32,8 @@ namespace GameComponents
             GameComponents::TrainMovementComponent* trainMovement = nullptr,
             std::function<void()> OnBuildSE = nullptr,
             std::function<void()> OnUndoSE = nullptr)
-            : gridSize_(gridSize), gridPosX_(gridPosX), gridPosZ_(gridPosZ),
+            : gridSize_(gridSize), initialGridPosX_(gridPosX), initialGridPosZ_(gridPosZ),
+              gridPosX_(gridPosX), gridPosZ_(gridPosZ),
               railPath_(railPath), resourceManager_(resourceManager),
               mapGenerator_(mapGenerator), trainMovement_(trainMovement),
               OnBuildSE_(OnBuildSE), OnUndoSE_(OnUndoSE) {
@@ -42,6 +43,14 @@ namespace GameComponents
         const char* GetTypeName() const override {
             return "RailBuilder";
         }
+
+        json OnSerialize() const override;
+        void OnDeserialize(const json& j) override;
+
+#ifdef USE_IMGUI
+        const char* GetInspectorName() const override { return "レールビルダー"; }
+        bool DrawInspector() override;
+#endif
 
         // 最初の更新直前に一度だけ呼ばれる
         void Start() override;
@@ -68,6 +77,8 @@ namespace GameComponents
         GameComponents::TrainMovementComponent* trainMovement_ = nullptr;
 
         // 左・後ろ方向へ移動したときの符号なし整数アンダーフローを避ける
+        int32_t initialGridPosX_ = 0;
+        int32_t initialGridPosZ_ = 0;
         int32_t gridPosX_ = 0;
         int32_t gridPosZ_ = 0;
 
@@ -80,6 +91,17 @@ namespace GameComponents
         float undoIntervalTimer_ = 0.0f;
 
         float timer_ = 0.0f;
+        float height_ = 1.0f;
+        float pulseBaseScale_ = 0.8f;
+        float pulseAmplitude_ = 0.2f;
+        float pulseSpeed_ = 5.0f;
+        float rotationSpeed_ = 2.0f;
+
+        uint32_t groundCost_ = 1;
+        uint32_t waterCost_ = 2;
+        uint32_t stationReward_ = 15;
+        uint32_t resourceReward_ = 5;
+        float maxSpeedRewardRatio_ = 2.0f;
 
         std::function<void()> OnBuildSE_ = nullptr;
         std::function<void()> OnUndoSE_ = nullptr;

@@ -14,13 +14,22 @@ namespace GameComponents
         : public CoreEngine::IComponent {
     public:
         explicit RailResourceManagerComponent(
-            uint32_t resourceCount) : resourceCount_(resourceCount) {
+            uint32_t resourceCount)
+            : initialResourceCount_(resourceCount), resourceCount_(resourceCount) {
         }
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
             return "RailResourceManager";
         }
+
+        json OnSerialize() const override;
+        void OnDeserialize(const json& j) override;
+
+#ifdef USE_IMGUI
+        const char* GetInspectorName() const override { return "レール所持数"; }
+        bool DrawInspector() override;
+#endif
 
         // 最初の更新直前に一度だけ呼ばれる
         void Start() override;
@@ -37,6 +46,7 @@ namespace GameComponents
         uint32_t GetResourceCount() const { return resourceCount_; }
 
     private:
+        uint32_t initialResourceCount_ = 15;
         uint32_t resourceCount_ = 15; // 初期リソース数
     };
 }

@@ -9,9 +9,38 @@
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
+#include <algorithm>
 #include <cmath>
 
+#ifdef USE_IMGUI
+#include "Editor/ImGui/ImGuiAll.h"
+#endif
+
 using namespace CoreEngine;
+
+json GameComponents::RailResourceManagerComponent::OnSerialize() const {
+    return { { "initialResourceCount", initialResourceCount_ } };
+}
+
+void GameComponents::RailResourceManagerComponent::OnDeserialize(const json& j) {
+    initialResourceCount_ = JsonManager::SafeGet<uint32_t>(
+        j, "initialResourceCount", initialResourceCount_);
+    resourceCount_ = initialResourceCount_;
+}
+
+#ifdef USE_IMGUI
+bool GameComponents::RailResourceManagerComponent::DrawInspector() {
+    int initialCount = static_cast<int>(initialResourceCount_);
+    bool changed = false;
+    if (ImGui::DragInt("初期レール数", &initialCount, 1.0f, 0, 9999)) {
+        initialResourceCount_ = static_cast<uint32_t>(std::max(initialCount, 0));
+        resourceCount_ = initialResourceCount_;
+        changed = true;
+    }
+    ImGui::TextDisabled("現在のレール数: %u", resourceCount_);
+    return changed;
+}
+#endif
 
 void GameComponents::RailResourceManagerComponent::Start() {
     // 初期リソース数をログに出力

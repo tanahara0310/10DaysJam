@@ -26,13 +26,23 @@ namespace GameComponents
             int32_t gridX = 0, int32_t gridZ = 0,
             GameComponents::RailPathComponent* railPath = nullptr,
             GameManagerComponent* gameManager = nullptr)
-            : railPath_(railPath), gameManager_(gameManager), gridSize_(gridSize), moveSpeed_(moveSpeed), gridX_(gridX), gridZ_(gridZ) {
+            : railPath_(railPath), gameManager_(gameManager), gridSize_(gridSize),
+              initialMoveSpeed_(moveSpeed), moveSpeed_(moveSpeed),
+              initialGridX_(gridX), initialGridZ_(gridZ), gridX_(gridX), gridZ_(gridZ) {
         }
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
             return "TrainMovement";
         }
+
+        json OnSerialize() const override;
+        void OnDeserialize(const json& j) override;
+
+#ifdef USE_IMGUI
+        const char* GetInspectorName() const override { return "列車移動"; }
+        bool DrawInspector() override;
+#endif
 
         // 最初の更新直前に一度だけ呼ばれる
         void Start() override;
@@ -66,7 +76,10 @@ namespace GameComponents
         GameManagerComponent* gameManager_ = nullptr;
         float gridSize_ = 5.0f;
 
+        float initialMoveSpeed_ = 0.5f;
         float moveSpeed_ = 0.5f; // 移動速度（グリッド単位/秒）
+        int32_t initialGridX_ = 0;
+        int32_t initialGridZ_ = 0;
         int32_t gridX_ = 0; // 現在のグリッドX座標
         int32_t gridZ_ = 0; // 現在のグリッドZ座標
         int32_t destinationGridX_ = 0;
@@ -80,7 +93,8 @@ namespace GameComponents
 
         float speedUpFactor_ = 0.5f; // 移動速度の加速係数
         float minMoveSpeed_ = 0.5f; // 最低移動速度
-
-        static constexpr std::size_t kRequiredRailCount = 5;
+        float turnSlowdownFactor_ = 0.5f;
+        float trainHeight_ = 1.0f;
+        std::size_t requiredRailCount_ = 5;
     };
 }
