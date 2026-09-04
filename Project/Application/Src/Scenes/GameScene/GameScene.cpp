@@ -69,9 +69,12 @@ void GameScene::GameScene::OnInitialize() {
         };
     std::function<void()> playBuildSe = [this] {
         if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+            int randomIndex = rand() % 50;
+            float pitch = 0.5f + (static_cast<float>(randomIndex) / 50.0f);
+
             audioSystem->PlayOneShot(
                 "Application/Assets/Sounds/SE/build.mp3",
-                { .bus = AudioBus::SE });
+                { .bus = AudioBus::SE,.volume = 0.5f, .pitch = pitch });
         }
         };
     std::function<void()> playUndoSe = [this] {
@@ -235,6 +238,7 @@ void GameScene::GameScene::OnInitialize() {
     auto* monkeyTransform = monkey->AddComponent<CoreEngine::TransformComponent>();
     monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
     monkeyTransform->Get().SetParent(&trainTransform->Get());
+    monkeyTransform->Get().rotate.y = 3.14f;
 
     // 列車とビルダーの中間を捉え、距離に応じて視野角を変えるゲームカメラ。
     auto* cameraController = CreateObject<GameSceneObject>("CameraManager");

@@ -20,6 +20,10 @@
 
 using namespace CoreEngine;
 
+namespace {
+    constexpr float kCompletedRailSpeedMultiplier = 10.0f;
+}
+
 json GameComponents::TrainMovementComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
@@ -130,7 +134,8 @@ void GameComponents::TrainMovementComponent::Update() {
     }
 
     // DeltaTime に応じて移動進捗を加算する。
-    float remainingProgress = moveSpeed_ * deltaTime;
+    float remainingProgress = moveSpeed_ * deltaTime *
+        (isMovingOnCompletedRail_ ? kCompletedRailSpeedMultiplier : 1.0f);
     if (remainingProgress <= 0.0f) {
         return;
     }
@@ -138,15 +143,21 @@ void GameComponents::TrainMovementComponent::Update() {
     // 大きな DeltaTime でも目的地を飛び越さないよう、余った進捗を次のマスへ持ち越す。
     while (remainingProgress > 0.0f && !isGameOver_) {
         if (!isMoving_) {
-            const float speedBeforeTurn = moveSpeed_;
+            const float effectiveSpeedBeforeSegment = moveSpeed_ *
+                (isMovingOnCompletedRail_ ? kCompletedRailSpeedMultiplier : 1.0f);
             if (!BeginNextSegment()) {
                 NotifyGameOver();
                 break;
             }
 
-            // 同じフレーム内で曲がった場合も、残りの移動量へ減速を反映する。
-            if (speedBeforeTurn > 0.0f && moveSpeed_ < speedBeforeTurn) {
-                remainingProgress *= moveSpeed_ / speedBeforeTurn;
+            // 同じフレーム内で区間が切り替わった場合も、完成状態の違いと
+            // カーブ減速を残りの移動量へ反映する。
+            const float effectiveSpeedAfterSegment = moveSpeed_ *
+                (isMovingOnCompletedRail_ ? kCompletedRailSpeedMultiplier : 1.0f);
+            if (effectiveSpeedBeforeSegment > 0.0f &&
+                effectiveSpeedAfterSegment > 0.0f) {
+                remainingProgress *= effectiveSpeedAfterSegment /
+                    effectiveSpeedBeforeSegment;
             }
         }
 
@@ -211,6 +222,12 @@ bool GameComponents::TrainMovementComponent::BeginNextSegment() {
             gridX_, gridZ_, destination.first, destination.second);
         return false;
     }
+
+    // ConfirmNextRailPlacement() の前に判定することで、今回新しく確定される
+    // レールではなく、すでに完成していたレールだけを加速対象にする。
+    const auto& completedRails = railPath_->GetRailMap();
+    isMovingOnCompletedRail_ = std::find(
+        completedRails.begin(), completedRails.end(), destination) != completedRails.end();
 
     // 確定でキューから消える前に、移動先をコンポーネント内へ保存する。
     destinationGridX_ = destination.first;
