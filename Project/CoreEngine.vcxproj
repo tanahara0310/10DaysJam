@@ -197,6 +197,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\RailResourceUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
+    <ClCompile Include="Application\Src\Editor\Stage\StageCsvDocument.cpp" />
+    <ClCompile Include="Application\Src\Editor\Stage\StageEditorPanel.cpp" />
+    <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
@@ -775,6 +778,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\RailResourceUIComponent.h" />
     <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h" />
+    <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h" />
+    <ClInclude Include="Application\Src\Editor\Stage\StageCsvDocument.h" />
+    <ClInclude Include="Application\Src\Editor\Stage\StageEditorPanel.h" />
+    <ClInclude Include="Application\Src\Editor\Stage\StageProject.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h" />

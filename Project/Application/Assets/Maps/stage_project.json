@@ -1,0 +1,24 @@
+{
+    "areas": [
+        {
+            "name": "Area1",
+            "paths": [
+                "Application/Assets/Maps/Areas/Area1/chunk_01.csv",
+                "Application/Assets/Maps/Areas/Area1/chunk_02.csv",
+                "Application/Assets/Maps/Areas/Area1/chunk_03.csv"
+            ]
+        },
+        {
+            "name": "Area2",
+            "paths": [
+                "Application/Assets/Maps/Areas/Area2/chunk_01.csv",
+                "Application/Assets/Maps/Areas/Area2/chunk_02.csv",
+                "Application/Assets/Maps/Areas/Area2/chunk_03.csv"
+            ]
+        }
+    ],
+    "chunkSizeX": 10,
+    "fixedCsvPath": "Application/Assets/Maps/fixed.csv",
+    "initialArea": "Area1",
+    "mapSizeZ": 9
+}
