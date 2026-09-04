@@ -30,6 +30,8 @@ json GameComponents::RailBuilderComponent::OnSerialize() const {
         { "horizontalPrioritize", HorizontalPrioritize },
         { "undoHoldTime", undoPushMaxTime_ },
         { "undoInterval", undoInterval_ },
+        { "buildHoldTime", buildPushMaxTime_ },
+        { "buildInterval", buildInterval_ },
         { "height", height_ },
         { "pulseBaseScale", pulseBaseScale_ },
         { "pulseAmplitude", pulseAmplitude_ },
@@ -50,6 +52,8 @@ void GameComponents::RailBuilderComponent::OnDeserialize(const json& j) {
     HorizontalPrioritize = JsonManager::SafeGet<bool>(j, "horizontalPrioritize", HorizontalPrioritize);
     undoPushMaxTime_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "undoHoldTime", undoPushMaxTime_));
     undoInterval_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "undoInterval", undoInterval_));
+    buildPushMaxTime_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "buildHoldTime", buildPushMaxTime_));
+    buildInterval_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "buildInterval", buildInterval_));
     height_ = JsonManager::SafeGet<float>(j, "height", height_);
     pulseBaseScale_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "pulseBaseScale", pulseBaseScale_));
     pulseAmplitude_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "pulseAmplitude", pulseAmplitude_));
@@ -74,6 +78,8 @@ bool GameComponents::RailBuilderComponent::DrawInspector() {
     changed |= ImGui::Checkbox("水平方向を優先", &HorizontalPrioritize);
     changed |= ImGui::DragFloat("Undo長押し時間", &undoPushMaxTime_, 0.01f, 0.0f, 5.0f);
     changed |= ImGui::DragFloat("Undo連続間隔", &undoInterval_, 0.01f, 0.01f, 2.0f);
+    changed |= ImGui::DragFloat("設置長押し時間", &buildPushMaxTime_, 0.01f, 0.0f, 5.0f);
+    changed |= ImGui::DragFloat("設置連続間隔", &buildInterval_, 0.01f, 0.01f, 2.0f);
     changed |= ImGui::DragFloat("表示高さ", &height_, 0.05f, -20.0f, 20.0f);
     changed |= ImGui::DragFloat("脈動基準スケール", &pulseBaseScale_, 0.01f, 0.0f, 5.0f);
     changed |= ImGui::DragFloat("脈動振幅", &pulseAmplitude_, 0.01f, 0.0f, 5.0f);
@@ -179,17 +185,59 @@ void GameComponents::RailBuilderComponent::Update() {
         undoPushTimer_ = 0.0f;
     }
 
+    // 移動入力は押した瞬間に1回処理し、長押し時はUndoと同じように
+    // 一定時間経過後、一定間隔で繰り返す。
+    bool isContinuousBuild = false;
+    const bool isMovePressed =
+        input.IsActionPressed(InputAction::MoveRight) ||
+        input.IsActionPressed(InputAction::MoveLeft) ||
+        input.IsActionPressed(InputAction::MoveForward) ||
+        input.IsActionPressed(InputAction::MoveBack);
+    if (isMovePressed) {
+        buildPushTimer_ += Time::DeltaTime();
+        if (buildPushTimer_ >= buildPushMaxTime_) {
+            if (buildIntervalTimer_ <= 0.0f) {
+                isContinuousBuild = true;
+                buildIntervalTimer_ = buildInterval_;
+            } else {
+                buildIntervalTimer_ -= Time::DeltaTime();
+            }
+        }
+    } else {
+        buildPushTimer_ = 0.0f;
+        buildIntervalTimer_ = 0.0f;
+    }
+
+    const bool isMoveTriggered =
+        input.IsActionTriggered(InputAction::MoveRight) ||
+        input.IsActionTriggered(InputAction::MoveLeft) ||
+        input.IsActionTriggered(InputAction::MoveForward) ||
+        input.IsActionTriggered(InputAction::MoveBack);
+    if (!isMoveTriggered && !isContinuousBuild) {
+        return;
+    }
+
+    const bool usePressedDirection = !isMoveTriggered;
+
     // X方向の移動量を計算する（右キー - 左キー）
     float moveX =
-        static_cast<float>(input.IsActionTriggered(InputAction::MoveRight)) -
-        static_cast<float>(input.IsActionTriggered(InputAction::MoveLeft));
+        static_cast<float>(usePressedDirection
+            ? input.IsActionPressed(InputAction::MoveRight)
+            : input.IsActionTriggered(InputAction::MoveRight)) -
+        static_cast<float>(usePressedDirection
+            ? input.IsActionPressed(InputAction::MoveLeft)
+            : input.IsActionTriggered(InputAction::MoveLeft));
 
     // Z方向の移動量を計算する（前キー - 後キー）
     float moveZ =
-        static_cast<float>(input.IsActionTriggered(InputAction::MoveForward)) -
-        static_cast<float>(input.IsActionTriggered(InputAction::MoveBack));
+        static_cast<float>(usePressedDirection
+            ? input.IsActionPressed(InputAction::MoveForward)
+            : input.IsActionTriggered(InputAction::MoveForward)) -
+        static_cast<float>(usePressedDirection
+            ? input.IsActionPressed(InputAction::MoveBack)
+            : input.IsActionTriggered(InputAction::MoveBack));
 
-    // 移動量がゼロの場合は処理を中断する
+    // 反対方向の入力が同時に発生した場合は移動しない。
     if (moveX == 0.0f && moveZ == 0.0f) {
         return;
     }
@@ -218,8 +266,21 @@ void GameComponents::RailBuilderComponent::Update() {
         return;
     }
 
-    // 既にレールがあるマスへは移動しない
+    // 最後に設置したレールの一つ前へ戻ろうとした場合は、
+    // 既設レールへの移動ではなく最後のレールのUndoとして扱う。
     auto& railMap = railPath_->GetRailMap();
+    const auto& railUndoStack = railPath_->GetRailUndoStack();
+    if (!railUndoStack.empty()) {
+        const std::pair<int32_t, int32_t> previousRail = railUndoStack.size() >= 2
+            ? railUndoStack[railUndoStack.size() - 2]
+            : railMap.back();
+        if (nextX == previousRail.first && nextZ == previousRail.second) {
+            TryUndoLastRail();
+            return;
+        }
+    }
+
+    // 既にレールがあるマスへは移動しない
     for (auto& rail : railMap) {
         if (rail.first == nextX && rail.second == nextZ) {
             Logger::GetInstance().Infof(
@@ -229,7 +290,6 @@ void GameComponents::RailBuilderComponent::Update() {
             return;
         }
     }
-    auto& railUndoStack = railPath_->GetRailUndoStack();
     for (auto& rail : railUndoStack) {
         if (rail.first == nextX && rail.second == nextZ) {
             Logger::GetInstance().Infof(

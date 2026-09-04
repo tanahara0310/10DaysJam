@@ -69,13 +69,8 @@ void GameScene::GameScene::OnInitialize() {
         };
     std::function<void()> playBuildSe = [this] {
         if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
-            int randomIndex = rand() % 100;
-            float pitch = 1.0f;
-            if (randomIndex < 20) {
-                pitch = 0.8f; // 20%の確率でピッチを下げる
-            } else if (randomIndex < 40) {
-                pitch = 1.2f; // 次の20%の確率でピッチを上げる
-            }
+            int randomIndex = rand() % 50;
+            float pitch = 0.5f + (static_cast<float>(randomIndex) / 50.0f);
 
             audioSystem->PlayOneShot(
                 "Application/Assets/Sounds/SE/build.mp3",

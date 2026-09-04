@@ -90,6 +90,11 @@ namespace GameComponents
         float undoInterval_ = 0.05f;
         float undoIntervalTimer_ = 0.0f;
 
+        float buildPushTimer_ = 0.0f;
+        float buildPushMaxTime_ = 0.3f;
+        float buildInterval_ = 0.05f;
+        float buildIntervalTimer_ = 0.0f;
+
         float timer_ = 0.0f;
         float height_ = 1.0f;
         float pulseBaseScale_ = 0.8f;
