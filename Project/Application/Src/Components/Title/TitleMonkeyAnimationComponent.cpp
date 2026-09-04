@@ -21,6 +21,12 @@ namespace GameComponents
         "トロッコの基準位置から monkey.obj の最終位置までの距離（Y方向）",
         CoreEngine::CVarRange{ 0.0f, 10.0f } };
 
+    CoreEngine::CVar<CoreEngine::Vector3> TitleMonkeyAnimationComponent::Rotation{
+        "Title.Monkey.Rotation",
+        { 0.0f, 0.0f, 0.0f },
+        "サルの最終回転（トロッコ基準、ラジアン）",
+        CoreEngine::CVarRange{ -3.14f, 3.14f } };
+
     CoreEngine::CVar<float> TitleMonkeyAnimationComponent::IntroDuration{
         "Title.Monkey.IntroDuration",
         0.5f,
@@ -42,7 +48,7 @@ bool GameComponents::TitleMonkeyAnimationComponent::DrawInspector()
     CoreEngine::UI::Separator();
     CoreEngine::UI::Hint(
         "値はCVarとして保存されます。タイトルシーンを再読み込みすると"
-        "monkeyの距離・登場演出へ反映されます。");
+        "monkeyの距離・回転・登場演出へ反映されます。");
     return changed;
 }
 #endif

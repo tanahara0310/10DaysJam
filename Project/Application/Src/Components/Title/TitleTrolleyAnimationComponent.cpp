@@ -18,7 +18,13 @@ namespace GameComponents
         "Title.Trolley.Position",
         { 0.0f, 0.0f, -0.5f },
         "トロッコの最終位置（ワールド座標）",
-        CoreEngine::CVarRange{ -100.0f, 100.0f } };
+        CoreEngine::CVarRange{ -10.0f, 10.0f } };
+
+    CoreEngine::CVar<CoreEngine::Vector3> TitleTrolleyAnimationComponent::Rotation{
+        "Title.Trolley.Rotation",
+        { 0.0f, 0.0f, 0.0f },
+        "トロッコの最終回転（ラジアン）",
+        CoreEngine::CVarRange{ -3.14f, 3.14f } };
 
     CoreEngine::CVar<float> TitleTrolleyAnimationComponent::IntroDelay{
         "Title.Trolley.IntroDelay",
@@ -65,7 +71,7 @@ bool GameComponents::TitleTrolleyAnimationComponent::DrawInspector()
     CoreEngine::UI::Separator();
     CoreEngine::UI::Hint(
         "値はCVarとして保存されます。タイトルシーンを再読み込みすると"
-        "トロッコの配置・登場演出へ反映されます。サルの設定はmonkeyオブジェクト側にあります。");
+        "トロッコの配置・回転・登場演出へ反映されます。サルの設定はmonkeyオブジェクト側にあります。");
     return changed;
 }
 #endif

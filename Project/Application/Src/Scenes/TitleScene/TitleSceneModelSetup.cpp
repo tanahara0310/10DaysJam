@@ -64,6 +64,8 @@ namespace TitleSceneModel
             if (trolleyTransform) {
                 trolleyTransform->Get().translate =
                     GameComponents::TitleTrolleyAnimationComponent::Position.Get();
+                trolleyTransform->Get().rotate =
+                    GameComponents::TitleTrolleyAnimationComponent::Rotation.Get();
                 trolleyObject->AddComponent<CoreEngine::MeshRendererComponent>("trolley.obj");
                 auto* trolleyAnimation =
                     trolleyObject->AddComponent<GameComponents::TitleTrolleyAnimationComponent>();
@@ -84,6 +86,8 @@ namespace TitleSceneModel
                             GameComponents::TitleMonkeyAnimationComponent::Distance.Get(),
                             0.0f,
                         };
+                        monkeyTransform->Get().rotate =
+                            GameComponents::TitleMonkeyAnimationComponent::Rotation.Get();
                         monkeyTransform->Get().SetParent(&trolleyTransform->Get());
                         monkeyObject->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
                         auto* monkeyAnimation =
