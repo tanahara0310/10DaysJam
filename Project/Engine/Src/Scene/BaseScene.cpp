@@ -114,15 +114,18 @@ namespace CoreEngine
             [this] { return sceneSaveSystem_->GetLoadProgress(); });
     }
 
-    void BaseScene::Update()
+    void BaseScene::Update(SceneUpdateMode mode)
     {
-        // メニューバーの再生 / 停止ボタンの状態。停止中はゲームロジックを飛ばす。
-        // Feature の取捨は DispatchUpdate() が RunsWhileStopped() を見て行うので、
+        // 進行を止める理由は 2 つあり、扱いは同じ。メニューバーの再生 / 停止ボタンと、
+        // シーン切り替えのトランジション（mode == Suspended）。どちらもゲームロジックだけを
+        // 飛ばす。Feature の取捨は DispatchUpdate() が RunsWhileStopped() を見て行うので、
         // エディタカメラ・ギズモ・ライト・大気は止めている間も回り続ける
-        const bool advance = PlaybackStateManager::GetInstance().IsPlaying();
+        const bool stopped = (mode == SceneUpdateMode::Suspended)
+            || PlaybackStateManager::GetInstance().IsStopped();
+        const bool advance = !stopped;
 
         // フレーム前処理（先頭でカメラ姿勢を確定 → ライト/影・グリッド・デバッグエディタ）
-        DispatchUpdate(SceneUpdatePhase::FrameStart);
+        DispatchUpdate(SceneUpdatePhase::FrameStart, stopped);
 
         if (advance) {
             // 派生クラスの更新処理（GameObjectの更新前）
@@ -130,7 +133,7 @@ namespace CoreEngine
         }
 
         // GameObject 更新前の Feature 更新（床のカメラ追従、最後にトゥイーンの前進）
-        DispatchUpdate(SceneUpdatePhase::PreObjectUpdate);
+        DispatchUpdate(SceneUpdatePhase::PreObjectUpdate, stopped);
 
         if (advance) {
             // ゲームオブジェクトの更新
@@ -142,7 +145,7 @@ namespace CoreEngine
         }
 
         // GameObject 更新後の Feature 更新（コリジョン収集 → 判定、最後にイベントの一括配信）
-        DispatchUpdate(SceneUpdatePhase::PostObjectUpdate);
+        DispatchUpdate(SceneUpdatePhase::PostObjectUpdate, stopped);
 
         if (advance) {
             // 派生クラスの後処理（クリーンアップ前）
@@ -150,7 +153,7 @@ namespace CoreEngine
         }
 
         // 全ロジック確定後の Feature 更新（大気→雲など最新の太陽・カメラ情報の反映）
-        DispatchUpdate(SceneUpdatePhase::PostLogic);
+        DispatchUpdate(SceneUpdatePhase::PostLogic, stopped);
     }
 
     void BaseScene::PrepareRender()
@@ -297,11 +300,11 @@ namespace CoreEngine
         featureContext_.gameViewCamera3D = GetGameViewCamera3D();
     }
 
-    void BaseScene::DispatchUpdate(SceneUpdatePhase phase)
+    void BaseScene::DispatchUpdate(SceneUpdatePhase phase, bool stopped)
     {
         // 停止中はゲームの進行に関わる Feature を飛ばす。
-        // どちらに属するかは Feature 自身が RunsWhileStopped() で答える
-        const bool stopped = PlaybackStateManager::GetInstance().IsStopped();
+        // どちらに属するかは Feature 自身が RunsWhileStopped() で答える。
+        // 「止まっているか」の判断は Update() が一括で行う（停止ボタンとシーン遷移の両方）
 
         // コンテキストは 1 体ごとに取り直す。先頭の CameraFeature が視点を切り替えた
         // フレームでも、後続の Feature が同じフレームで新しい視点カメラを見られるようにする。

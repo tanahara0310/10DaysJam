@@ -5,6 +5,7 @@
 #include "Graphics/PostEffect/Effect/FadeEffect/FadeEffect.h"
 #include "Graphics/PostEffect/Effect/LoadingScreen/LoadingScreenEffect.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
+#include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Audio/AudioSystem.h"
 #include "Utility/CVar/CVar.h"
@@ -36,6 +37,9 @@ fadeEffect_ = postEffectManager_->GetEffect<FadeEffect>(PostEffectNames::FadeEff
 
 // ローディング画面エフェクトを取得
 loadingScreenEffect_ = postEffectManager_->GetEffect<LoadingScreenEffect>(PostEffectNames::LoadingScreen);
+
+// トーンマッピングを取得（暗転中に自動露出の順応を止めるため）
+toneMapping_ = postEffectManager_->GetEffect<ToneMapping>(PostEffectNames::ToneMapping);
 
 // AudioSystem を取得（BGM バスのダッキングに使う）
 audioSystem_ = engine_->GetService<AudioSystem>();
@@ -120,6 +124,9 @@ void SceneTransition::Update(float deltaTime) {
     // ローディング画面に表示強度を適用
     ApplyLoadingScreen();
 
+    // 暗転しきっている間は自動露出を凍結する（フェードと同期）
+    ApplyExposureHold();
+
     // BGM音量を適用（フェードと同期）
     ApplyBGMVolume();
 }
@@ -165,8 +172,10 @@ void SceneTransition::OnSceneChanged() {
         fadeEffect_->SetFadeAlpha(0.0f);
         fadeEffect_->SetEnabled(false);
 
-        // Update() は Idle だと即 return するので、ここで自分でダッキングを戻す。
-        // 忘れると Loading 中に 0 まで絞った BGM バスがそのまま無音で残る
+        // Update() は Idle だと即 return するので、ここで自分でダッキングと
+        // 自動露出を戻す。忘れると Loading 中に 0 まで絞った BGM バスがそのまま
+        // 無音で残り、露出も凍結したままになる
+        ApplyExposureHold();
         ApplyBGMVolume();
     } else {
         // フェードイン開始
@@ -200,7 +209,8 @@ void SceneTransition::SkipTransition() {
     fadeEffect_->SetEnabled(false);
     ApplyLoadingScreen();
 
-    // Update() は Idle だと即 return するので、ここで自分でダッキングを戻す
+    // Update() は Idle だと即 return するので、ここで自分でダッキングと露出を戻す
+    ApplyExposureHold();
     ApplyBGMVolume();
 }
 
@@ -286,6 +296,18 @@ float SceneTransition::CalculateGaugeAlpha() const {
     // 読み込みが長引いたときだけ現れる
     return std::clamp((loadingElapsed_ - gaugeAfter) / kGaugeFadeSeconds, 0.0f, 1.0f)
         * CalculateLoadingAlpha();
+}
+
+void SceneTransition::ApplyExposureHold() {
+    if (!toneMapping_) {
+        return;
+    }
+
+    // 暗転しきっている間（Loading / Changing とフェードアウトの終わり際）は、
+    // 旧シーンが解放されていて SceneColor が真っ黒。ここへ順応させると順応輝度が
+    // 0 まで落ちて自動EVが上限へ張り付き、次のシーンが白飛びで現れる。
+    // フェードインに入ってアルファが下がれば、そのまま新しいシーンへ順応が再開する。
+    toneMapping_->SetAdaptationPaused(CalculateFadeAlpha() >= kExposureHoldAlpha);
 }
 
 void SceneTransition::ApplyBGMVolume() {

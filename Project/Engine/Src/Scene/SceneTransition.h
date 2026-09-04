@@ -8,6 +8,7 @@ namespace CoreEngine {
     class PostEffectManager;
     class FadeEffect;
     class LoadingScreenEffect;
+    class ToneMapping;
     class AudioSystem;
 }
 
@@ -97,6 +98,12 @@ private:
     /// @brief ローディング画面に表示強度を適用
     void ApplyLoadingScreen();
 
+    /// @brief 暗転中は自動露出の順応を止める
+    /// @details 自動露出は「見えている絵」への順応。暗転しきっている間はシーンが
+    ///          解放されていて SceneColor が真っ黒なので、そこへ順応させると
+    ///          順応輝度が 0 まで落ち、次のシーンが白飛びした状態で現れる。
+    void ApplyExposureHold();
+
     /// @brief BGM バスのダッキングをフェードへ同期させる
     /// @details AudioBus::BGM のダッキング係数だけを動かすので、オプション画面が
     ///          設定したバス音量（SetBusVolume）は壊さない。BGM を個別に登録する
@@ -108,6 +115,7 @@ EngineSystem* engine_ = nullptr;
 PostEffectManager* postEffectManager_ = nullptr;
 FadeEffect* fadeEffect_ = nullptr;
 LoadingScreenEffect* loadingScreenEffect_ = nullptr;
+ToneMapping* toneMapping_ = nullptr;
 AudioSystem* audioSystem_ = nullptr;
 
 TransitionPhase phase_ = TransitionPhase::Idle;
@@ -124,6 +132,9 @@ TransitionPhase phase_ = TransitionPhase::Idle;
 
     // 進捗ゲージが現れるまでの時間（秒）
     static constexpr float kGaugeFadeSeconds = 0.3f;
+
+    // このフェードアルファ以上を「画面が見えていない」とみなす（自動露出の凍結境界）
+    static constexpr float kExposureHoldAlpha = 0.98f;
 
     float loadingElapsed_ = 0.0f;   // ローディング画面を表示している時間
     float loadProgress_ = 0.0f;     // シーン読み込みの進捗
