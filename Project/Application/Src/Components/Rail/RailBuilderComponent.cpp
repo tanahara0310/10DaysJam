@@ -16,7 +16,81 @@
 #include <algorithm>
 #include <cmath>
 
+#ifdef USE_IMGUI
+#include "Editor/ImGui/ImGuiAll.h"
+#endif
+
 using namespace CoreEngine;
+
+json GameComponents::RailBuilderComponent::OnSerialize() const {
+    return {
+        { "gridSize", gridSize_ },
+        { "initialGridX", initialGridPosX_ },
+        { "initialGridZ", initialGridPosZ_ },
+        { "horizontalPrioritize", HorizontalPrioritize },
+        { "undoHoldTime", undoPushMaxTime_ },
+        { "undoInterval", undoInterval_ },
+        { "height", height_ },
+        { "pulseBaseScale", pulseBaseScale_ },
+        { "pulseAmplitude", pulseAmplitude_ },
+        { "pulseSpeed", pulseSpeed_ },
+        { "rotationSpeed", rotationSpeed_ },
+        { "groundCost", groundCost_ },
+        { "waterCost", waterCost_ },
+        { "stationReward", stationReward_ },
+        { "resourceReward", resourceReward_ },
+        { "maxSpeedRewardRatio", maxSpeedRewardRatio_ }
+    };
+}
+
+void GameComponents::RailBuilderComponent::OnDeserialize(const json& j) {
+    gridSize_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "gridSize", gridSize_));
+    initialGridPosX_ = std::max(0, JsonManager::SafeGet<int32_t>(j, "initialGridX", initialGridPosX_));
+    initialGridPosZ_ = std::max(0, JsonManager::SafeGet<int32_t>(j, "initialGridZ", initialGridPosZ_));
+    HorizontalPrioritize = JsonManager::SafeGet<bool>(j, "horizontalPrioritize", HorizontalPrioritize);
+    undoPushMaxTime_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "undoHoldTime", undoPushMaxTime_));
+    undoInterval_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "undoInterval", undoInterval_));
+    height_ = JsonManager::SafeGet<float>(j, "height", height_);
+    pulseBaseScale_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "pulseBaseScale", pulseBaseScale_));
+    pulseAmplitude_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "pulseAmplitude", pulseAmplitude_));
+    pulseSpeed_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "pulseSpeed", pulseSpeed_));
+    rotationSpeed_ = JsonManager::SafeGet<float>(j, "rotationSpeed", rotationSpeed_);
+    groundCost_ = JsonManager::SafeGet<uint32_t>(j, "groundCost", groundCost_);
+    waterCost_ = JsonManager::SafeGet<uint32_t>(j, "waterCost", waterCost_);
+    stationReward_ = JsonManager::SafeGet<uint32_t>(j, "stationReward", stationReward_);
+    resourceReward_ = JsonManager::SafeGet<uint32_t>(j, "resourceReward", resourceReward_);
+    maxSpeedRewardRatio_ = std::max(1.0f,
+        JsonManager::SafeGet<float>(j, "maxSpeedRewardRatio", maxSpeedRewardRatio_));
+    gridPosX_ = initialGridPosX_;
+    gridPosZ_ = initialGridPosZ_;
+}
+
+#ifdef USE_IMGUI
+bool GameComponents::RailBuilderComponent::DrawInspector() {
+    bool changed = false;
+    changed |= ImGui::DragFloat("グリッドサイズ", &gridSize_, 0.05f, 0.01f, 20.0f);
+    changed |= ImGui::DragInt("初期X", &initialGridPosX_, 1.0f, 0, 500);
+    changed |= ImGui::DragInt("初期Z", &initialGridPosZ_, 1.0f, 0, 100);
+    changed |= ImGui::Checkbox("水平方向を優先", &HorizontalPrioritize);
+    changed |= ImGui::DragFloat("Undo長押し時間", &undoPushMaxTime_, 0.01f, 0.0f, 5.0f);
+    changed |= ImGui::DragFloat("Undo連続間隔", &undoInterval_, 0.01f, 0.01f, 2.0f);
+    changed |= ImGui::DragFloat("表示高さ", &height_, 0.05f, -20.0f, 20.0f);
+    changed |= ImGui::DragFloat("脈動基準スケール", &pulseBaseScale_, 0.01f, 0.0f, 5.0f);
+    changed |= ImGui::DragFloat("脈動振幅", &pulseAmplitude_, 0.01f, 0.0f, 5.0f);
+    changed |= ImGui::DragFloat("脈動速度", &pulseSpeed_, 0.05f, 0.0f, 30.0f);
+    changed |= ImGui::DragFloat("回転速度", &rotationSpeed_, 0.05f, -30.0f, 30.0f);
+    int groundCost = static_cast<int>(groundCost_);
+    int waterCost = static_cast<int>(waterCost_);
+    int stationReward = static_cast<int>(stationReward_);
+    int resourceReward = static_cast<int>(resourceReward_);
+    if (ImGui::DragInt("地上レールコスト", &groundCost, 1.0f, 0, 100)) { groundCost_ = static_cast<uint32_t>(groundCost); changed = true; }
+    if (ImGui::DragInt("水上レールコスト", &waterCost, 1.0f, 0, 100)) { waterCost_ = static_cast<uint32_t>(waterCost); changed = true; }
+    if (ImGui::DragInt("駅報酬", &stationReward, 1.0f, 0, 999)) { stationReward_ = static_cast<uint32_t>(stationReward); changed = true; }
+    if (ImGui::DragInt("資源報酬", &resourceReward, 1.0f, 0, 999)) { resourceReward_ = static_cast<uint32_t>(resourceReward); changed = true; }
+    changed |= ImGui::DragFloat("速度報酬の最大倍率", &maxSpeedRewardRatio_, 0.05f, 1.0f, 10.0f);
+    return changed;
+}
+#endif
 
 void GameComponents::RailBuilderComponent::Start() {
     transform_ = Sibling<TransformComponent>();
@@ -56,6 +130,14 @@ void GameComponents::RailBuilderComponent::Update() {
     if (!resourceManager_) {
         return;
     }
+
+    // タイマーを更新する
+    timer_ += Time::DeltaTime();
+
+    // TransformComponent のスケールと回転を更新する
+    transform_->Get().scale = {
+        1.0f, pulseBaseScale_ + (sinf(timer_ * pulseSpeed_) * pulseAmplitude_), 1.0f };
+    transform_->Get().rotate.y = timer_ * rotationSpeed_;
 
     // ゲームオブジェクトのオーナーからエンジンシステムを取得し、入力マネージャーを取得する
     GameObject* owner = GetOwner();
@@ -181,9 +263,9 @@ void GameComponents::RailBuilderComponent::Update() {
 
     uint32_t resourceCost = 0;
     if (mapChip == MapChipType::Ground) {
-        resourceCost = 1;
+        resourceCost = groundCost_;
     } else if (mapChip == MapChipType::Water) {
-        resourceCost = 2;
+        resourceCost = waterCost_;
     }
 
     if (!resourceManager_->HasEnoughResource(resourceCost)) {
@@ -194,6 +276,7 @@ void GameComponents::RailBuilderComponent::Update() {
         return;
     }
 
+    OnBuildSE_();
     if (!resourceManager_->UseResource(resourceCost)) {
         return;
     }
@@ -208,7 +291,7 @@ void GameComponents::RailBuilderComponent::Update() {
     SyncTransformToGrid();
 
     if (mapChip == MapChipType::Station) {
-        const uint32_t reward = CalculateSpeedReward(15);
+        const uint32_t reward = CalculateSpeedReward(stationReward_);
         resourceManager_->AddResource(reward);
         railPath_->ConfirmAllPendingRailPlacements();
         Logger::GetInstance().Infof(
@@ -216,7 +299,7 @@ void GameComponents::RailBuilderComponent::Update() {
             "RailBuilder: 駅に到達しました (報酬={}, 駅までのレールを確定)",
             reward);
     } else if (mapChip == MapChipType::Resource) {
-        const uint32_t reward = CalculateSpeedReward(5);
+        const uint32_t reward = CalculateSpeedReward(resourceReward_);
         resourceManager_->AddResource(reward);
         // リソース床は一度だけ取得できるよう、通常のGroundへ戻す。
         mapGenerator_->SetMapChip(
@@ -251,6 +334,8 @@ bool GameComponents::RailBuilderComponent::TryUndoLastRail() {
         "Rail removed at ({}, {}); builder returned to ({}, {}), refund={}",
         undo.removedPosition.first, undo.removedPosition.second,
         gridPosX_, gridPosZ_, undo.refundAmount);
+
+    OnUndoSE_();
     return true;
 }
 
@@ -260,7 +345,7 @@ uint32_t GameComponents::RailBuilderComponent::CalculateSpeedReward(
         ? std::max(trainMovement_->GetSpeedRatio(), 1.0f)
         : 1.0f;
 
-    float speedRatioClamped = std::clamp(speedRatio, 1.0f, 2.0f);
+    float speedRatioClamped = std::clamp(speedRatio, 1.0f, maxSpeedRewardRatio_);
 
     return static_cast<uint32_t>(
         std::floor(static_cast<float>(baseAmount) * speedRatioClamped));
@@ -274,7 +359,7 @@ void GameComponents::RailBuilderComponent::SyncTransformToGrid() {
     transform_->Get().translate.x = static_cast<float>(gridPosX_) * gridSize_;
     transform_->Get().translate.z = static_cast<float>(gridPosZ_) * gridSize_;
 
-    transform_->Get().translate.y = 1.0f;
+    transform_->Get().translate.y = height_;
 }
 
 void GameComponents::RailBuilderComponent::SetGridSize(float size) {

@@ -19,6 +19,7 @@ namespace GameComponents
     {
     public:
         static CoreEngine::CVar<CoreEngine::Vector3> Position;
+        static CoreEngine::CVar<CoreEngine::Vector3> Rotation;
         static CoreEngine::CVar<float> IntroDelay;
         static CoreEngine::CVar<float> IntroDuration;
         static CoreEngine::CVar<float> IntroOffset;

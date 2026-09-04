@@ -9,6 +9,7 @@
 
 #include "Scenes/GameScene/GameScene.h"
 #include "Scenes/TestScene/TestScene.h"
+#include "Scenes/Text3DTestScene/Text3DTestScene.h"
 #include "Scenes/TitleScene/TitleScene.h"
 #include "Scenes/ResultScene/ResultScene.h"
 
@@ -74,6 +75,7 @@ void MyGame::CreateSceneManager()
     sceneManager_->RegisterScene<GameScene::GameScene>("GameScene");
     sceneManager_->RegisterScene<ResultScene::ResultScene>("ResultScene");
     sceneManager_->RegisterScene<CoreEngine::TestScene>("TestScene");
+    sceneManager_->RegisterScene<CoreEngine::Text3DTestScene>("Text3DTestScene");
 }
 
 void MyGame::LoadInitialScene()

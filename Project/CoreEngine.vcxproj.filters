@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp">
@@ -11,6 +11,9 @@
       <Filter>Application\Src\Components\Camera</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp">
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
@@ -72,6 +75,9 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
       <Filter>Application\Src\Scenes\TestScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\Text3DTestScene\Text3DTestScene.cpp">
+      <Filter>Application\Src\Scenes\Text3DTestScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp">
       <Filter>Application\Src\Scenes\TitleScene</Filter>
@@ -273,6 +279,9 @@
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp">
+      <Filter>Application\Src\GameObjects</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraSceneStateIO.cpp">
       <Filter>Engine\Src\Camera</Filter>
@@ -1363,6 +1372,15 @@
     <ClCompile Include="Engine\Src\UI\UIText.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Text\TextGeometryBuilder.cpp">
+      <Filter>Engine\Src\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Text3D\Text3DRenderer.cpp">
+      <Filter>Engine\Src\Graphics\Render\Text3D</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Text3D\Text3DObject.cpp">
+      <Filter>Engine\Src\GameObject\Text3D</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Components\Building\MapChipData.h">
@@ -1378,6 +1396,9 @@
       <Filter>Application\Src\Components\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h">
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
@@ -1466,6 +1487,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.h">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h">
+      <Filter>Application\Src\GameObjects</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\CameraManager.h">
       <Filter>Engine\Src\Camera</Filter>
@@ -2796,6 +2820,9 @@
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
       <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\Text3DTestScene\Text3DTestScene.h">
+      <Filter>Application\Src\Scenes\Text3DTestScene</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -3069,6 +3096,15 @@
     <ClInclude Include="Engine\Src\UI\UIText.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Text\TextGeometryBuilder.h">
+      <Filter>Engine\Src\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Text3D\Text3DRenderer.h">
+      <Filter>Engine\Src\Graphics\Render\Text3D</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Text3D\Text3DObject.h">
+      <Filter>Engine\Src\GameObject\Text3D</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\pch.h">
       <Filter>Engine\Src</Filter>
     </ClInclude>
@@ -3138,6 +3174,9 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\ResultScene">
       <UniqueIdentifier>{0E3C3B7C-C1A6-42A7-BFC6-0A37DB4F0787}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Scenes\Text3DTestScene">
+      <UniqueIdentifier>{f078ea02-7b04-45d1-b33e-7cfdab1d2e2b}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{0F580D97-5827-428A-AF9A-6D974CE04F90}</UniqueIdentifier>
@@ -3468,6 +3507,12 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\Sprite">
       <UniqueIdentifier>{1145DEDA-718E-4CE9-9430-3641660152E5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Render\Text3D">
+      <UniqueIdentifier>{297cc24c-b12a-41f7-8ffa-1c2b76507c84}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\GameObject\Text3D">
+      <UniqueIdentifier>{0685a9b5-d663-4782-887c-56dcce05da00}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render\UI">
       <UniqueIdentifier>{6BBD7C58-19C1-4E92-B472-03D0ECC8A919}</UniqueIdentifier>

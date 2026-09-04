@@ -22,6 +22,7 @@
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "Graphics/Render/UI/TextRenderer.h"
+#include "Graphics/Render/Text3D/Text3DRenderer.h"
 #include "Text/FontManager.h"
 #include "Graphics/Render/Particle/ParticleRenderer.h"
 #include "Graphics/Render/Particle/ModelParticleRenderer.h"
@@ -216,6 +217,12 @@ namespace CoreEngine
             auto textRenderer = std::make_unique<TextRenderer>();
             textRenderer->Initialize(state->dx, state->resourceFactory);
             state->renderManager->RegisterRenderer(RenderPassType::UIText, std::move(textRenderer));
+
+            // 同じ MSDF フォントをワールド空間へ描くパス。
+            // アトラスと距離場は UI 版と共有し、変換と深度の扱いだけが違う
+            auto text3DRenderer = std::make_unique<Text3DRenderer>();
+            text3DRenderer->Initialize(state->dx, state->resourceFactory);
+            state->renderManager->RegisterRenderer(RenderPassType::Text3D, std::move(text3DRenderer));
         });
 
         sequence.Add("レンダラー: パーティクル", [state] {

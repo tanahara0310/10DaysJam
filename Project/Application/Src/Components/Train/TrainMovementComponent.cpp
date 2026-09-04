@@ -14,7 +14,66 @@
 #include <numbers>
 #include <utility>
 
+#ifdef USE_IMGUI
+#include "Editor/ImGui/ImGuiAll.h"
+#endif
+
 using namespace CoreEngine;
+
+json GameComponents::TrainMovementComponent::OnSerialize() const {
+    return {
+        { "gridSize", gridSize_ },
+        { "initialMoveSpeed", initialMoveSpeed_ },
+        { "initialGridX", initialGridX_ },
+        { "initialGridZ", initialGridZ_ },
+        { "speedUpFactor", speedUpFactor_ },
+        { "minMoveSpeed", minMoveSpeed_ },
+        { "turnSlowdownFactor", turnSlowdownFactor_ },
+        { "trainHeight", trainHeight_ },
+        { "requiredRailCount", requiredRailCount_ }
+    };
+}
+
+void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
+    gridSize_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "gridSize", gridSize_));
+    initialMoveSpeed_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "initialMoveSpeed", initialMoveSpeed_));
+    initialGridX_ = std::max(0, JsonManager::SafeGet<int32_t>(j, "initialGridX", initialGridX_));
+    initialGridZ_ = std::max(0, JsonManager::SafeGet<int32_t>(j, "initialGridZ", initialGridZ_));
+    speedUpFactor_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "speedUpFactor", speedUpFactor_));
+    minMoveSpeed_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "minMoveSpeed", minMoveSpeed_));
+    turnSlowdownFactor_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "turnSlowdownFactor", turnSlowdownFactor_), 0.0f, 1.0f);
+    trainHeight_ = JsonManager::SafeGet<float>(j, "trainHeight", trainHeight_);
+    requiredRailCount_ = std::max<std::size_t>(1,
+        JsonManager::SafeGet<std::size_t>(j, "requiredRailCount", requiredRailCount_));
+    moveSpeed_ = std::max(initialMoveSpeed_, minMoveSpeed_);
+    gridX_ = initialGridX_;
+    gridZ_ = initialGridZ_;
+}
+
+#ifdef USE_IMGUI
+bool GameComponents::TrainMovementComponent::DrawInspector() {
+    bool changed = false;
+    changed |= ImGui::DragFloat("グリッドサイズ", &gridSize_, 0.05f, 0.01f, 20.0f);
+    if (ImGui::DragFloat("初期速度", &initialMoveSpeed_, 0.01f, 0.0f, 20.0f)) {
+        moveSpeed_ = std::max(initialMoveSpeed_, minMoveSpeed_);
+        changed = true;
+    }
+    changed |= ImGui::DragFloat("加速係数", &speedUpFactor_, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("最低速度", &minMoveSpeed_, 0.01f, 0.0f, 20.0f);
+    changed |= ImGui::SliderFloat("カーブ減速倍率", &turnSlowdownFactor_, 0.0f, 1.0f);
+    changed |= ImGui::DragFloat("列車の高さ", &trainHeight_, 0.05f, -20.0f, 20.0f);
+    int required = static_cast<int>(requiredRailCount_);
+    if (ImGui::DragInt("発車に必要なレール数", &required, 1.0f, 1, 100)) {
+        requiredRailCount_ = static_cast<std::size_t>(std::max(required, 1));
+        changed = true;
+    }
+    changed |= ImGui::DragInt("初期X", &initialGridX_, 1.0f, 0, 500);
+    changed |= ImGui::DragInt("初期Z", &initialGridZ_, 1.0f, 0, 100);
+    ImGui::TextDisabled("現在速度: %.3f", moveSpeed_);
+    return changed;
+}
+#endif
 
 void GameComponents::TrainMovementComponent::Start() {
     transform_ = Sibling<TransformComponent>();
@@ -50,7 +109,7 @@ void GameComponents::TrainMovementComponent::Update() {
 
     // 発車前は、プレイヤーが未確定レールを指定マス敷くまで待機する。
     if (!hasStarted_) {
-        if (railPath_->GetUnconfirmedRailCount() < kRequiredRailCount) {
+        if (railPath_->GetUnconfirmedRailCount() < requiredRailCount_) {
             return;
         }
         hasStarted_ = true;
@@ -178,7 +237,7 @@ void GameComponents::TrainMovementComponent::SyncTransformToProgress() {
     transform_->Get().translate.z =
         startZ + (destinationZ - startZ) * movementProgress_;
 
-    transform_->Get().translate.y = 1.0f;
+    transform_->Get().translate.y = trainHeight_;
 }
 
 void GameComponents::TrainMovementComponent::UpdateRotation() {
@@ -202,7 +261,7 @@ void GameComponents::TrainMovementComponent::UpdateRotation() {
     // 2区間目以降で向きが変わった場合だけ速度を半分にする。
     const float newRotationY = transform_->Get().rotate.y;
     if (hasDirection_ && oldRotationY != newRotationY) {
-        moveSpeed_ = std::max(moveSpeed_ * 0.5f, minMoveSpeed_);
+        moveSpeed_ = std::max(moveSpeed_ * turnSlowdownFactor_, minMoveSpeed_);
 
         Logger::GetInstance().Infof(
             LogCategory::Game,

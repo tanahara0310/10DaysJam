@@ -184,6 +184,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailResourceManagerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp" />
@@ -204,6 +205,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\Text3DTestScene\Text3DTestScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.cpp" />
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleSceneUi.cpp" />
@@ -272,6 +274,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
+    <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp" />
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraSceneStateIO.cpp" />
@@ -758,6 +761,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Text\FontManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\UI\TextRenderer.cpp" />
     <ClCompile Include="Engine\Src\UI\UIText.cpp" />
+    <ClCompile Include="Engine\Src\Text\TextGeometryBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Text3D\Text3DRenderer.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Text3D\Text3DObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application\Src\Components\Building\MapChipData.h" />
@@ -765,6 +771,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h" />
+    <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailResourceManagerComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h" />
@@ -788,6 +795,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.h" />
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneUi.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
+    <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterConstantBufferSet.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.h" />
@@ -1237,6 +1245,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Particle\Modules\SizeModule.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\VelocityModule.h" />
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h" />
+    <ClInclude Include="Application\Src\Scenes\Text3DTestScene\Text3DTestScene.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h" />
     <ClInclude Include="Engine\Src\Camera\Camera.h" />
     <ClInclude Include="Engine\Src\Camera\Control\OrbitFlyController.h" />
@@ -1328,6 +1337,9 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Text\FontManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\UI\TextRenderer.h" />
     <ClInclude Include="Engine\Src\UI\UIText.h" />
+    <ClInclude Include="Engine\Src\Text\TextGeometryBuilder.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Text3D\Text3DRenderer.h" />
+    <ClInclude Include="Engine\Src\GameObject\Text3D\Text3DObject.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

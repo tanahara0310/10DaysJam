@@ -39,6 +39,14 @@ namespace GameComponents
             return "MapView";
         }
 
+        json OnSerialize() const override;
+        void OnDeserialize(const json& j) override;
+
+#ifdef USE_IMGUI
+        const char* GetInspectorName() const override { return "マップ描画"; }
+        bool DrawInspector() override;
+#endif
+
         // 最初の更新直前に一度だけ呼ばれる
         void Start() override;
         // 毎フレーム呼ばれる
@@ -54,6 +62,14 @@ namespace GameComponents
 
         uint32_t mapViewCenterX_ = 0;
         uint32_t viewDistanceX_ = 30;
+        float groundHeight_ = -0.5f;
+        CoreEngine::Vector3 groundScale_ = { 0.6f, 0.6f, 0.6f };
+        float waterHeight_ = 0.0f;
+        CoreEngine::Vector3 waterScale_ = { 1.0f, 0.3f, 1.0f };
+        float stationHeight_ = 0.7f;
+        CoreEngine::Vector3 stationScale_ = { 0.5f, 0.5f, 0.5f };
+        float rockHeight_ = 0.7f;
+        CoreEngine::Vector3 rockScale_ = { 0.7f, 0.7f, 0.7f };
 
         MapGeneratorComponent* mapGenerator_ = nullptr;
         ModelRenderPoolComponent* groundRenderPool_ = nullptr;

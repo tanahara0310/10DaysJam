@@ -5,8 +5,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Text/FontManager.h"
 #include "Text/MsdfFont.h"
-#include "Text/TextEncoding.h"
-#include "Text/TextLineBreak.h"
+#include "Text/TextGeometryBuilder.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
@@ -29,11 +28,17 @@ namespace CoreEngine
 
     namespace
     {
-        constexpr size_t kNoBreakCandidate = (std::numeric_limits<size_t>::max)();
-
         /// 距離場は輪郭の外側 pxRange/2 までしか情報を持たない。
-        /// 端ぎりぎりは値が飽和しているので、少し内側を上限にする
-        constexpr float kMaxOutlineSd = 0.45f;
+        /// 実際にはクワッド最外テクセルの中心が端から 0.5px 内側にあるので
+        /// 距離場の値は 0.5/pxRange で底を打ち、さらに AA の立ち上がり半幅ぶんの
+        /// 余地も要る。これを割ると縁取りがフェードし切る前にクワッドで
+        /// 断ち切られ、文字のまわりに薄黒い矩形が出る。
+        ///
+        /// ここは表示サイズに依らない静的な歯止め。実サイズに追従する下限は
+        /// MsdfText.PS.hlsl の edgeFloor が毎画素で掛けるので、
+        /// ここは既定の pxRange（12）で余裕がある値にしてある。
+        /// PS の kMaxOutlineSd と同じ値にしておくこと
+        constexpr float kMaxOutlineSd = 0.375f;
     }
 
 #ifdef USE_IMGUI
@@ -209,76 +214,6 @@ namespace CoreEngine
         return (sdUnitsPerEm > 0.0f) ? (kMaxOutlineSd / sdUnitsPerEm) : 0.0f;
     }
 
-    void UIText::BuildLines(const std::vector<char32_t>& codePoints,
-        const std::vector<MsdfGlyph>& glyphs,
-        float wrapWidthEm,
-        std::vector<LineRange>& outLines)
-    {
-        outLines.clear();
-
-        const size_t count = codePoints.size();
-        const bool wrapping = wrapWidthEm > 0.0f;
-
-        size_t lineBegin = 0;
-        float lineWidth = 0.0f;
-        // 「ここで折ってよい」位置と、そこまでの幅
-        size_t breakCandidate = kNoBreakCandidate;
-        float breakCandidateWidth = 0.0f;
-
-        for (size_t i = 0; i < count; ++i) {
-            const char32_t codePoint = codePoints[i];
-            if (codePoint == U'\r') { continue; }
-
-            if (codePoint == U'\n') {
-                outLines.push_back({ lineBegin, i, lineWidth });
-                lineBegin = i + 1;
-                lineWidth = 0.0f;
-                breakCandidate = kNoBreakCandidate;
-                continue;
-            }
-
-            // この文字の直前で折れるなら候補として覚えておく。
-            // 禁則（行頭に句読点・行末に開き括弧）はここで弾かれる
-            if (wrapping && i > lineBegin
-                && TextLineBreak::CanBreakBetween(codePoints[i - 1], codePoint)) {
-                breakCandidate = i;
-                breakCandidateWidth = lineWidth;
-            }
-
-            const float advance = glyphs[i].advance;
-
-            if (wrapping && i > lineBegin && lineWidth + advance > wrapWidthEm) {
-                // 候補が無ければその場で強制的に折る
-                // （欧文の長い単語や、禁則で候補が潰れた場合）
-                const bool hasCandidate =
-                    breakCandidate != kNoBreakCandidate && breakCandidate > lineBegin;
-                const size_t breakAt = hasCandidate ? breakCandidate : i;
-                const float width = hasCandidate ? breakCandidateWidth : lineWidth;
-
-                outLines.push_back({ lineBegin, breakAt, width });
-
-                lineBegin = breakAt;
-                // 行頭に残る空白は詰める
-                while (lineBegin < count && codePoints[lineBegin] == U' ') {
-                    ++lineBegin;
-                }
-
-                lineWidth = 0.0f;
-                breakCandidate = kNoBreakCandidate;
-
-                // 折った位置から走査し直す（lineBegin は必ず前進するので止まらない）
-                i = lineBegin - 1;
-                continue;
-            }
-
-            lineWidth += advance;
-        }
-
-        if (lineBegin < count || outLines.empty()) {
-            outLines.push_back({ lineBegin, count, lineWidth });
-        }
-    }
-
     void UIText::RebuildGeometry()
     {
         geometryDirty_ = false;
@@ -288,132 +223,49 @@ namespace CoreEngine
 
         if (!font_ || !font_->IsValid()) { return; }
 
-        const std::vector<char32_t> codePoints = Utf8ToUtf32(textUtf8_);
-        if (codePoints.empty()) { return; }
-
-        // アトラスに無い文字は裏で焼いてもらう。焼き上がるとフォント側の
-        // グリフ世代が進み、Draw がそれを見て再度ここへ来る
-        font_->RequestGlyphs(codePoints);
-        lastGlyphGeneration_ = font_->GetGlyphGeneration();
-
-        // グリフ情報は先にまとめて引く。1 文字ずつ引くとフォント側のロックを
-        // 文字数ぶん取ることになり、ワーカーのベイクと競合しやすい。
-        // アトラスに無い文字は .notdef（□）へ倒れる。
-        // ここで捨てると「文字が黙って消える」ことになり、不具合に気付けない
-        std::vector<MsdfGlyph> glyphs;
-        glyphs.reserve(codePoints.size());
-        for (char32_t codePoint : codePoints) {
-            glyphs.push_back(font_->ResolveGlyph(codePoint));
-        }
-
-        const MsdfFontMetrics& metrics = font_->GetMetrics();
-        const float lineAdvance = metrics.lineHeight * lineSpacing_;
-
-        // ── ①行に分ける（折り返し + 禁則処理）──────────────────
-        // フィールドを固定しているならその幅で折る。
-        // 折り返し幅を別に持たせると「枠の幅」と食い違って直感に反するため
+        // 折り返し幅とフィールドは px で持っているので em へ直す。
+        // 組版そのもの（折り返し・禁則・整列）は TextGeometry::Build が行い、
+        // ここは px と em の換算と、その結果を UILayout へ反映する係。
+        // フィールドを固定しているならその幅で折る
+        // （折り返し幅を別に持たせると「枠の幅」と食い違って直感に反するため）
         const float wrapWidthPx = fieldAutoFit_ ? wrapWidthPx_ : layout_.size.x;
-        const float wrapWidthEm = (wrapWidthPx > 0.0f && fontSize_ > 0.0f)
+
+        TextGeometry::BuildParams params{};
+        params.lineSpacing = lineSpacing_;
+        params.wrapWidthEm = (wrapWidthPx > 0.0f && fontSize_ > 0.0f)
             ? wrapWidthPx / fontSize_
             : 0.0f;
+        params.autoFitField = fieldAutoFit_;
+        params.fieldEm = (fieldAutoFit_ || fontSize_ <= 0.0f)
+            ? Vector2{ 0.0f, 0.0f }
+            : Vector2{ layout_.size.x / fontSize_, layout_.size.y / fontSize_ };
+        params.alignH = alignH_;
+        params.alignV = alignV_;
+        params.pivot = layout_.pivot;
+        // UI のスクリーン座標は Y 下正
+        params.yAxisDown = true;
+        params.maxGlyphs = TextRenderer::kMaxGlyphsPerText;
 
-        std::vector<LineRange> lines;
-        BuildLines(codePoints, glyphs, wrapWidthEm, lines);
-        lineCount_ = static_cast<uint32_t>(lines.size());
+        const TextGeometry::BuildResult result =
+            TextGeometry::Build(*font_, textUtf8_, params, glyphVertices_);
 
-        float maxWidth = 0.0f;
-        size_t drawableGlyphCount = 0;
-        for (const LineRange& line : lines) {
-            maxWidth = (std::max)(maxWidth, line.width);
-            for (size_t i = line.begin; i < line.end; ++i) {
-                if (glyphs[i].hasBitmap) { ++drawableGlyphCount; }
-            }
-        }
-
-        const float totalHeight =
-            static_cast<float>(lines.size() - 1) * lineAdvance
-            + (metrics.ascender - metrics.descender);
-
-        // 折り返しているなら、囲み矩形は指定幅そのものとして扱う
-        // （中央寄せ等で「指定した箱」を基準にできるようにする）
-        measuredSizeEm_ = { (wrapWidthEm > 0.0f) ? wrapWidthEm : maxWidth, totalHeight };
+        measuredSizeEm_ = result.measuredSizeEm;
+        lineCount_ = result.lineCount;
+        lastGlyphGeneration_ = result.glyphGeneration;
 
         // 自動調整ならフィールドを文字列の大きさへ合わせる。
-        // 固定しているなら layout_.size がそのままフィールドの大きさ
-        if (fieldAutoFit_) {
+        // 固定しているなら layout_.size がそのままフィールドの大きさ。
+        // 空文字列（行が 1 つも組めなかった）のときは触らない。
+        // 0 へ潰すと Canvas 上の当たり判定まで消えて、選び直せなくなる
+        if (fieldAutoFit_ && result.lineCount > 0) {
             layout_.size = GetMeasuredSize();
         }
 
-        // 文字を流し込む枠（em 単位）。頂点は em で組むのでここも em に揃える
-        const Vector2 fieldEm = fieldAutoFit_ || fontSize_ <= 0.0f
-            ? measuredSizeEm_
-            : Vector2{ layout_.size.x / fontSize_, layout_.size.y / fontSize_ };
-
-        if (drawableGlyphCount == 0) { return; }
-
-        // 共有インデックスバッファの長さが上限。超えた分は切り捨てる
-        if (drawableGlyphCount > TextRenderer::kMaxGlyphsPerText) {
-            if (!glyphLimitWarned_) {
-                glyphLimitWarned_ = true;
-                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
-                    "UIText '{}': グリフ数が上限 {} を超えたため切り詰めました（要求 {}）",
-                    GetName(), TextRenderer::kMaxGlyphsPerText, drawableGlyphCount);
-            }
-            drawableGlyphCount = TextRenderer::kMaxGlyphsPerText;
-        }
-
-        // ── ②クワッドを組む ──────────────────────────────────────
-        // 全て em 単位。フォントサイズ・位置・回転は描画時にまとめて掛ける。
-        // 原点はフィールドの左上（ピボット基準）
-        const float originX = -layout_.pivot.x * fieldEm.x;
-
-        // 縦揃え：文字列全体の高さとフィールドの高さの差を配る
-        const float verticalSlack = fieldEm.y - totalHeight;
-        const float alignOffsetY =
-            (alignV_ == TextAlignV::Middle) ? verticalSlack * 0.5f :
-            (alignV_ == TextAlignV::Bottom) ? verticalSlack : 0.0f;
-
-        const float originY = -layout_.pivot.y * fieldEm.y + alignOffsetY;
-
-        // 横揃え：行ごとに幅が違うので、行単位で書き出し位置をずらす
-        const auto alignOffsetX = [this, &fieldEm](float lineWidth) {
-            switch (alignH_) {
-            case TextAlignH::Center: return (fieldEm.x - lineWidth) * 0.5f;
-            case TextAlignH::Right:  return  fieldEm.x - lineWidth;
-            default:                 return 0.0f;
-            }
-            };
-
-        glyphVertices_.reserve(drawableGlyphCount * 4);
-
-        for (size_t lineIndex = 0; lineIndex < lines.size(); ++lineIndex) {
-            const LineRange& line = lines[lineIndex];
-            const float baselineY =
-                originY + metrics.ascender + static_cast<float>(lineIndex) * lineAdvance;
-
-            float penX = alignOffsetX(line.width);
-            for (size_t i = line.begin; i < line.end; ++i) {
-                const MsdfGlyph& glyph = glyphs[i];
-
-                if (glyph.hasBitmap && glyphVertices_.size() / 4 < drawableGlyphCount) {
-                    // UI 座標系は Y 下正。フォントの plane 境界は Y 上正なので符号を反転する
-                    const float left = originX + penX + glyph.planeLeft;
-                    const float right = originX + penX + glyph.planeRight;
-                    const float top = baselineY - glyph.planeTop;
-                    const float bottom = baselineY - glyph.planeBottom;
-
-                    // texcoord.z にアトラス配列の枚番号を載せる。
-                    // 複数枚にまたがる文字列でもドローコールが分かれない
-                    const float page = static_cast<float>(glyph.page);
-
-                    glyphVertices_.push_back({ { left,  bottom }, { glyph.uvLeft,  glyph.uvBottom, page } });
-                    glyphVertices_.push_back({ { left,  top    }, { glyph.uvLeft,  glyph.uvTop,    page } });
-                    glyphVertices_.push_back({ { right, bottom }, { glyph.uvRight, glyph.uvBottom, page } });
-                    glyphVertices_.push_back({ { right, top    }, { glyph.uvRight, glyph.uvTop,    page } });
-                }
-
-                penX += glyph.advance;
-            }
+        if (result.truncated && !glyphLimitWarned_) {
+            glyphLimitWarned_ = true;
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
+                "UIText '{}': グリフ数が上限 {} を超えたため切り詰めました（要求 {}）",
+                GetName(), TextRenderer::kMaxGlyphsPerText, result.requestedGlyphCount);
         }
     }
 
