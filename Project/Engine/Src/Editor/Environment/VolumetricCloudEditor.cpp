@@ -183,12 +183,13 @@ namespace CoreEngine {
             CVarRegistry::Get().NotifyCommit();
         }
 
-        /// @brief CVar 1 本を任意ラベルのスライダーで編集する（範囲は CVar 定義から取る）
-        void MetaSliderFloat(const char* label, CVar<float>& cvar, const char* format, const char* help)
+        /// @brief CVar 1 本を任意ラベルのドラッグで編集する（範囲は CVar 定義から取る）
+        void MetaDragFloat(const char* label, CVar<float>& cvar, const char* format, const char* help)
         {
             const CVarRange range = cvar.GetRange();
             float value = cvar.Get();
-            if (ImGui::SliderFloat(label, &value, range.min, range.max, format)) {
+            if (ImGui::DragFloat(label, &value, CVarUI::DragSpeed(range),
+                    range.min, range.max, format, ImGuiSliderFlags_AlwaysClamp)) {
                 CVarUndoStack::Get().BeginEdit(&cvar);
                 cvar.Set(value);
             }
@@ -376,8 +377,11 @@ namespace CoreEngine {
 #ifdef USE_IMGUI
         // 曇り度は GlobalCoverage と DetailErosionStrength を連動させる
         // （カバレッジだけ下げると雲塊が粒状に崩れるため。個別調整は詳細設定から）
+        const CVarRange coverageRange = CloudCVars::GlobalCoverage.GetRange();
         float coverage = CloudCVars::GlobalCoverage.Get();
-        const bool coverageChanged = ImGui::SliderFloat("曇り度", &coverage, 0.0f, 1.0f, "%.2f");
+        const bool coverageChanged = ImGui::DragFloat("曇り度", &coverage,
+            CVarUI::DragSpeed(coverageRange), coverageRange.min, coverageRange.max, "%.2f",
+            ImGuiSliderFlags_AlwaysClamp);
         if (ImGui::IsItemActivated()) {
             erosionOnEditStart_ = CloudCVars::DetailErosionStrength.Get();
         }
@@ -393,11 +397,11 @@ namespace CoreEngine {
         HelpMarker("空を覆う雲の割合。縁の侵食量（DetailErosionStrength）も\n"
             "粒状に崩れない値へ連動して動きます。");
 
-        MetaSliderFloat("雲の濃さ", CloudCVars::DensityScale, "%.3f",
+        MetaDragFloat("雲の濃さ", CloudCVars::DensityScale, "%.3f",
             "雲の密度。上げるほど厚く不透明になり、下げると薄い霞になります。");
-        MetaSliderFloat("雲底の高さ", CloudCVars::LayerBottomAltitudeM, "%.0f m",
+        MetaDragFloat("雲底の高さ", CloudCVars::LayerBottomAltitudeM, "%.0f m",
             "雲層の下端の高度。");
-        MetaSliderFloat("層の厚み", CloudCVars::LayerThicknessM, "%.0f m",
+        MetaDragFloat("層の厚み", CloudCVars::LayerThicknessM, "%.0f m",
             "雲層の縦の厚み。厚いほど背の高い雲が育ちます。");
 
         // 風向きは角度 1 本で WindDirX/Z の 2 CVar へ分解する（+X 基準の反時計回り）
@@ -406,7 +410,10 @@ namespace CoreEngine {
         if (angleDeg < 0.0f) {
             angleDeg += 360.0f;
         }
-        const bool windChanged = ImGui::SliderFloat("風向き", &angleDeg, 0.0f, 360.0f, "%.0f°");
+        constexpr CVarRange kWindAngleRange{ 0.0f, 360.0f };
+        const bool windChanged = ImGui::DragFloat("風向き", &angleDeg,
+            CVarUI::DragSpeed(kWindAngleRange), kWindAngleRange.min, kWindAngleRange.max, "%.0f°",
+            ImGuiSliderFlags_AlwaysClamp);
         if (ImGui::IsItemActivated()) {
             windDirZOnEditStart_ = CloudCVars::WindDirZ.Get();
         }
@@ -422,7 +429,7 @@ namespace CoreEngine {
         HelpMarker("雲が流れていく方角（+X 方向が 0°、+Z 方向が 90°）。\n"
             "配置ペイントのマップ左下にも矢印で表示されます。");
 
-        MetaSliderFloat("風速", CloudCVars::WindSpeedMPerS, "%.1f m/s",
+        MetaDragFloat("風速", CloudCVars::WindSpeedMPerS, "%.1f m/s",
             "雲の流れる速さ。");
 #endif
     }
@@ -502,7 +509,7 @@ namespace CoreEngine {
         }
 
         // ---- ペイント領域（ワールド固定・タイルしない） ----
-        MetaSliderFloat("ペイント領域の広さ", CloudCVars::PaintRegionSizeM, "%.0f m",
+        MetaDragFloat("ペイント領域の広さ", CloudCVars::PaintRegionSizeM, "%.0f m",
             "ペイントを置けるワールド上の矩形の一辺。この外は手続き生成のままです。");
         if (ImGui::Button("領域をカメラ位置へ移動")) {
             const Vector3 cam = manager.GetCameraWorldPosition();
