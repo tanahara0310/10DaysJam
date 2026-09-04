@@ -40,6 +40,9 @@ namespace CoreEngine
         /// @brief FrameStart でカメラ操作を反映し、結果を CVar へ写す
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
 
+        /// @brief 停止中も回す（止めるとエディタカメラを動かせなくなる）
+        bool RunsWhileStopped() const override { return true; }
+
         /// @brief 最後の設定・姿勢を CVar へ写す（カメラの破棄より先に行う）
         void Finalize(SceneContext& ctx) override;
 

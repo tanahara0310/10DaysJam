@@ -17,6 +17,9 @@ namespace CoreEngine
 
         void PostSceneInitialize(SceneContext& ctx) override;
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
+
+        /// @brief 停止中も回す（止めると大気・フォグのエディタが効かなくなる）
+        bool RunsWhileStopped() const override { return true; }
         void Finalize(SceneContext& ctx) override;
 
         /// @brief シーンの SkyBox（大気散乱で描く空）を取得
