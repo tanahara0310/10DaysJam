@@ -32,8 +32,16 @@ namespace CoreEngine
         constexpr size_t kNoBreakCandidate = (std::numeric_limits<size_t>::max)();
 
         /// 距離場は輪郭の外側 pxRange/2 までしか情報を持たない。
-        /// 端ぎりぎりは値が飽和しているので、少し内側を上限にする
-        constexpr float kMaxOutlineSd = 0.45f;
+        /// 実際にはクワッド最外テクセルの中心が端から 0.5px 内側にあるので
+        /// 距離場の値は 0.5/pxRange で底を打ち、さらに AA の立ち上がり半幅ぶんの
+        /// 余地も要る。これを割ると縁取りがフェードし切る前にクワッドで
+        /// 断ち切られ、文字のまわりに薄黒い矩形が出る。
+        ///
+        /// ここは表示サイズに依らない静的な歯止め。実サイズに追従する下限は
+        /// MsdfText.PS.hlsl の edgeFloor が毎画素で掛けるので、
+        /// ここは既定の pxRange（12）で余裕がある値にしてある。
+        /// PS の kMaxOutlineSd と同じ値にしておくこと
+        constexpr float kMaxOutlineSd = 0.375f;
     }
 
 #ifdef USE_IMGUI
