@@ -201,6 +201,7 @@ void GameComponents::RailBuilderComponent::Update() {
         return;
     }
 
+    OnBuildSE_();
     if (!resourceManager_->UseResource(resourceCost)) {
         return;
     }
@@ -258,6 +259,8 @@ bool GameComponents::RailBuilderComponent::TryUndoLastRail() {
         "Rail removed at ({}, {}); builder returned to ({}, {}), refund={}",
         undo.removedPosition.first, undo.removedPosition.second,
         gridPosX_, gridPosZ_, undo.refundAmount);
+
+    OnUndoSE_();
     return true;
 }
 

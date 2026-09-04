@@ -3,6 +3,7 @@
 #include "GameObject/Component/Core/IComponent.h"
 
 #include <cstdint>
+#include <functional>
 
 namespace CoreEngine
 {
@@ -28,10 +29,13 @@ namespace GameComponents
             GameComponents::RailPathComponent* railPath = nullptr,
             GameComponents::RailResourceManagerComponent* resourceManager = nullptr,
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
-            GameComponents::TrainMovementComponent* trainMovement = nullptr)
+            GameComponents::TrainMovementComponent* trainMovement = nullptr,
+            std::function<void()> OnBuildSE = nullptr,
+            std::function<void()> OnUndoSE = nullptr)
             : gridSize_(gridSize), gridPosX_(gridPosX), gridPosZ_(gridPosZ),
               railPath_(railPath), resourceManager_(resourceManager),
-              mapGenerator_(mapGenerator), trainMovement_(trainMovement) {
+              mapGenerator_(mapGenerator), trainMovement_(trainMovement),
+              OnBuildSE_(OnBuildSE), OnUndoSE_(OnUndoSE) {
         }
 
         // コンポーネントを識別する名前。必須
@@ -76,5 +80,8 @@ namespace GameComponents
         float undoIntervalTimer_ = 0.0f;
 
         float timer_ = 0.0f;
+
+        std::function<void()> OnBuildSE_ = nullptr;
+        std::function<void()> OnUndoSE_ = nullptr;
     };
 }

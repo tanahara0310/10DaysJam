@@ -48,6 +48,29 @@ void GameScene::GameScene::OnInitialize() {
         kGameBgmPath,
         { .bus = AudioBus::BGM, .loop = true, .volume = 1.0f / 3.0f });
 
+    // ========== SEの登録 ==========
+    std::function<void()> playDecisionSe = [this] {
+        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+            audioSystem->PlayOneShot(
+                "Application/Assets/Sounds/SE/decision.mp3",
+                { .bus = AudioBus::SE });
+        }
+        };
+    std::function<void()> playBuildSe = [this] {
+        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+            audioSystem->PlayOneShot(
+                "Application/Assets/Sounds/SE/build.mp3",
+                { .bus = AudioBus::SE });
+        }
+        };
+    std::function<void()> playUndoSe = [this] {
+        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+            audioSystem->PlayOneShot(
+                "Application/Assets/Sounds/SE/build_return.mp3",
+                { .bus = AudioBus::SE });
+        }
+        };
+
     // ========== ゲームルールの設定 ==========
     float gridSize = 1.0f; // グリッドサイズを設定
     uint32_t mapSizeZ = 9; // マップのZ方向のサイズを設定
@@ -160,7 +183,8 @@ void GameScene::GameScene::OnInitialize() {
         railPath->GetComponent<GameComponents::RailPathComponent>(),
         railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>(),
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
-        train->GetComponent<GameComponents::TrainMovementComponent>());
+        train->GetComponent<GameComponents::TrainMovementComponent>(),
+        playBuildSe, playUndoSe);
 
     railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("arrow.obj");
 
