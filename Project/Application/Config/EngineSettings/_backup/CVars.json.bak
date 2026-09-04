@@ -46,16 +46,12 @@
         0.3420201539993286,
         0.005947260186076164
     ],
-    "r.AtmosphereLights.SunDirection": [
-        -0.24511165916919708,
-        -0.8737044930458069,
-        0.4201914072036743
-    ],
     "r.AutoExposure.Enabled": true,
     "r.Bloom.Intensity": 0.9480000138282776,
     "r.Bloom.SoftKnee": 0.35100001096725464,
     "r.Blur.Intensity": 2.5290000438690186,
     "r.CAS.Enabled": false,
+    "r.Cloud.DensityScale": 0.007000000216066837,
     "r.Cloud.DetailErosionStrength": 0.1509999930858612,
     "r.Cloud.GlobalCoverage": 0.4699999988079071,
     "r.Cloud.LayerThickness": 1941.0,
