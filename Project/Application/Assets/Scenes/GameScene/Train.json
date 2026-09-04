@@ -1,0 +1,49 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    3.0,
+                    0.0,
+                    4.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "gridSize": 1.0,
+                "initialGridX": 3,
+                "initialGridZ": 4,
+                "initialMoveSpeed": 2.0,
+                "minMoveSpeed": 2.0,
+                "requiredRailCount": 5,
+                "speedUpFactor": 0.75,
+                "trainHeight": 1.0,
+                "turnSlowdownFactor": 0.753000020980835
+            },
+            "type": "TrainMovement"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "name": "Train"
+}

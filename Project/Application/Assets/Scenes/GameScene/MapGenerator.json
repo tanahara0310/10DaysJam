@@ -1,0 +1,38 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "csvChunkSizeX": 10,
+                "initialGenerateSizeX": 30,
+                "mapSizeZ": 9,
+                "selectedCsvPool": "Area1",
+                "stationBuildInterval": 5
+            },
+            "type": "MapGenerator"
+        }
+    ],
+    "name": "MapGenerator"
+}
