@@ -1,6 +1,12 @@
 {
     "Title.CameraShake.Strength": 0.7400000095367432,
     "Title.Monkey.Distance": 0.41499999165534973,
+    "Title.UI.HintColor": [
+        0.8509804010391235,
+        0.9215686321258545,
+        1.0,
+        0.0
+    ],
     "Title.UI.HintFontSize": 40.21799850463867,
     "Title.UI.HintPosition": [
         0.0,
@@ -19,9 +25,9 @@
     "r.Blur.Intensity": 2.5290000438690186,
     "r.CAS.Enabled": false,
     "r.Cloud.CloudTopVariation": 0.4000000059604645,
-    "r.Cloud.DetailErosionStrength": 0.1599999964237213,
+    "r.Cloud.DetailErosionStrength": 0.141739159822464,
     "r.Cloud.Enabled": false,
-    "r.Cloud.GlobalCoverage": 0.5,
+    "r.Cloud.GlobalCoverage": 0.7699999809265137,
     "r.Cloud.LayerBottomAltitude": 2000.0,
     "r.Cloud.LayerThickness": 3000.0,
     "r.Cloud.PaintRegionSize": 36081.0,
