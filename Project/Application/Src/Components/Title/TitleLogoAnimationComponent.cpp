@@ -27,13 +27,13 @@ namespace GameComponents
         "Title.Transform.Position",
         { -0.08570337f, 3.187f, -0.81899166f },
         "title.obj の最終位置（ワールド座標）",
-        CoreEngine::CVarRange{ -100.0f, 100.0f } };
+        CoreEngine::CVarRange{ -10.0f, 10.0f } };
 
     CoreEngine::CVar<CoreEngine::Vector3> TitleLogoAnimationComponent::Rotation{
         "Title.Transform.Rotation",
         { 0.0f, 0.0f, 0.0f },
         "title.obj の最終回転（ラジアン）",
-        CoreEngine::CVarRange{ -6.283185f, 6.283185f } };
+        CoreEngine::CVarRange{ -3.14f, 3.14f } };
 
     CoreEngine::CVar<CoreEngine::Vector3> TitleLogoAnimationComponent::Scale{
         "Title.Transform.Scale",
