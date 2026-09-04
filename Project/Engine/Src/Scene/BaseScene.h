@@ -36,7 +36,7 @@ namespace CoreEngine
 
         /// @brief 更新（共通処理 + 派生クラスの更新）
         /// @note このメソッドはfinalです。派生クラスはOnUpdate()をオーバーライドしてください
-        virtual void Update() override final;
+        virtual void Update(SceneUpdateMode mode) override final;
 
         /// @brief 描画キューの構築（全 GameObject を RenderManager へ登録する）
         virtual void PrepareRender() override;
@@ -118,7 +118,8 @@ namespace CoreEngine
         void RefreshFeatureContext();
 
         /// @brief 全 Feature の Update を指定フェーズでディスパッチ
-        void DispatchUpdate(SceneUpdatePhase phase);
+        /// @param stopped 進行を止めているか（RunsWhileStopped() の Feature だけを回す）
+        void DispatchUpdate(SceneUpdatePhase phase, bool stopped);
 
     protected:
         // 派生クラスからアクセス可能な共通メンバー

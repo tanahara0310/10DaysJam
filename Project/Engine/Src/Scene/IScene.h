@@ -40,13 +40,23 @@ struct RenderViewRequest {
     std::function<void(const RenderViewResult&)> completionCallback;
 };
 
+/// @brief シーン更新の粒度（SceneManager が毎フレーム指定する）
+enum class SceneUpdateMode {
+    Full,      ///< 通常。ゲームロジックと全 Feature を回す
+    Suspended, ///< ゲームの進行を止め、常時更新の Feature（RunsWhileStopped）だけを回す
+};
+
 /// @brief シーンのインターフェース。SceneManager はこの型だけを介してシーンを回す
 class IScene {
 public:
     virtual ~IScene() = default;
 
     /// @brief 毎フレームのロジック更新
-    virtual void Update() = 0;
+    /// @param mode Suspended でゲームの進行だけを止める（シーン遷移のフェード中）
+    /// @note ここを丸ごと呼ばずに飛ばしてはいけない。大気・雲・フォグは毎フレームの
+    ///       更新で「このフレーム有効」フラグを立て直しており、1 フレームでも飛ばすと
+    ///       その場で描画から外れる。止めたいときは Suspended を渡すこと。
+    virtual void Update(SceneUpdateMode mode) = 0;
     /// @brief 描画キューの構築（実際の描画は RenderGraph の各パスが行う）
     virtual void PrepareRender() {}
     /// @brief シーン終了時の後始末
