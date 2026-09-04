@@ -15,8 +15,8 @@
     ],
     "fieldAutoFit": true,
     "fieldSize": {
-        "x": 789.85546875,
-        "y": 105.46875
+        "x": 587.408203125,
+        "y": 143.6484375
     },
     "font": "Default",
     "fontSize": 108.0,
@@ -35,7 +35,7 @@
     },
     "rotation": 0.0,
     "sortOrder": 1000,
-    "text": "残りレール: 14",
+    "text": "残りレール: 15",
     "weight": 0.0,
     "wrapWidth": 0.0
 }

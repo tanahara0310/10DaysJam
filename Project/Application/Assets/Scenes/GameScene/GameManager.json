@@ -1,0 +1,17 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "resultTransitionDelay": 1.0
+            },
+            "type": "GameManager"
+        },
+        {
+            "enabled": true,
+            "type": "GameSettings"
+        }
+    ],
+    "name": "GameManager"
+}

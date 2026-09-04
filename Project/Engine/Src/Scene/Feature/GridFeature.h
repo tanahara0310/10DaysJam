@@ -23,6 +23,9 @@ namespace CoreEngine
 
         void Initialize(SceneContext& ctx) override;
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override;
+
+        /// @brief 停止中も回す（止めるとグリッドの表示切り替えが効かなくなる）
+        bool RunsWhileStopped() const override { return true; }
         void Finalize(SceneContext& ctx) override;
 
     private:

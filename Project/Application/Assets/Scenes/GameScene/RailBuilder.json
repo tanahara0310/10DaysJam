@@ -1,0 +1,63 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [
+                    0.0,
+                    6.61482048034668,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    0.6525367498397827,
+                    1.0
+                ],
+                "translate": [
+                    3.0,
+                    1.0,
+                    4.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "initialResourceCount": 15
+            },
+            "type": "RailResourceManager"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "gridSize": 1.0,
+                "groundCost": 1,
+                "height": 1.0,
+                "horizontalPrioritize": true,
+                "initialGridX": 3,
+                "initialGridZ": 4,
+                "maxSpeedRewardRatio": 2.0,
+                "pulseAmplitude": 0.20000000298023224,
+                "pulseBaseScale": 0.800000011920929,
+                "pulseSpeed": 5.0,
+                "resourceReward": 5,
+                "rotationSpeed": 2.0,
+                "stationReward": 15,
+                "undoHoldTime": 0.30000001192092896,
+                "undoInterval": 0.05000000074505806,
+                "waterCost": 2
+            },
+            "type": "RailBuilder"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "name": "RailBuilder"
+}

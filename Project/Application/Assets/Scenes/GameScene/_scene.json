@@ -1,5 +1,21 @@
 {
     "objects": [
+        "GameManager",
+        "GroundPoolManager",
+        "WaterPoolManager",
+        "StationPoolManager",
+        "RockPoolManager",
+        "RailPoolManager",
+        "RailLeftPoolManager",
+        "RailRightPoolManager",
+        "MapGenerator",
+        "RailPath",
+        "RailView",
+        "RailBuilder",
+        "Train",
+        "Monkey",
+        "CameraManager",
+        "MapRenderer",
         "UIText_0"
     ]
 }
