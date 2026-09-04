@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "GameScene.h"
 
+#include "EngineSystem/EngineSystem.h"
+#include "Audio/AudioSystem.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
@@ -23,6 +25,12 @@
 
 #include "Components/GameCore/GameManagerComponent.h"
 
+using namespace CoreEngine;
+
+namespace {
+    constexpr const char* kGameBgmPath = "Application/Assets/Sounds/BGM/Game_bgm.mp3";
+}
+
 GameScene::GameScene::~GameScene() = default;
 
 void GameScene::GameScene::OnInitialize() {
@@ -30,6 +38,15 @@ void GameScene::GameScene::OnInitialize() {
     SetSceneName("GameScene");
     SetDefaultGroundEnabled(true);
     SetReleaseCameraTransform({ 0.0f, 2.0f, 0.0f }, { 0.3f, 0.0f, 0.0f });
+
+    // ========== BGMの再生 ==========
+    auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
+    if (!audioSystem) {
+        return;
+    }
+    gameBgm_ = audioSystem->PlayScoped(
+        kGameBgmPath,
+        { .bus = AudioBus::BGM, .loop = true, .volume = 1.0f / 3.0f });
 
     // ========== ゲームルールの設定 ==========
     float gridSize = 1.0f; // グリッドサイズを設定
