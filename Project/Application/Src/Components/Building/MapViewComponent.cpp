@@ -12,9 +12,60 @@
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
+#include <algorithm>
 #include <cmath>
 
+#ifdef USE_IMGUI
+#include "Editor/ImGui/ImGuiAll.h"
+#endif
+
 using namespace CoreEngine;
+
+json GameComponents::MapViewComponent::OnSerialize() const {
+    return {
+        { "gridSize", gridSize_ },
+        { "viewDistanceX", viewDistanceX_ },
+        { "groundHeight", groundHeight_ },
+        { "groundScale", JsonManager::Vector3ToJson(groundScale_) },
+        { "waterHeight", waterHeight_ },
+        { "waterScale", JsonManager::Vector3ToJson(waterScale_) },
+        { "stationHeight", stationHeight_ },
+        { "stationScale", JsonManager::Vector3ToJson(stationScale_) },
+        { "rockHeight", rockHeight_ },
+        { "rockScale", JsonManager::Vector3ToJson(rockScale_) }
+    };
+}
+
+void GameComponents::MapViewComponent::OnDeserialize(const json& j) {
+    gridSize_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "gridSize", gridSize_));
+    viewDistanceX_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "viewDistanceX", viewDistanceX_));
+    groundHeight_ = JsonManager::SafeGet<float>(j, "groundHeight", groundHeight_);
+    groundScale_ = JsonManager::SafeGetVector3(j, "groundScale", groundScale_);
+    waterHeight_ = JsonManager::SafeGet<float>(j, "waterHeight", waterHeight_);
+    waterScale_ = JsonManager::SafeGetVector3(j, "waterScale", waterScale_);
+    stationHeight_ = JsonManager::SafeGet<float>(j, "stationHeight", stationHeight_);
+    stationScale_ = JsonManager::SafeGetVector3(j, "stationScale", stationScale_);
+    rockHeight_ = JsonManager::SafeGet<float>(j, "rockHeight", rockHeight_);
+    rockScale_ = JsonManager::SafeGetVector3(j, "rockScale", rockScale_);
+}
+
+#ifdef USE_IMGUI
+bool GameComponents::MapViewComponent::DrawInspector() {
+    bool changed = false;
+    changed |= ImGui::DragFloat("グリッドサイズ", &gridSize_, 0.05f, 0.01f, 20.0f);
+    int distance = static_cast<int>(viewDistanceX_);
+    if (ImGui::DragInt("描画距離X", &distance, 1.0f, 1, 500)) { viewDistanceX_ = static_cast<uint32_t>(std::max(distance, 1)); changed = true; }
+    changed |= ImGui::DragFloat("地面の高さ", &groundHeight_, 0.05f);
+    changed |= ImGui::DragFloat3("地面スケール", &groundScale_.x, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("水面の高さ", &waterHeight_, 0.05f);
+    changed |= ImGui::DragFloat3("水面スケール", &waterScale_.x, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("駅の高さ", &stationHeight_, 0.05f);
+    changed |= ImGui::DragFloat3("駅スケール", &stationScale_.x, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("岩の高さ", &rockHeight_, 0.05f);
+    changed |= ImGui::DragFloat3("岩スケール", &rockScale_.x, 0.01f, 0.0f, 10.0f);
+    return changed;
+}
+#endif
 
 void GameComponents::MapViewComponent::Start() {
 }
@@ -40,8 +91,6 @@ void GameComponents::MapViewComponent::Update() {
     mapGenerator_->CreateToX(endX);
 
     Vector3 rotate{ 0.0f, 0.0f, 0.0f };
-    Vector3 stationScale{ 0.5f, 0.5f, 0.5f };
-    Vector3 rockScale{ 0.7f, 0.7f, 0.7f };
 
     // マップチップの2D配列を取得する
     const auto& mapChips = mapGenerator_->GetMapChips();
@@ -52,25 +101,25 @@ void GameComponents::MapViewComponent::Update() {
             // チップの種類に応じて描画する
             if (chipType != MapChipType::Void && chipType != MapChipType::Water) {
                 // グラウンドチップの表示
-                groundRenderPool_->Draw({ x * gridSize_, 0.0f, z * gridSize_ });
+                groundRenderPool_->Draw({ x * gridSize_, groundHeight_, z * gridSize_ }, rotate, groundScale_);
             }
 
             // 水場チップの表示
             if (waterRenderPool_ && chipType == MapChipType::Water) {
                 waterRenderPool_->Draw(
-                    { x * gridSize_, 0.0f, z * gridSize_ },
+                    { x * gridSize_, waterHeight_, z * gridSize_ },
                     rotate,
-                    { 1.0f, 0.3f, 1.0f });
+                    waterScale_);
             }
 
             // 駅チップの表示
             if(stationRenderPool_ && chipType == MapChipType::Station) {
-                stationRenderPool_->Draw({ x * gridSize_, 0.7f, z * gridSize_ }, rotate, stationScale);
+                stationRenderPool_->Draw({ x * gridSize_, stationHeight_, z * gridSize_ }, rotate, stationScale_);
             }
 
             // 岩チップの表示
             if (rockRenderPool_ && chipType == MapChipType::Resource) {
-                rockRenderPool_->Draw({ x * gridSize_, 0.7f, z * gridSize_ }, rotate, rockScale);
+                rockRenderPool_->Draw({ x * gridSize_, rockHeight_, z * gridSize_ }, rotate, rockScale_);
             }
         }
     }

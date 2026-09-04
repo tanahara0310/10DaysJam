@@ -11,7 +11,68 @@
 #include <algorithm>
 #include <string>
 
+#ifdef USE_IMGUI
+#include "Editor/ImGui/ImGuiAll.h"
+#endif
+
 using namespace CoreEngine;
+
+json GameComponents::ModelRenderPoolComponent::OnSerialize() const {
+    json result = {
+        { "initialCapacity", initialCapacity_ },
+        { "allowGrowth", allowGrowth_ },
+        { "hasColorOverride", color_.has_value() }
+    };
+    if (color_) {
+        result["color"] = JsonManager::Vector4ToJson(*color_);
+    }
+    return result;
+}
+
+void GameComponents::ModelRenderPoolComponent::OnDeserialize(const json& j) {
+    const std::size_t capacity = std::max<std::size_t>(1,
+        JsonManager::SafeGet<std::size_t>(j, "initialCapacity", initialCapacity_));
+    allowGrowth_ = JsonManager::SafeGet<bool>(j, "allowGrowth", allowGrowth_);
+    const bool hasColor = JsonManager::SafeGet<bool>(j, "hasColorOverride", color_.has_value());
+    if (hasColor) {
+        color_ = JsonManager::SafeGetVector4(j, "color", color_.value_or(Vector4{ 1, 1, 1, 1 }));
+    } else {
+        color_.reset();
+    }
+    ResizePool(capacity);
+    ApplyColorToEntries();
+}
+
+#ifdef USE_IMGUI
+bool GameComponents::ModelRenderPoolComponent::DrawInspector() {
+    bool changed = false;
+    ImGui::TextDisabled("モデル: %s", modelPath_.c_str());
+    int capacity = static_cast<int>(initialCapacity_);
+    if (ImGui::DragInt("プール容量", &capacity, 1.0f, 1, 5000)) {
+        ResizePool(static_cast<std::size_t>(std::max(capacity, 1)));
+        changed = true;
+    }
+    changed |= ImGui::Checkbox("容量不足時に拡張", &allowGrowth_);
+
+    bool hasColor = color_.has_value();
+    if (ImGui::Checkbox("色を上書き", &hasColor)) {
+        if (hasColor) color_ = Vector4{ 1.0f, 1.0f, 1.0f, 1.0f };
+        else color_.reset();
+        ApplyColorToEntries();
+        changed = true;
+    }
+    if (color_) {
+        Vector4 edited = *color_;
+        if (ImGui::ColorEdit4("色", &edited.x)) {
+            color_ = edited;
+            ApplyColorToEntries();
+            changed = true;
+        }
+    }
+    ImGui::TextDisabled("使用中: %zu / %zu", GetActiveCount(), GetCapacity());
+    return changed;
+}
+#endif
 
 void GameComponents::ModelRenderPoolComponent::Awake() {
     if (modelPath_.empty()) {
@@ -144,4 +205,33 @@ GameComponents::ModelRenderPoolComponent::FindAvailableEntry(std::uint64_t frame
         }
     }
     return nullptr;
+}
+
+void GameComponents::ModelRenderPoolComponent::ResizePool(std::size_t capacity) {
+    initialCapacity_ = std::max<std::size_t>(1, capacity);
+    entries_.reserve(initialCapacity_);
+    while (entries_.size() < initialCapacity_) {
+        if (!CreateEntry()) break;
+    }
+    while (entries_.size() > initialCapacity_) {
+        Entry& entry = entries_.back();
+        if (entry.object && !entry.object->IsMarkedForDestroy()) {
+            entry.object->Destroy();
+        }
+        entries_.pop_back();
+    }
+    nextEntryIndex_ = std::min(nextEntryIndex_, entries_.size());
+}
+
+void GameComponents::ModelRenderPoolComponent::ApplyColorToEntries() {
+    for (Entry& entry : entries_) {
+        if (!entry.object) continue;
+        if (auto* existingMaterial = entry.object->GetComponent<MaterialComponent>()) {
+            existingMaterial->SetColor(color_.value_or(Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }));
+        } else if (color_) {
+            auto* newMaterial = entry.object->AddComponent<MaterialComponent>();
+            newMaterial->SetColor(*color_);
+            newMaterial->SetPBR(0.0f, 0.15f);
+        }
+    }
 }

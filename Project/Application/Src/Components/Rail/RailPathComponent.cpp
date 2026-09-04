@@ -12,10 +12,14 @@
 #include <algorithm>
 #include <cmath>
 
+#ifdef USE_IMGUI
+#include "Editor/ImGui/ImGuiAll.h"
+#endif
+
 using namespace CoreEngine;
 
 GameComponents::RailPathComponent::RailPathComponent(uint32_t mapSizeZ, uint32_t startX, uint32_t startZ) :
-    mapSizeZ_(mapSizeZ) {
+    mapSizeZ_(mapSizeZ), startX_(startX), startZ_(startZ) {
     // 初期位置もビルダーが通ったマスとしてレールへ登録する
     if (startZ < mapSizeZ_) {
         railMap_.emplace_back(startX, startZ);
@@ -26,6 +30,44 @@ GameComponents::RailPathComponent::RailPathComponent(uint32_t mapSizeZ, uint32_t
             startX, startZ);
     }
 }
+
+json GameComponents::RailPathComponent::OnSerialize() const {
+    return {
+        { "mapSizeZ", mapSizeZ_ },
+        { "startX", startX_ },
+        { "startZ", startZ_ }
+    };
+}
+
+void GameComponents::RailPathComponent::OnDeserialize(const json& j) {
+    mapSizeZ_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "mapSizeZ", mapSizeZ_));
+    startX_ = JsonManager::SafeGet<uint32_t>(j, "startX", startX_);
+    startZ_ = std::min(JsonManager::SafeGet<uint32_t>(j, "startZ", startZ_), mapSizeZ_ - 1);
+    railMap_.clear();
+    railUndoStack_.clear();
+    railUndoCosts_.clear();
+    trainRouteQueue_.clear();
+    railMap_.emplace_back(startX_, startZ_);
+}
+
+#ifdef USE_IMGUI
+bool GameComponents::RailPathComponent::DrawInspector() {
+    int mapSize = static_cast<int>(mapSizeZ_);
+    int startX = static_cast<int>(startX_);
+    int startZ = static_cast<int>(startZ_);
+    bool changed = false;
+    if (ImGui::DragInt("Z方向マップサイズ", &mapSize, 1.0f, 1, 100)) {
+        mapSizeZ_ = static_cast<uint32_t>(std::max(mapSize, 1));
+        startZ_ = std::min(startZ_, mapSizeZ_ - 1);
+        changed = true;
+    }
+    if (ImGui::DragInt("開始X", &startX, 1.0f, 0, 500)) { startX_ = static_cast<uint32_t>(std::max(startX, 0)); changed = true; }
+    if (ImGui::DragInt("開始Z", &startZ, 1.0f, 0, static_cast<int>(mapSizeZ_ - 1))) { startZ_ = static_cast<uint32_t>(std::max(startZ, 0)); changed = true; }
+    ImGui::TextDisabled("確定済み: %zu / 未確定: %zu", railMap_.size(), railUndoStack_.size());
+    ImGui::TextWrapped("開始位置とマップサイズはシーン再読み込み時に反映されます。");
+    return changed;
+}
+#endif
 
 void GameComponents::RailPathComponent::Start() {
 }

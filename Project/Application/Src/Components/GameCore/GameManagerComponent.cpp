@@ -10,7 +10,31 @@
 
 #include <algorithm>
 
+#ifdef USE_IMGUI
+#include "Editor/ImGui/ImGuiAll.h"
+#endif
+
 using namespace CoreEngine;
+
+json GameComponents::GameManagerComponent::OnSerialize() const {
+    return { { "resultTransitionDelay", defaultChangeDelay_ } };
+}
+
+void GameComponents::GameManagerComponent::OnDeserialize(const json& j) {
+    defaultChangeDelay_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "resultTransitionDelay", defaultChangeDelay_));
+}
+
+#ifdef USE_IMGUI
+bool GameComponents::GameManagerComponent::DrawInspector() {
+    bool changed = ImGui::DragFloat(
+        "リザルト遷移待機時間", &defaultChangeDelay_, 0.05f, 0.0f, 10.0f);
+    const char* phaseName = phase_ == Phase::Playing ? "Playing"
+        : phase_ == Phase::Ending ? "Ending" : "Transitioning";
+    ImGui::TextDisabled("現在フェーズ: %s", phaseName);
+    return changed;
+}
+#endif
 
 void GameComponents::GameManagerComponent::Start() {
     // 終了要求を Start() でリセットしない（オブジェクトの更新順に依存させない）。
@@ -51,7 +75,9 @@ void GameComponents::GameManagerComponent::BeginEnding(bool isClear, float chang
     isGameClear_ = isClear;
     isGameOver_ = !isClear;
     phase_ = Phase::Ending;
-    changeDelayTimer_ = std::max(0.0f, changeDelayTime);
+    changeDelayTimer_ = changeDelayTime >= 0.0f
+        ? changeDelayTime
+        : defaultChangeDelay_;
 
     if (train_) {
         train_->SetEnabled(false);

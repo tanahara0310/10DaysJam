@@ -43,6 +43,14 @@ namespace GameComponents
             return "CameraManager";
         }
 
+        json OnSerialize() const override;
+        void OnDeserialize(const json& j) override;
+
+#ifdef USE_IMGUI
+        const char* GetInspectorName() const override { return "ゲームカメラ"; }
+        bool DrawInspector() override;
+#endif
+
         // 最初の更新直前に一度だけ呼ばれる
         void Start() override;
         // 全オブジェクトの移動後にカメラを更新する
@@ -60,7 +68,7 @@ namespace GameComponents
         float GetCurrentFovDegrees() const { return currentFovDegrees_; }
 
         // 現在の構図から列車のアップへ移動する。完了後もアップを維持する。
-        void BeginTrainCloseUp(float duration = 1.5f, float distanceScale = 0.3f);
+        void BeginTrainCloseUp(float duration = -1.0f, float distanceScale = -1.0f);
         bool IsTrainCloseUpComplete() const {
             return trainCloseUpActive_ && closeUpElapsed_ >= closeUpDuration_;
         }

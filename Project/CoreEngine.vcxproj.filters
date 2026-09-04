@@ -13,6 +13,9 @@
     <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp">
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
@@ -276,6 +279,9 @@
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.cpp">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp">
+      <Filter>Application\Src\GameObjects</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraSceneStateIO.cpp">
       <Filter>Engine\Src\Camera</Filter>
@@ -1392,6 +1398,9 @@
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h">
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClInclude>
@@ -1478,6 +1487,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\SkyBox\SkyBoxObject.h">
       <Filter>Application\Src\GameObjects\SkyBox</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h">
+      <Filter>Application\Src\GameObjects</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\CameraManager.h">
       <Filter>Engine\Src\Camera</Filter>

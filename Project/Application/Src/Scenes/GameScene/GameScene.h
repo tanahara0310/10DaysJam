@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Audio/SoundInstance.h"
 #include "Camera/CameraManager.h"
 #include "Scene/BaseScene.h"
 
@@ -21,5 +22,6 @@ namespace GameScene
         void OnUpdate() override;
 
     private:
+        CoreEngine::ScopedSound gameBgm_;
     };
 }
