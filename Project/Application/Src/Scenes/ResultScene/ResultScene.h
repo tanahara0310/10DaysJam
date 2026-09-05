@@ -1,12 +1,10 @@
 #pragma once
 
-#include "Camera/CameraManager.h"
+#include "Audio/SoundInstance.h"
 #include "Scene/BaseScene.h"
 
-#include <memory>
-#include <vector>
-
-namespace CoreEngine {
+namespace CoreEngine
+{
     class UIText;
 }
 
@@ -23,11 +21,14 @@ namespace ResultScene
 
     private:
         enum class Selection { Retry, Title };
-        void RefreshSelection();
+
+        void SetSelection(Selection selection, bool playReaction);
+        void ConfirmSelection();
 
         Selection selection_ = Selection::Retry;
-        CoreEngine::UIText* retryText_ = nullptr;
-        CoreEngine::UIText* titleText_ = nullptr;
         bool returnRequested_ = false;
+        CoreEngine::UIText* retryButton_ = nullptr;
+        CoreEngine::UIText* titleButton_ = nullptr;
+        CoreEngine::ScopedSound resultBgm_;
     };
 }

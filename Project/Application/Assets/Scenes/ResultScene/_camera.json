@@ -1,0 +1,93 @@
+{
+    "cameras": [
+        {
+            "name": "Release",
+            "snapshot": {
+                "aspectRatio": 0.0,
+                "farClip": 1000.0,
+                "fov": 0.44999998807907104,
+                "nearClip": 0.10000000149011612,
+                "position": [
+                    0.0,
+                    3.0,
+                    -30.0
+                ],
+                "projectionType": 0,
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "name": "Camera2D",
+            "snapshot": {
+                "aspectRatio": 0.0,
+                "farClip": 100.0,
+                "fov": 0.44999998807907104,
+                "nearClip": 0.0010000000474974513,
+                "position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "projectionType": 1,
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        },
+        {
+            "name": "Debug",
+            "orbit": {
+                "distance": 20.0,
+                "pitch": 0.5890002846717834,
+                "target": [
+                    3.733229637145996,
+                    6.19508171081543,
+                    -2.8792901039123535
+                ],
+                "yaw": 3.113332748413086
+            },
+            "snapshot": {
+                "aspectRatio": 0.0,
+                "farClip": 1000.0,
+                "fov": 0.44999998807907104,
+                "nearClip": 0.10000000149011612,
+                "position": [
+                    4.203127384185791,
+                    17.305683135986328,
+                    -19.502578735351563
+                ],
+                "projectionType": 0,
+                "rotation": [
+                    0.5890002846717834,
+                    -0.028259754180908203,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            }
+        }
+    ],
+    "gameCameraName": "Release",
+    "sceneCameraName": "Debug",
+    "startupRigName": "",
+    "version": "1.0"
+}
