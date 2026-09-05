@@ -208,6 +208,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
@@ -805,6 +806,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Editor\Stage\StageProject.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h" />
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h" />

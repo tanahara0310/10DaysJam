@@ -1,18 +1,46 @@
 #pragma once
 
-#include <memory>
+#include "Scene/Feature/ISceneFeature.h"
 
-namespace CoreEngine {
-    class ISceneFeature;
-}
+#include <memory>
 
 namespace GameComponents
 {
+    /// @brief シーン側から雲のオン/オフを操作するための取っ手
+    /// @details 登録は `AddFeature(CreateSkyFogFeature())` の 1 行のままでよい。
+    ///          あとから触りたくなったら `GetFeature<GameComponents::ISkyFogFeature>()`
+    ///          で引ける（BaseScene の protected メンバーなのでシーンから直接呼べる）。
+    /// @code
+    ///     // 登録時に決める（このシーンでは最初から出さない）
+    ///     AddFeature(GameComponents::CreateSkyFogFeature(false));
+    ///
+    ///     // 好きなタイミングで切り替える（OnInitialize / OnUpdate のどちらからでも）
+    ///     if (auto* fog = GetFeature<GameComponents::ISkyFogFeature>()) {
+    ///         fog->SetEnabled(false);
+    ///     }
+    /// @endcode
+    class ISkyFogFeature : public CoreEngine::ISceneFeature {
+    public:
+        /// @brief このシーンで雲を出すかを切り替える
+        /// @details 切った時点でシーン開始時のフォグ設定へ戻る（次のフレームを待たない）。
+        /// @note 画に出るのは、ここと CVar `Game.Fog.Enabled` の両方が true のとき。
+        ///       CVar は「ゲーム設定」からの全体スイッチで、こちらがシーンごとの指定。
+        virtual void SetEnabled(bool enabled) = 0;
+
+        /// @brief シーン側の指定を返す（CVar `Game.Fog.Enabled` は見ない）
+        virtual bool IsEnabled() const = 0;
+    };
+
     /// @brief ステージのブロックより下を雲で埋める Feature を作る
-    /// @details GameScene::OnInitialize() から `AddFeature(CreateSkyFogFeature())` で登録する。
+    /// @param enabled 登録直後に雲を出すか。false なら SetEnabled(true) まで出さない
+    /// @details GameScene・ResultScene の OnInitialize() から
+    ///          `AddFeature(CreateSkyFogFeature())` で登録する。
     ///          シーンにいる間だけエンジンの高さフォグ（r.Fog.*）を雲の設定に差し替え、
-    ///          シーンを抜けるときに元へ戻す（タイトル・リザルトへ持ち出さないため）。
+    ///          シーンを抜けるときに元へ戻す（タイトルへ持ち出さないため）。
+    /// @note 雲の明るさは太陽高度に追従して夜に落ちる（`Game.Fog.NightBrightnessEV`）。
+    ///       フォグ色は時刻に追従しない絶対値なので、そのままだと夜の自動露出に
+    ///       持ち上げられて雲が白飛びし、ステージまで霞んで見える。
     /// @note 調整値は SkyFogFeature.cpp のファイルスコープにある `Game.Fog.*` の CVar 群。
     ///       CVars.json へ自動保存され、インスペクターの「ゲーム設定」から編集できる。
-    std::unique_ptr<CoreEngine::ISceneFeature> CreateSkyFogFeature();
+    std::unique_ptr<ISkyFogFeature> CreateSkyFogFeature(bool enabled = true);
 }

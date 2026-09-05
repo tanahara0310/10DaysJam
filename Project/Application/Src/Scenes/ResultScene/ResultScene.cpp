@@ -3,6 +3,7 @@
 
 #include "Audio/AudioSystem.h"
 #include "Components/Result/ResultButtonAnimationComponent.h"
+#include "Scenes/GameScene/SkyFogFeature.h"
 #include "Scenes/ResultScene/ResultSceneUi.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Input/InputManager.h"
@@ -24,6 +25,9 @@ void ResultScene::ResultScene::OnInitialize() {
     // ========== シーンの設定 ==========
     SetSceneName("ResultScene");
     SetDefaultGroundEnabled(true);
+
+    // ゲームシーンと同じ雲（高さフォグ）。設定は「ゲーム設定」の Game.Fog.* を共有する。
+    AddFeature(GameComponents::CreateSkyFogFeature());
 
     if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
         resultBgm_ = audioSystem->PlayScoped(
