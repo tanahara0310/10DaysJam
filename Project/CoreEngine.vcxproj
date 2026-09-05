@@ -184,6 +184,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\HungerComponent.cpp" />
@@ -777,6 +778,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h" />
     <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h" />
+    <ClInclude Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameResultData.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h" />

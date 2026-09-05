@@ -17,6 +17,7 @@
 #include "Components/Building/MapViewComponent.h"
 #include "Components/Building/RockThrowComponent.h"
 #include "Components/Camera/CameraManagerComponent.h"
+#include "Components/Camera/RockBreakShakeSettingsComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Rail/RailViewComponent.h"
@@ -293,6 +294,8 @@ void GameScene::GameScene::OnInitialize() {
         GameComponents::GameSettings::CameraMinFovDegrees.Get(),
         GameComponents::GameSettings::CameraMaxFovDegrees.Get(),
         GameComponents::GameSettings::CameraFollowSpeed.Get());
+    // 岩破壊の揺れは静的に鳴らす。ここでは調整用CVarをインスペクタへ出すために付ける。
+    cameraController->AddComponent<GameComponents::RockBreakShakeSettingsComponent>();
 
     gameManagerComponent->SetEndingCamera(
         cameraController->GetComponent<GameComponents::CameraManagerComponent>());
