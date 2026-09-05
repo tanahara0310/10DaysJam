@@ -8,6 +8,7 @@
 #include "RailResourceManagerComponent.h"
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Building/RockThrowComponent.h"
+#include "Components/Camera/RockBreakShakeSettingsComponent.h"
 #include "Components/GameCore/HungerComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "Input/InputAction.h"
@@ -496,6 +497,9 @@ void GameComponents::RailBuilderComponent::CompleteRockBreak() {
         static_cast<std::size_t>(completed.gridX),
         static_cast<std::size_t>(completed.gridZ),
         MapChipType::Ground);
+
+    // 岩が砕けた瞬間にカメラを揺らす。強さは Game.CameraShake.RockBreak.* で調整する。
+    RockBreakShakeSettingsComponent::PlayRockBreak();
 
     Logger::GetInstance().Infof(
         LogCategory::Game,

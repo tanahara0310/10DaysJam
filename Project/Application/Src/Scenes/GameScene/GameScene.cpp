@@ -16,7 +16,7 @@
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Building/MapViewComponent.h"
 #include "Components/Building/RockThrowComponent.h"
-#include "Components/Camera/CameraManagerComponent.h"
+#include "Components/Camera/RockBreakShakeSettingsComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Rail/RailViewComponent.h"
@@ -51,10 +51,6 @@ void GameScene::GameScene::OnInitialize() {
     // ========== シーンの設定 ==========
     SetSceneName("GameScene");
     SetDefaultGroundEnabled(true);
-    SetReleaseCameraTransform(
-        GameComponents::GameSettings::ReleaseCameraPosition.Get(),
-        GameComponents::GameSettings::ReleaseCameraRotation.Get());
-
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
     if (!audioSystem) {
@@ -280,22 +276,13 @@ void GameScene::GameScene::OnInitialize() {
     monkeyTransform->Get().SetParent(&trainTransform->Get());
     monkeyTransform->Get().rotate.y = 3.14f;
 
-    // 列車とビルダーの中間を捉え、距離に応じて視野角を変えるゲームカメラ。
-    auto* cameraController = CreateObject<GameSceneObject>("CameraManager");
-    cameraController->AddComponent<GameComponents::CameraManagerComponent>(
-        cameraManager_->GetCamera(CoreEngine::CameraNames::Game),
-        train->GetComponent<CoreEngine::TransformComponent>(),
-        railBuilder->GetComponent<CoreEngine::TransformComponent>(),
-        GameComponents::GameSettings::CameraFocusRatio.Get(),
-        GameComponents::GameSettings::CameraOffset.Get(),
-        GameComponents::GameSettings::CameraMinTargetDistance.Get(),
-        GameComponents::GameSettings::CameraMaxTargetDistance.Get(),
-        GameComponents::GameSettings::CameraMinFovDegrees.Get(),
-        GameComponents::GameSettings::CameraMaxFovDegrees.Get(),
-        GameComponents::GameSettings::CameraFollowSpeed.Get());
+    // カメラの構図は Presets/CameraRigs/GamePlay.json が持つ。
+    // 起動は _camera.json の startupRigName 任せで、ここでは何も駆動しない。
+    auto* gameCamera = cameraManager_->GetCamera(CoreEngine::CameraNames::Game);
 
-    gameManagerComponent->SetEndingCamera(
-        cameraController->GetComponent<GameComponents::CameraManagerComponent>());
+    // 岩破壊の揺れは静的に鳴らす。ここでは調整用CVarをインスペクタへ出すために付ける。
+    auto* cameraSettings = CreateObject<GameSceneObject>("CameraSettings");
+    cameraSettings->AddComponent<GameComponents::RockBreakShakeSettingsComponent>();
 
     railView->AddComponent<GameComponents::RailViewComponent>(
         gridSize,
@@ -305,7 +292,7 @@ void GameScene::GameScene::OnInitialize() {
         railRightPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         bridgePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
-        cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
+        gameCamera,
         playRailBuildSe,
         renderWorldDistance);
 
@@ -319,7 +306,7 @@ void GameScene::GameScene::OnInitialize() {
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         bananaTreePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
+        gameCamera,
         gridSize, renderWorldDistance);
 
     // 残りレール数を画面左上へ表示するHUD

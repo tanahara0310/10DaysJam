@@ -9,8 +9,6 @@ namespace GameComponents
     /// @details CVarSettingsSection により CVars.json へ自動保存される。
     namespace GameSettings
     {
-        extern CoreEngine::CVar<CoreEngine::Vector3> ReleaseCameraPosition;
-        extern CoreEngine::CVar<CoreEngine::Vector3> ReleaseCameraRotation;
         extern CoreEngine::CVar<float> BgmVolume;
 
         extern CoreEngine::CVar<float> GridSize;
@@ -34,13 +32,6 @@ namespace GameComponents
         extern CoreEngine::CVar<int> RailLeftPoolCapacity;
         extern CoreEngine::CVar<int> RailRightPoolCapacity;
 
-        extern CoreEngine::CVar<float> CameraFocusRatio;
-        extern CoreEngine::CVar<CoreEngine::Vector3> CameraOffset;
-        extern CoreEngine::CVar<float> CameraMinTargetDistance;
-        extern CoreEngine::CVar<float> CameraMaxTargetDistance;
-        extern CoreEngine::CVar<float> CameraMinFovDegrees;
-        extern CoreEngine::CVar<float> CameraMaxFovDegrees;
-        extern CoreEngine::CVar<float> CameraFollowSpeed;
 
         extern CoreEngine::CVar<CoreEngine::Vector2> HudPosition;
         extern CoreEngine::CVar<float> HudFontSize;
