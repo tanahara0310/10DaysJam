@@ -11,13 +11,13 @@
 namespace CoreEngine
 {
     class TransformComponent;
+    class Camera;
 }
 
 namespace GameComponents {
     class RailPathComponent;
     class MapGeneratorComponent;
     class ModelRenderPoolComponent;
-    class CameraManagerComponent;
 }
 
 namespace GameComponents
@@ -34,7 +34,7 @@ namespace GameComponents
             GameComponents::ModelRenderPoolComponent* railRightPool = nullptr,
             GameComponents::ModelRenderPoolComponent* bridgePool = nullptr,
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
-            GameComponents::CameraManagerComponent* cameraManager = nullptr,
+            CoreEngine::Camera* viewCamera = nullptr,
             std::function<void(float, float)> onRailBuildSE = nullptr,
             uint32_t viewDistanceX = 30)
             : gridSize_(gridSize), railPath_(railPath),
@@ -43,7 +43,7 @@ namespace GameComponents
             railRightPool_(railRightPool),
             bridgePool_(bridgePool),
             mapGenerator_(mapGenerator),
-            cameraManager_(cameraManager),
+            viewCamera_(viewCamera),
             viewDistanceX_(viewDistanceX),
             onRailBuildSE_(onRailBuildSE) {
         }
@@ -87,7 +87,8 @@ namespace GameComponents
         GameComponents::ModelRenderPoolComponent* railRightPool_ = nullptr;
         GameComponents::ModelRenderPoolComponent* bridgePool_ = nullptr;
         GameComponents::MapGeneratorComponent* mapGenerator_ = nullptr;
-        GameComponents::CameraManagerComponent* cameraManager_ = nullptr;
+        // 描画範囲はゲーム視点カメラの位置から決める（構図は CameraRig が握る）
+        CoreEngine::Camera* viewCamera_ = nullptr;
         float gridSize_ = 5.0f;
         uint32_t viewDistanceX_ = 30;
         float railHeight_ = 0.6f;

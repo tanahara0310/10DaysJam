@@ -7,7 +7,7 @@
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Utility/ModelRenderPoolComponent.h"
-#include "Components/Camera/CameraManagerComponent.h"
+#include "Camera/Camera.h"
 #include "Input/InputAction.h"
 #include "Input/InputManager.h"
 #include "Utility/FrameRate/Time.h"
@@ -232,9 +232,9 @@ void GameComponents::RailViewComponent::DrawRailModels() {
 
     int32_t minVisibleX = 0;
     int32_t maxVisibleX = (std::numeric_limits<int32_t>::max)();
-    if (cameraManager_ && gridSize_ > 0.0f) {
+    if (viewCamera_ && gridSize_ > 0.0f) {
         const float centerGridX =
-            cameraManager_->GetFocusPosition().x / gridSize_;
+            viewCamera_->GetTranslate().x / gridSize_;
         minVisibleX = std::max(
             0,
             static_cast<int32_t>(std::floor(centerGridX)) -

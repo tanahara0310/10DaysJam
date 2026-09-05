@@ -88,6 +88,6 @@
     ],
     "gameCameraName": "Release",
     "sceneCameraName": "Debug",
-    "startupRigName": "",
+    "startupRigName": "GamePlay",
     "version": "1.0"
 }

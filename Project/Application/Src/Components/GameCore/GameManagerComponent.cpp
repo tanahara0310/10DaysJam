@@ -4,7 +4,7 @@
 #include "Components/GameCore/GameResultData.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
-#include "Components/Camera/CameraManagerComponent.h"
+#include "Camera/Rig/CameraRig.h"
 #include "Scene/SceneManager.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
@@ -16,6 +16,14 @@
 #endif
 
 using namespace CoreEngine;
+
+namespace {
+    // 終了時に列車へ寄るカメラリグ。構図は Presets/CameraRigs/ の同名 json が持つ。
+    constexpr const char* kEndingCloseUpRigName = "Train_CloseUp";
+
+    // 寄り切るまでの秒数。リグへの繋ぎ時間と、待機開始までの時間を兼ねる。
+    constexpr float kEndingCloseUpSeconds = 1.5f;
+}
 
 json GameComponents::GameManagerComponent::OnSerialize() const {
     return { { "resultTransitionDelay", defaultChangeDelay_ } };
@@ -90,9 +98,13 @@ void GameComponents::GameManagerComponent::BeginEnding(bool isClear, float chang
         builder_->SetEnabled(false);
     }
 
-    if (endingCamera_) {
-        endingCamera_->BeginTrainCloseUp();
-    }
+    // 構図は Presets/CameraRigs/Train_CloseUp.json 側が持つ。ここは名前で呼ぶだけ。
+    CameraRigActivateOptions closeUpOptions;
+    closeUpOptions.blendSeconds = kEndingCloseUpSeconds;
+    closeUpOptions.useUnscaledTime = true;
+    closeUpTimer_ = CameraRig::Activate(kEndingCloseUpRigName, closeUpOptions)
+        ? kEndingCloseUpSeconds
+        : 0.0f;
 
     Logger::GetInstance().Infof(
         LogCategory::Game,
@@ -101,12 +113,15 @@ void GameComponents::GameManagerComponent::BeginEnding(bool isClear, float chang
 }
 
 void GameComponents::GameManagerComponent::UpdateEnding() {
-    // カメラがアップになってから待機を開始する。未設定・無効なら演出をスキップ。
-    if (endingCamera_ && endingCamera_->IsEnabled() && !endingCamera_->IsTrainCloseUpComplete()) {
+    // ゲームプレイ側のポーズ・スローでも終了処理が止まらない時間を使う。
+    const float deltaTime = std::max(0.0f, Time::UnscaledDeltaTime());
+
+    // 列車へ寄り切ってから待機を開始する。リグが無ければ待たずに進む。
+    if (closeUpTimer_ > 0.0f) {
+        closeUpTimer_ -= deltaTime;
         return;
     }
-    // ゲームプレイ側のポーズ・スローでも終了処理が止まらない時間を使う。
-    changeDelayTimer_ -= std::max(0.0f, Time::UnscaledDeltaTime());
+    changeDelayTimer_ -= deltaTime;
     if (changeDelayTimer_ <= 0.0f) {
         TransitionToResult();
     }

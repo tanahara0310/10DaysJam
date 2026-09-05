@@ -183,7 +183,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp" />
-    <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\HungerComponent.cpp" />
@@ -207,7 +207,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
-    <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
@@ -777,7 +777,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Building\MapGeneratorComponent.h" />
     <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h" />
-    <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h" />
+    <ClInclude Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameResultData.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h" />
@@ -802,7 +802,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Editor\Stage\StageEditorPanel.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageProject.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
-    <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h" />
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h" />

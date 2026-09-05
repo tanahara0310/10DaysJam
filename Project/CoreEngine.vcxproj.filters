@@ -10,7 +10,7 @@
     <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp">
       <Filter>Application\Src\Components\Building</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp">
+    <ClCompile Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.cpp">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp">
@@ -82,7 +82,7 @@
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp">
+    <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp">
@@ -1416,7 +1416,7 @@
     <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h">
       <Filter>Application\Src\Components\Building</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h">
+    <ClInclude Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.h">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h">
@@ -1491,7 +1491,7 @@
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h">
+    <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h">
