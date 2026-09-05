@@ -25,11 +25,16 @@
         {
             "enabled": true,
             "parameters": {
+                "boostJumpDuration": 1.0,
+                "boostJumpHeight": 0.8,
+                "completedRailPauseDuration": 1.0,
                 "gridSize": 1.0,
                 "initialGridX": 3,
                 "initialGridZ": 4,
                 "initialMoveSpeed": 2.0,
                 "minMoveSpeed": 2.0,
+                "rockThrowJumpDuration": 0.35,
+                "rockThrowJumpHeight": 0.6,
                 "requiredRailCount": 5,
                 "speedUpFactor": 0.75,
                 "trainHeight": 1.0,

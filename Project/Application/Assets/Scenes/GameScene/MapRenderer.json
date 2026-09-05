@@ -40,9 +40,9 @@
                 ],
                 "bananaTreeHeight": 0.5,
                 "bananaTreeScale": [
-                    0.35,
                     1.0,
-                    0.35
+                    1.0,
+                    1.0
                 ],
                 "stationHeight": 0.699999988079071,
                 "stationScale": [

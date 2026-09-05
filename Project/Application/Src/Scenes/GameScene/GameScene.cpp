@@ -15,6 +15,7 @@
 
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Building/MapViewComponent.h"
+#include "Components/Building/RockThrowComponent.h"
 #include "Components/Camera/CameraManagerComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
@@ -174,9 +175,8 @@ void GameScene::GameScene::OnInitialize() {
     auto* bananaTreePoolManager = CreateObject<GameSceneObject>("BananaTreePoolManager");
     bananaTreePoolManager->AddComponent<CoreEngine::TransformComponent>();
     bananaTreePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "box.obj",
-        ToUInt(GameComponents::GameSettings::BananaTreePoolCapacity.Get(), 1), true,
-        CoreEngine::Vector4{ 0.95f, 0.75f, 0.15f, 1.0f });
+        "banana_tree.obj",
+        ToUInt(GameComponents::GameSettings::BananaTreePoolCapacity.Get(), 1), true);
     // レールのオブジェクトプールを生成
     auto* railPoolManager = CreateObject<GameSceneObject>("RailPoolManager");
     railPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -233,6 +233,13 @@ void GameScene::GameScene::OnInitialize() {
         hungerComponent);
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
+
+    // 岩破壊時に列車から投げる石。アニメーションはゲーム終了演出中も完了させる。
+    auto* rockProjectile = CreateObject<GameSceneObject>("RockProjectile");
+    rockProjectile->AddComponent<CoreEngine::TransformComponent>();
+    rockProjectile->AddComponent<CoreEngine::MeshRendererComponent>("rock.obj");
+    auto* rockThrow = rockProjectile->AddComponent<GameComponents::RockThrowComponent>();
+
     // 列車の描画は、列車の移動ロジックを持つコンポーネントとは別のコンポーネントで行う。
     railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
         gridSize, initialBuilderPosX, initialBuilderPosZ,
@@ -240,6 +247,8 @@ void GameScene::GameScene::OnInitialize() {
         railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>(),
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         train->GetComponent<GameComponents::TrainMovementComponent>(),
+        hungerComponent,
+        rockThrow,
         playBuildSe, playUndoSe);
 
     railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("arrow.obj");

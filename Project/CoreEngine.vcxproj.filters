@@ -7,6 +7,9 @@
     <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp">
       <Filter>Application\Src\Components\Building</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClCompile>
@@ -1402,6 +1405,9 @@
       <Filter>Application\Src\Components\Building</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h">
       <Filter>Application\Src\Components\Building</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h">

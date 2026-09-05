@@ -7,6 +7,8 @@
 #include "RailPathComponent.h"
 #include "RailResourceManagerComponent.h"
 #include "Components/Building/MapGeneratorComponent.h"
+#include "Components/Building/RockThrowComponent.h"
+#include "Components/GameCore/HungerComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "Input/InputAction.h"
 #include "Input/InputManager.h"
@@ -37,6 +39,10 @@ json GameComponents::RailBuilderComponent::OnSerialize() const {
         { "pulseAmplitude", pulseAmplitude_ },
         { "pulseSpeed", pulseSpeed_ },
         { "rotationSpeed", rotationSpeed_ },
+        { "rockCursorHeightOffset", rockCursorHeightOffset_ },
+        { "rockThrowStartHeight", rockThrowStartHeight_ },
+        { "rockImpactHeight", rockImpactHeight_ },
+        { "rockHungerCost", rockHungerCost_ },
         { "groundCost", groundCost_ },
         { "waterCost", waterCost_ },
         { "stationReward", stationReward_ },
@@ -59,6 +65,13 @@ void GameComponents::RailBuilderComponent::OnDeserialize(const json& j) {
     pulseAmplitude_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "pulseAmplitude", pulseAmplitude_));
     pulseSpeed_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "pulseSpeed", pulseSpeed_));
     rotationSpeed_ = JsonManager::SafeGet<float>(j, "rotationSpeed", rotationSpeed_);
+    rockCursorHeightOffset_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "rockCursorHeightOffset", rockCursorHeightOffset_));
+    rockThrowStartHeight_ = JsonManager::SafeGet<float>(
+        j, "rockThrowStartHeight", rockThrowStartHeight_);
+    rockImpactHeight_ = JsonManager::SafeGet<float>(j, "rockImpactHeight", rockImpactHeight_);
+    rockHungerCost_ = std::max(
+        0.0f, JsonManager::SafeGet<float>(j, "rockHungerCost", rockHungerCost_));
     groundCost_ = JsonManager::SafeGet<uint32_t>(j, "groundCost", groundCost_);
     waterCost_ = JsonManager::SafeGet<uint32_t>(j, "waterCost", waterCost_);
     stationReward_ = JsonManager::SafeGet<uint32_t>(j, "stationReward", stationReward_);
@@ -85,6 +98,14 @@ bool GameComponents::RailBuilderComponent::DrawInspector() {
     changed |= ImGui::DragFloat("脈動振幅", &pulseAmplitude_, 0.01f, 0.0f, 5.0f);
     changed |= ImGui::DragFloat("脈動速度", &pulseSpeed_, 0.05f, 0.0f, 30.0f);
     changed |= ImGui::DragFloat("回転速度", &rotationSpeed_, 0.05f, -30.0f, 30.0f);
+    changed |= ImGui::DragFloat(
+        "岩破壊中カーソル高さ", &rockCursorHeightOffset_, 0.05f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat(
+        "投石開始高さ", &rockThrowStartHeight_, 0.05f, -10.0f, 10.0f);
+    changed |= ImGui::DragFloat(
+        "投石着弾高さ", &rockImpactHeight_, 0.05f, -10.0f, 10.0f);
+    changed |= ImGui::DragFloat(
+        "岩破壊の空腹コスト", &rockHungerCost_, 1.0f, 0.0f, 1000.0f);
     int groundCost = static_cast<int>(groundCost_);
     int waterCost = static_cast<int>(waterCost_);
     int stationReward = static_cast<int>(stationReward_);
@@ -102,7 +123,7 @@ void GameComponents::RailBuilderComponent::Start() {
     transform_ = Sibling<TransformComponent>();
 
     if (!transform_ || !railPath_ || !resourceManager_ ||
-        !mapGenerator_ || !trainMovement_) {
+        !mapGenerator_ || !trainMovement_ || !hunger_ || !rockThrow_) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
             "RailBuilderComponent: 必要なコンポーネントが未設定です");
@@ -162,7 +183,9 @@ void GameComponents::RailBuilderComponent::Update() {
 
     // レールを撤去する（Undo）。移動入力とは同じフレームに処理しない
     if (input.IsActionTriggered(InputAction::Interact)) {
-        TryUndoLastRail();
+        if (!isBreakingRock_) {
+            TryUndoLastRail();
+        }
         return;
     }
     // 連続削除のためのタイマー処理
@@ -172,7 +195,9 @@ void GameComponents::RailBuilderComponent::Update() {
         if (undoPushTimer_ >= undoPushMaxTime_) {
             // 連続削除の間隔タイマーを更新する
             if (undoIntervalTimer_ <= 0.0f) {
-                TryUndoLastRail();
+                if (!isBreakingRock_) {
+                    TryUndoLastRail();
+                }
                 undoIntervalTimer_ = undoInterval_;
                 // 移動入力とは同じフレームに処理しない
                 return;
@@ -326,6 +351,8 @@ void GameComponents::RailBuilderComponent::Update() {
         resourceCost = groundCost_;
     } else if (mapChip == MapChipType::Water) {
         resourceCost = waterCost_;
+    } else if (mapChip == MapChipType::Resource) {
+        resourceCost = groundCost_;
     }
 
     if (!resourceManager_->HasEnoughResource(resourceCost)) {
@@ -348,6 +375,33 @@ void GameComponents::RailBuilderComponent::Update() {
 
     gridPosX_ = nextX;
     gridPosZ_ = nextZ;
+
+    if (mapChip == MapChipType::Resource) {
+        const bool wasBreakingRock = isBreakingRock_;
+        isBreakingRock_ = true;
+        isCursorAboveRock_ = true;
+        rockBreakQueue_.push_back({ gridPosX_, gridPosZ_ });
+        if (!wasBreakingRock) {
+            trainMovement_->SetRockBreakPaused(true);
+            hunger_->SetRockBreakPaused(true);
+        }
+        SyncTransformToGrid();
+
+        // 岩と空腹値はUndoの履歴へ入れず、この時点の変更を維持する。
+        hunger_->ConsumeHunger(rockHungerCost_);
+        if (!wasBreakingRock) {
+            StartNextRockThrow();
+        }
+
+        Logger::GetInstance().Infof(
+            LogCategory::Game,
+            "RailBuilder: 岩破壊命令を追加しました ({}, {}), 空腹コスト={}, 待機数={}",
+            gridPosX_, gridPosZ_, rockHungerCost_, rockBreakQueue_.size());
+        return;
+    }
+
+    // 投石キューが残っていても、通常マスへの追加敷設ではカーソルを通常高さにする。
+    isCursorAboveRock_ = false;
     SyncTransformToGrid();
 
     if (mapChip == MapChipType::Station) {
@@ -367,6 +421,10 @@ void GameComponents::RailBuilderComponent::Update() {
 }
 
 bool GameComponents::RailBuilderComponent::TryUndoLastRail() {
+    if (isBreakingRock_) {
+        return false;
+    }
+
     const RailUndoResult undo = railPath_->UndoLastRailPlacement();
     if (!undo.succeeded) {
         return false;
@@ -392,6 +450,60 @@ uint32_t GameComponents::RailBuilderComponent::CalculateSpeedReward(
     return baseAmount;
 }
 
+void GameComponents::RailBuilderComponent::StartNextRockThrow() {
+    if (rockBreakQueue_.empty()) {
+        return;
+    }
+
+    const RockBreakRequest& request = rockBreakQueue_.front();
+    Vector3 throwStart = trainMovement_->GetWorldPosition();
+    throwStart.y += rockThrowStartHeight_;
+    const Vector3 impactPosition{
+        static_cast<float>(request.gridX) * gridSize_,
+        rockImpactHeight_,
+        static_cast<float>(request.gridZ) * gridSize_
+    };
+
+    trainMovement_->PlayRockThrowJump();
+    if (!rockThrow_->Play(
+            throwStart, impactPosition, [this]() { CompleteRockBreak(); })) {
+        CompleteRockBreak();
+    }
+}
+
+void GameComponents::RailBuilderComponent::CompleteRockBreak() {
+    if (!isBreakingRock_ || rockBreakQueue_.empty()) {
+        return;
+    }
+
+    const RockBreakRequest completed = rockBreakQueue_.front();
+    rockBreakQueue_.pop_front();
+    mapGenerator_->SetMapChip(
+        static_cast<std::size_t>(completed.gridX),
+        static_cast<std::size_t>(completed.gridZ),
+        MapChipType::Ground);
+
+    Logger::GetInstance().Infof(
+        LogCategory::Game,
+        "RailBuilder: 岩を破壊して地面にしました ({}, {}), 残り待機数={}",
+        completed.gridX, completed.gridZ, rockBreakQueue_.size());
+
+    if (completed.gridX == gridPosX_ && completed.gridZ == gridPosZ_) {
+        isCursorAboveRock_ = false;
+        SyncTransformToGrid();
+    }
+
+    if (!rockBreakQueue_.empty()) {
+        StartNextRockThrow();
+        return;
+    }
+
+    isBreakingRock_ = false;
+    trainMovement_->SetRockBreakPaused(false);
+    hunger_->SetRockBreakPaused(false);
+    SyncTransformToGrid();
+}
+
 void GameComponents::RailBuilderComponent::SyncTransformToGrid() {
     if (!transform_) {
         return;
@@ -400,7 +512,8 @@ void GameComponents::RailBuilderComponent::SyncTransformToGrid() {
     transform_->Get().translate.x = static_cast<float>(gridPosX_) * gridSize_;
     transform_->Get().translate.z = static_cast<float>(gridPosZ_) * gridSize_;
 
-    transform_->Get().translate.y = height_;
+    transform_->Get().translate.y = height_ +
+        (isCursorAboveRock_ ? rockCursorHeightOffset_ : 0.0f);
 }
 
 void GameComponents::RailBuilderComponent::SetGridSize(float size) {

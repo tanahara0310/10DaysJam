@@ -38,6 +38,10 @@ namespace GameComponents
         void StartDraining();
         /// @brief 列車が新しいマスへ到着したとき、隣接するバナナの木を判定する。
         void OnTrainEnteredCell(int32_t gridX, int32_t gridZ);
+        /// @brief 行動コストとして空腹値を減らす。0になればゲームオーバーを要求する。
+        void ConsumeHunger(float amount);
+        /// @brief 岩破壊の投石中だけ時間経過による減少を停止・再開する。
+        void SetRockBreakPaused(bool paused) { isPausedForRockBreak_ = paused; }
 
         float GetCurrentHunger() const { return currentHunger_; }
         float GetMaximumHunger() const { return maximumHunger_; }
@@ -56,6 +60,7 @@ namespace GameComponents
         float currentHunger_ = 100.0f;
         bool isDraining_ = false;
         bool gameOverRequested_ = false;
+        bool isPausedForRockBreak_ = false;
 
         // 木の座標と、列車が通った隣接マスの組ごとに一度だけ発動させる。
         std::set<BananaTriggerKey> activatedBananaSides_;

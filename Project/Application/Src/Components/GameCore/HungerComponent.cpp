@@ -88,7 +88,7 @@ void GameComponents::HungerComponent::Start()
 
 void GameComponents::HungerComponent::Update()
 {
-    if (!isDraining_ || gameOverRequested_ || !gameManager_ ||
+    if (!isDraining_ || isPausedForRockBreak_ || gameOverRequested_ || !gameManager_ ||
         gameManager_->GetPhase() != GameManagerComponent::Phase::Playing) {
         return;
     }
@@ -150,4 +150,23 @@ void GameComponents::HungerComponent::OnTrainEnteredCell(int32_t gridX, int32_t 
         LogCategory::Game,
         "バナナの木が {} 本発動しました (回復量={}, 現在値={})",
         triggeredCount, recovery, currentHunger_);
+}
+
+void GameComponents::HungerComponent::ConsumeHunger(float amount)
+{
+    if (amount <= 0.0f || gameOverRequested_ || !gameManager_ ||
+        gameManager_->GetPhase() != GameManagerComponent::Phase::Playing) {
+        return;
+    }
+
+    currentHunger_ = std::max(0.0f, currentHunger_ - amount);
+    Logger::GetInstance().Infof(
+        LogCategory::Game,
+        "岩破壊で空腹値を消費しました (消費量={}, 現在値={})",
+        amount, currentHunger_);
+
+    if (currentHunger_ <= 0.0f) {
+        gameOverRequested_ = true;
+        gameManager_->RequestGameOver();
+    }
 }

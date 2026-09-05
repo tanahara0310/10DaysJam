@@ -73,7 +73,7 @@ namespace GameComponents
         float rockHeight_ = 0.7f;
         CoreEngine::Vector3 rockScale_ = { 0.7f, 0.7f, 0.7f };
         float bananaTreeHeight_ = 0.5f;
-        CoreEngine::Vector3 bananaTreeScale_ = { 0.35f, 1.0f, 0.35f };
+        CoreEngine::Vector3 bananaTreeScale_ = { 1.0f, 1.0f, 1.0f };
 
         MapGeneratorComponent* mapGenerator_ = nullptr;
         ModelRenderPoolComponent* groundRenderPool_ = nullptr;
