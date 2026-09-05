@@ -1,4 +1,31 @@
 {
+    "Result.Animation.ConfirmDuration": 0.2290000021457672,
+    "Result.Animation.ConfirmScale": 1.4500000476837158,
+    "Result.Animation.ReactionDuration": 0.15600000321865082,
+    "Result.Animation.ReactionScale": 0.7089999914169312,
+    "Result.Animation.SelectedBobDistance": 9.600000381469727,
+    "Result.Animation.SelectedBobDuration": 0.6340000033378601,
+    "Result.Animation.UnselectedFadeDuration": 0.08699999749660492,
+    "Result.Animation.UnselectedFadeScale": 0.5,
+    "Result.UI.ButtonColor": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+    ],
+    "Result.UI.ButtonFontSize": 61.08000183105469,
+    "Result.UI.ButtonPosition": [
+        0.0,
+        360.0
+    ],
+    "Result.UI.ButtonSpacing": 277.6000061035156,
+    "Result.UI.SelectedButtonColor": [
+        0.3019607961177826,
+        0.7215686440467834,
+        1.0,
+        1.0
+    ],
+    "Result.UI.TitleFontSize": 71.68000030517578,
     "Title.CameraShake.Strength": 0.7400000095367432,
     "Title.Monkey.Distance": 0.6039999723434448,
     "Title.Monkey.IntroDuration": 0.5109999775886536,

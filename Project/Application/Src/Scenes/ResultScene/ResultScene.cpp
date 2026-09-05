@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "ResultScene.h"
 
+#include "Audio/AudioSystem.h"
+#include "Components/Result/ResultButtonAnimationComponent.h"
+#include "Scenes/ResultScene/ResultSceneUi.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
@@ -8,35 +11,39 @@
 
 using namespace CoreEngine;
 
+namespace
+{
+    constexpr const char* kResultBgmPath = "Sounds/BGM/Result_bgm.mp3";
+    constexpr const char* kRailBuildSePath = "Application/Assets/Sounds/SE/rail_build.mp3";
+    constexpr const char* kDecisionSePath = "Sounds/SE/decision.mp3";
+}
+
 ResultScene::ResultScene::~ResultScene() = default;
 
 void ResultScene::ResultScene::OnInitialize() {
     // ========== シーンの設定 ==========
     SetSceneName("ResultScene");
     SetDefaultGroundEnabled(true);
-    // ========== オブジェクトの生成 ==========
-    auto* title = CreateText("RESULT", 96.0f, UIAnchor::Center,
-        { 0.0f, -180.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, "ResultTitle");
-    if (title) {
-        title->SetPivot({ 0.5f, 0.5f });
-    }
-    retryText_ = CreateText("リトライ", 48.0f, UIAnchor::Center,
-        { 0.0f, -30.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, "ResultRetry");
-    titleText_ = CreateText("タイトルへ", 48.0f, UIAnchor::Center,
-        { 0.0f, 60.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, "ResultReturnToTitle");
-    if (retryText_) {
-        retryText_->SetPivot({ 0.5f, 0.5f });
-    }
-    if (titleText_) {
-        titleText_->SetPivot({ 0.5f, 0.5f });
-    }
-    RefreshSelection();
 
-    auto* hint = CreateText("上下で選択 / 決定で進む / キャンセルでタイトルへ", 28.0f, UIAnchor::Center,
-        { 0.0f, 170.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, "ResultHint");
-    if (hint) {
-        hint->SetPivot({ 0.5f, 0.5f });
+    if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+        resultBgm_ = audioSystem->PlayScoped(
+            kResultBgmPath,
+            { .bus = AudioBus::BGM, .loop = true, .volume = 1.0f / 3.0f });
     }
+
+    const ResultSceneUi::Elements ui = ResultSceneUi::Build(
+        [this](const std::string& text,
+            float fontSize,
+            UIAnchor anchor,
+            const Vector2& position,
+            const Vector4& color,
+            const std::string& name) -> UIText* {
+                return CreateText(text, fontSize, anchor, position, color, name);
+        });
+
+    retryButton_ = ui.retryButton;
+    titleButton_ = ui.titleButton;
+    SetSelection(selection_, false);
 }
 
 void ResultScene::ResultScene::OnUpdate() {
@@ -51,28 +58,98 @@ void ResultScene::ResultScene::OnUpdate() {
         return;
     }
 
-    const bool up = input.IsActionTriggered(InputAction::MoveForward);
-    const bool down = input.IsActionTriggered(InputAction::MoveBack);
-    if (up != down) {
-        selection_ = selection_ == Selection::Retry ? Selection::Title : Selection::Retry;
-        RefreshSelection();
+    const bool left = input.IsActionTriggered(InputAction::MoveLeft);
+    const bool right = input.IsActionTriggered(InputAction::MoveRight);
+    if (left != right) {
+        SetSelection(
+            selection_ == Selection::Retry ? Selection::Title : Selection::Retry,
+            true);
+
+        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+            audioSystem->PlayOneShot(
+                kRailBuildSePath,
+                { .bus = AudioBus::SE });
+        }
     }
     if (input.IsActionTriggered(InputAction::UIConfirm)) {
-        returnRequested_ = true;
-        // GameScene は新規生成されるため、列車・レール・資源も初期状態から再開する。
-        sceneManager_->ChangeScene(selection_ == Selection::Retry ? "GameScene" : "TitleScene");
+        ConfirmSelection();
     }
 }
 
-void ResultScene::ResultScene::RefreshSelection() {
-    const Vector4 selectedColor{ 1.0f, 0.8f, 0.2f, 1.0f };
-    const Vector4 normalColor{ 0.7f, 0.7f, 0.7f, 1.0f };
-    if (retryText_) {
-        retryText_->SetText(selection_ == Selection::Retry ? "> リトライ <" : "リトライ");
-        retryText_->SetColor(selection_ == Selection::Retry ? selectedColor : normalColor);
+void ResultScene::ResultScene::SetSelection(Selection selection, bool playReaction)
+{
+    selection_ = selection;
+
+    auto* retryAnimation = retryButton_
+        ? retryButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+        : nullptr;
+    auto* titleAnimation = titleButton_
+        ? titleButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+        : nullptr;
+
+    if (retryAnimation) {
+        retryAnimation->SetSelected(selection_ == Selection::Retry);
     }
-    if (titleText_) {
-        titleText_->SetText(selection_ == Selection::Title ? "> タイトルへ <" : "タイトルへ");
-        titleText_->SetColor(selection_ == Selection::Title ? selectedColor : normalColor);
+    if (titleAnimation) {
+        titleAnimation->SetSelected(selection_ == Selection::Title);
     }
+
+    if (!playReaction) {
+        return;
+    }
+
+    auto* selectedAnimation = selection_ == Selection::Retry
+        ? retryAnimation
+        : titleAnimation;
+    if (selectedAnimation) {
+        selectedAnimation->PlaySelectionReaction();
+    }
+}
+
+void ResultScene::ResultScene::ConfirmSelection()
+{
+    if (returnRequested_ || !sceneManager_) {
+        return;
+    }
+
+    returnRequested_ = true;
+
+    if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+        audioSystem->PlayOneShot(
+            kDecisionSePath,
+            { .bus = AudioBus::SE });
+    }
+
+    const char* nextScene = selection_ == Selection::Retry ? "GameScene" : "TitleScene";
+    auto* selectedAnimation = selection_ == Selection::Retry
+        ? (retryButton_
+            ? retryButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+            : nullptr)
+        : (titleButton_
+            ? titleButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+            : nullptr);
+
+    auto* unselectedAnimation = selection_ == Selection::Retry
+        ? (titleButton_
+            ? titleButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+            : nullptr)
+        : (retryButton_
+            ? retryButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+            : nullptr);
+
+    const auto changeScene = [this, nextScene] {
+        if (sceneManager_) {
+            sceneManager_->ChangeScene(nextScene);
+        }
+    };
+
+    if (selectedAnimation) {
+        if (unselectedAnimation) {
+            unselectedAnimation->PlayUnselectedFade();
+        }
+        selectedAnimation->PlayConfirmReaction(changeScene);
+        return;
+    }
+
+    changeScene();
 }

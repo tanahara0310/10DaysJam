@@ -16,6 +16,9 @@
     <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp">
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
@@ -71,6 +74,9 @@
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp">
+      <Filter>Application\Src\Scenes\ResultScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp">
       <Filter>Application\Src\Scenes\ResultScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
@@ -1401,6 +1407,9 @@
     <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h">
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClInclude>
@@ -1456,6 +1465,9 @@
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h">
+      <Filter>Application\Src\Scenes\ResultScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h">
       <Filter>Application\Src\Scenes\ResultScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h">
@@ -3135,6 +3147,9 @@
     </Filter>
     <Filter Include="Application\Src\Components\GameCore">
       <UniqueIdentifier>{03D6A256-07A2-43DB-ABD3-8AB83DF1C1F7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Application\Src\Components\Result">
+      <UniqueIdentifier>{3F6A2C7C-8E4E-4FAD-9F7A-2B7D183B5B2A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Components\Rail">
       <UniqueIdentifier>{2B2D684B-9E7E-438C-9345-388EEF35B52B}</UniqueIdentifier>
