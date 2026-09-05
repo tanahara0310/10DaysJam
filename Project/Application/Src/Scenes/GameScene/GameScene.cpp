@@ -184,6 +184,12 @@ void GameScene::GameScene::OnInitialize() {
     bananaTreePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "banana_tree.obj",
         ToUInt(GameComponents::GameSettings::BananaTreePoolCapacity.Get(), 1), true);
+    // 水上レールの下へ表示する橋のオブジェクトプールを生成
+    auto* bridgePoolManager = CreateObject<GameSceneObject>("BridgePoolManager");
+    bridgePoolManager->AddComponent<CoreEngine::TransformComponent>();
+    bridgePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "bridge.obj",
+        ToUInt(GameComponents::GameSettings::BridgePoolCapacity.Get(), 1), true);
     // レールのオブジェクトプールを生成
     auto* railPoolManager = CreateObject<GameSceneObject>("RailPoolManager");
     railPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -294,6 +300,8 @@ void GameScene::GameScene::OnInitialize() {
         railPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         railLeftPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         railRightPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        bridgePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
         playRailBuildSe,
         renderWorldDistance);
