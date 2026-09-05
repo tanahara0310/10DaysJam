@@ -35,6 +35,7 @@
 #include "Modules/SizeModule.h"
 #include "Modules/RotationModule.h"
 #include "Modules/NoiseModule.h"
+#include "Modules/CollisionModule.h"
 
 // Core関連
 #include "Core/ParticleResourceManager.h"
@@ -261,6 +262,11 @@ public:
     /// @return ノイズモジュールの参照
     NoiseModule& GetNoiseModule() { return *noiseModule_; }
 
+    /// @brief 床との当たり判定モジュールを取得
+    /// @return 当たり判定モジュールの参照
+    /// @note CPU 版だけが持つ（IParticleSystem には無い）。既定では無効。
+    CollisionModule& GetCollisionModule() { return *collisionModule_; }
+
     // ──────────────────────────────────────────────────────────
     // 統計情報
     // ──────────────────────────────────────────────────────────
@@ -341,6 +347,7 @@ private:
     std::unique_ptr<SizeModule> sizeModule_;
     std::unique_ptr<RotationModule> rotationModule_;
     std::unique_ptr<NoiseModule> noiseModule_;
+    std::unique_ptr<CollisionModule> collisionModule_;
 
     std::unique_ptr<ParticlePresetManager> presetManager_ = std::make_unique<ParticlePresetManager>();
 

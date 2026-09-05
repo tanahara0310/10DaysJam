@@ -11,6 +11,7 @@
 #include "Components/Camera/RockBreakShakeSettingsComponent.h"
 #include "Components/GameCore/HungerComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
+#include "GameObjects/Effect/RockBreakDebris.h"
 #include "Input/InputAction.h"
 #include "Input/InputManager.h"
 #include "Utility/FrameRate/Time.h"
@@ -500,6 +501,12 @@ void GameComponents::RailBuilderComponent::CompleteRockBreak() {
 
     // 岩が砕けた瞬間にカメラを揺らす。強さは Game.CameraShake.RockBreak.* で調整する。
     RockBreakShakeSettingsComponent::PlayRockBreak();
+
+    // 同じ瞬間に、壊したマスの周りへ破片を散らす（投石の着弾位置と同じ場所）。
+    PlayRockBreakDebris({
+        static_cast<float>(completed.gridX) * gridSize_,
+        rockImpactHeight_,
+        static_cast<float>(completed.gridZ) * gridSize_ });
 
     Logger::GetInstance().Infof(
         LogCategory::Game,

@@ -48,6 +48,7 @@ void ParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourc
     sizeModule_ = std::make_unique<SizeModule>();
     rotationModule_ = std::make_unique<RotationModule>();
     noiseModule_ = std::make_unique<NoiseModule>();
+    collisionModule_ = std::make_unique<CollisionModule>();
 
     // ImGuiの最大パーティクル数スピンをバッファ容量までに制限
     mainModule_->SetCapacityLimit(kNumMaxInstance);
@@ -72,7 +73,8 @@ void ParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourc
         colorModule_.get(),
         sizeModule_.get(),
         rotationModule_.get(),
-        noiseModule_.get()
+        noiseModule_.get(),
+        collisionModule_.get()
     );
 
     // パーティクル放出処理の初期化
