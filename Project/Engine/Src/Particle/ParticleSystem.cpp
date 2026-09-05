@@ -257,6 +257,16 @@ bool ParticleSystem::IsFinished() const
     return !emissionModule_->IsPlaying() && particles_.empty();
 }
 
+bool ParticleSystem::LoadPreset(const std::string& filePath)
+{
+    return presetManager_ && presetManager_->LoadPreset(this, filePath);
+}
+
+bool ParticleSystem::SavePreset(const std::string& filePath)
+{
+    return presetManager_ && presetManager_->SavePreset(this, filePath);
+}
+
 void ParticleSystem::SetTexture(const std::string& texturePath)
 {
     texture_ = TextureManager::GetInstance().Load(texturePath);

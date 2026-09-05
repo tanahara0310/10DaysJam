@@ -14,8 +14,8 @@ namespace GameComponents
     /// @details GameScene::OnInitialize() から `AddFeature(CreateRockBreakDebrisFeature())` で登録する。
     ///          シーンに particle.obj のモデルパーティクルを 1 つ置き、
     ///          PlayRockBreakDebris() が呼ばれるたびに数個だけ弾けさせる。
-    /// @note 調整値は RockBreakDebris.cpp のファイルスコープにある定数。
-    ///       実行中はインスペクタの「RockBreakDebris」から各モジュールを直接いじれる。
+    /// @note 見た目と動きの値は Assets/Presets/Particle/RockBreakDebris.json が持つ。
+    ///       実行中はインスペクタの「RockBreakDebris」で調整して、そのまま上書き保存できる。
     std::unique_ptr<CoreEngine::ISceneFeature> CreateRockBreakDebrisFeature();
 
     /// @brief 砕けた岩の周りへ破片を出す
