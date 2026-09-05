@@ -207,6 +207,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp" />
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp" />
@@ -479,6 +480,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\LightingFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\EnvironmentFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GroundFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\TimeOfDayFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp" />
@@ -800,6 +802,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Editor\Stage\StageEditorPanel.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageProject.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h" />
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleScene.h" />
@@ -1153,6 +1156,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\LightingFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\EnvironmentFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\GroundFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\TimeOfDayFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h" />
