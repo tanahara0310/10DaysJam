@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
@@ -343,6 +344,7 @@ void GameComponents::RailBuilderComponent::Update() {
         Logger::GetInstance().Warnf(
             LogCategory::Game,
             "RailBuilder: レールがありません");
+        NotifyRailInsufficient();
         return;
     }
 
@@ -360,6 +362,18 @@ void GameComponents::RailBuilderComponent::Update() {
             LogCategory::Game,
             "RailBuilder: レールが不足しています (必要={}, 所持={})",
             resourceCost, resourceManager_->GetResourceCount());
+        NotifyRailInsufficient();
+        return;
+    }
+
+    // 岩破壊で空腹値が0以下になる入力は、ゲームオーバーにせず拒否する。
+    if (mapChip == MapChipType::Resource &&
+        hunger_->GetCurrentHunger() - rockHungerCost_ <= 0.0f) {
+        Logger::GetInstance().Warnf(
+            LogCategory::Game,
+            "RailBuilder: 岩を壊すための空腹値が不足しています (必要={}, 現在={})",
+            rockHungerCost_, hunger_->GetCurrentHunger());
+        NotifyHungerInsufficient();
         return;
     }
 
@@ -522,4 +536,29 @@ void GameComponents::RailBuilderComponent::SetGridSize(float size) {
 
 void GameComponents::RailBuilderComponent::SetHorizontalPrioritize(bool prioritize) {
     HorizontalPrioritize = prioritize;
-}   
+}
+
+void GameComponents::RailBuilderComponent::SetInsufficientFeedback(
+    std::function<void()> onRailInsufficient,
+    std::function<void()> onHungerInsufficient) {
+    OnRailInsufficient_ = std::move(onRailInsufficient);
+    OnHungerInsufficient_ = std::move(onHungerInsufficient);
+}
+
+void GameComponents::RailBuilderComponent::NotifyRailInsufficient() {
+    if (OnRailInsufficient_) {
+        OnRailInsufficient_();
+    }
+    if (OnFailureSE_) {
+        OnFailureSE_();
+    }
+}
+
+void GameComponents::RailBuilderComponent::NotifyHungerInsufficient() {
+    if (OnHungerInsufficient_) {
+        OnHungerInsufficient_();
+    }
+    if (OnFailureSE_) {
+        OnFailureSE_();
+    }
+}

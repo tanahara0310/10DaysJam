@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "Math/Vector/Vector2.h"
 
 #include <limits>
 
@@ -24,6 +25,7 @@ namespace GameComponents
 
         void Start() override;
         void Update() override;
+        void PlayInsufficientShake();
 
     private:
         void RefreshText();
@@ -31,5 +33,10 @@ namespace GameComponents
         HungerComponent* hunger_ = nullptr;
         CoreEngine::UIText* text_ = nullptr;
         int displayedHunger_ = (std::numeric_limits<int>::min)();
+        CoreEngine::Vector2 basePosition_{};
+        float shakeRemaining_ = 0.0f;
+        float shakeDuration_ = 0.35f;
+        float shakeAmplitude_ = 8.0f;
+        float shakeFrequency_ = 55.0f;
     };
 }

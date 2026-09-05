@@ -36,13 +36,14 @@ namespace GameComponents
             GameComponents::HungerComponent* hunger = nullptr,
             GameComponents::RockThrowComponent* rockThrow = nullptr,
             std::function<void()> OnBuildSE = nullptr,
-            std::function<void()> OnUndoSE = nullptr)
+            std::function<void()> OnUndoSE = nullptr,
+            std::function<void()> OnFailureSE = nullptr)
             : gridSize_(gridSize), initialGridPosX_(gridPosX), initialGridPosZ_(gridPosZ),
               gridPosX_(gridPosX), gridPosZ_(gridPosZ),
               railPath_(railPath), resourceManager_(resourceManager),
               mapGenerator_(mapGenerator), trainMovement_(trainMovement),
               hunger_(hunger), rockThrow_(rockThrow),
-              OnBuildSE_(OnBuildSE), OnUndoSE_(OnUndoSE) {
+              OnBuildSE_(OnBuildSE), OnUndoSE_(OnUndoSE), OnFailureSE_(OnFailureSE) {
         }
 
         // コンポーネントを識別する名前。必須
@@ -67,6 +68,9 @@ namespace GameComponents
         void SetGridSize(float size);
         // 水平方向優先かどうかを設定する
         void SetHorizontalPrioritize(bool prioritize);
+        void SetInsufficientFeedback(
+            std::function<void()> onRailInsufficient,
+            std::function<void()> onHungerInsufficient);
 
     private:
         // 論理グリッド座標を Transform のワールド座標へ反映する
@@ -79,6 +83,8 @@ namespace GameComponents
         void StartNextRockThrow();
         // 投石の着弾時に岩を地面へ変え、カーソルを通常位置へ戻す
         void CompleteRockBreak();
+        void NotifyRailInsufficient();
+        void NotifyHungerInsufficient();
 
         struct RockBreakRequest {
             int32_t gridX = 0;
@@ -134,5 +140,8 @@ namespace GameComponents
 
         std::function<void()> OnBuildSE_ = nullptr;
         std::function<void()> OnUndoSE_ = nullptr;
+        std::function<void()> OnFailureSE_ = nullptr;
+        std::function<void()> OnRailInsufficient_ = nullptr;
+        std::function<void()> OnHungerInsufficient_ = nullptr;
     };
 }

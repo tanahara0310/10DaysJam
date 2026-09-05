@@ -5,7 +5,10 @@
 #include "UI/UIText.h"
 #include "Components/Rail/RailResourceManagerComponent.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/FrameRate/Time.h"
 
+#include <algorithm>
+#include <cmath>
 #include <string>
 
 using namespace CoreEngine;
@@ -20,6 +23,7 @@ void GameComponents::RailResourceUIComponent::Start() {
         return;
     }
 
+    basePosition_ = text_->GetAnchoredPosition();
     RefreshText();
 }
 
@@ -31,6 +35,23 @@ void GameComponents::RailResourceUIComponent::Update() {
     if (displayedResourceCount_ != resourceManager_->GetResourceCount()) {
         RefreshText();
     }
+
+    if (shakeRemaining_ > 0.0f) {
+        shakeRemaining_ = std::max(0.0f, shakeRemaining_ - Time::UnscaledDeltaTime());
+        const float elapsed = shakeDuration_ - shakeRemaining_;
+        const float damping = shakeDuration_ > 0.0f ? shakeRemaining_ / shakeDuration_ : 0.0f;
+        text_->SetAnchoredPosition({
+            basePosition_.x + std::sin(elapsed * shakeFrequency_) * shakeAmplitude_ * damping,
+            basePosition_.y
+        });
+        if (shakeRemaining_ <= 0.0f) {
+            text_->SetAnchoredPosition(basePosition_);
+        }
+    }
+}
+
+void GameComponents::RailResourceUIComponent::PlayInsufficientShake() {
+    shakeRemaining_ = shakeDuration_;
 }
 
 void GameComponents::RailResourceUIComponent::RefreshText() {

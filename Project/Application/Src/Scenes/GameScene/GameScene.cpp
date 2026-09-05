@@ -87,6 +87,13 @@ void GameScene::GameScene::OnInitialize() {
                 { .bus = AudioBus::SE });
         }
         };
+    std::function<void()> playFailureSe = [this] {
+        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+            audioSystem->PlayOneShot(
+                "Application/Assets/Sounds/SE/beep.mp3",
+                { .bus = AudioBus::SE });
+        }
+        };
     std::function<void(float, float)> playRailBuildSe = [this](float volume, float pitch) {
         if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
             CoreEngine::PlayParams params;
@@ -241,7 +248,7 @@ void GameScene::GameScene::OnInitialize() {
     auto* rockThrow = rockProjectile->AddComponent<GameComponents::RockThrowComponent>();
 
     // 列車の描画は、列車の移動ロジックを持つコンポーネントとは別のコンポーネントで行う。
-    railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
+    auto* railBuilderComponent = railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
         gridSize, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
         railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>(),
@@ -249,7 +256,7 @@ void GameScene::GameScene::OnInitialize() {
         train->GetComponent<GameComponents::TrainMovementComponent>(),
         hungerComponent,
         rockThrow,
-        playBuildSe, playUndoSe);
+        playBuildSe, playUndoSe, playFailureSe);
 
     railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("arrow.obj");
 
@@ -330,7 +337,7 @@ void GameScene::GameScene::OnInitialize() {
                 GameComponents::GameSettings::HudOutlineWidth.Get());
             railResourceText->SetSortOrder(
                 GameComponents::GameSettings::HudSortOrder.Get());
-            railResourceText->AddComponent<GameComponents::RailResourceUIComponent>(
+            auto* railResourceUi = railResourceText->AddComponent<GameComponents::RailResourceUIComponent>(
                 railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>());
 
             auto* hungerText = CreateObject<CoreEngine::UIText>();
@@ -346,7 +353,10 @@ void GameScene::GameScene::OnInitialize() {
                 GameComponents::GameSettings::HudOutlineColor.Get(),
                 GameComponents::GameSettings::HudOutlineWidth.Get());
             hungerText->SetSortOrder(GameComponents::GameSettings::HudSortOrder.Get());
-            hungerText->AddComponent<GameComponents::HungerUIComponent>(hungerComponent);
+            auto* hungerUi = hungerText->AddComponent<GameComponents::HungerUIComponent>(hungerComponent);
+            railBuilderComponent->SetInsufficientFeedback(
+                [railResourceUi]() { railResourceUi->PlayInsufficientShake(); },
+                [hungerUi]() { hungerUi->PlayInsufficientShake(); });
         }
     } else {
         CoreEngine::Logger::GetInstance().Errorf(
