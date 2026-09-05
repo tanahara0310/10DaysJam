@@ -892,6 +892,9 @@
     <ClCompile Include="Engine\Src\Scene\Feature\GroundFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\Feature\TimeOfDayFeature.cpp">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
@@ -2548,6 +2551,9 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\GroundFeature.h">
+      <Filter>Engine\Src\Scene\Feature</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\Feature\TimeOfDayFeature.h">
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h">

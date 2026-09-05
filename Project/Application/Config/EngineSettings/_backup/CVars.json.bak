@@ -17,7 +17,7 @@
     "Result.UI.ButtonFontSize": 56.599998474121094,
     "Result.UI.ButtonPosition": [
         0.0,
-        290.0
+        280.0
     ],
     "Result.UI.ButtonSpacing": 300.0,
     "Result.UI.SelectedButtonColor": [
@@ -70,10 +70,11 @@
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        -0.9396738409996033,
-        0.3420201539993286,
-        0.005947260186076164
+        -0.831732451915741,
+        -0.45477399230003357,
+        0.31843632459640503
     ],
+    "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
     "r.AutoExposure.Enabled": true,
     "r.Bloom.Intensity": 0.9480000138282776,
     "r.Bloom.SoftKnee": 0.35100001096725464,
@@ -84,12 +85,13 @@
     "r.Cloud.GlobalCoverage": 0.47999998927116394,
     "r.Cloud.LayerThickness": 1941.0,
     "r.Cloud.PaintRegionSize": 200000.0,
+    "r.Cloud.SceneShadowStrength": 0.6499999761581421,
     "r.Cloud.Style": 1,
     "r.Cloud.WindDirX": -0.01745235174894333,
     "r.Cloud.WindDirZ": 0.9998477101325989,
     "r.Cloud.WindSpeed": 100.0,
-    "r.Ground.Checker": true,
     "r.LensFlare.Enabled": false,
+    "r.MotionBlur.Enabled": false,
     "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,

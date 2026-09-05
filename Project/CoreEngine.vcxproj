@@ -480,6 +480,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Scene\Feature\LightingFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\EnvironmentFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GroundFeature.cpp" />
+    <ClCompile Include="Engine\Src\Scene\Feature\TimeOfDayFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CollisionFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\DebugEditorFeature.cpp" />
@@ -1155,6 +1156,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Scene\Feature\LightingFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\EnvironmentFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\GroundFeature.h" />
+    <ClInclude Include="Engine\Src\Scene\Feature\TimeOfDayFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CollisionFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\DebugEditorFeature.h" />
