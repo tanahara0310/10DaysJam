@@ -28,6 +28,8 @@ namespace GameComponents
         extern CoreEngine::CVar<int> WaterPoolCapacity;
         extern CoreEngine::CVar<int> StationPoolCapacity;
         extern CoreEngine::CVar<int> RockPoolCapacity;
+        extern CoreEngine::CVar<int> BananaTreePoolCapacity;
+        extern CoreEngine::CVar<int> BridgePoolCapacity;
         extern CoreEngine::CVar<int> RailPoolCapacity;
         extern CoreEngine::CVar<int> RailLeftPoolCapacity;
         extern CoreEngine::CVar<int> RailRightPoolCapacity;

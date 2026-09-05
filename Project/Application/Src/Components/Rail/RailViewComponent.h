@@ -15,6 +15,7 @@ namespace CoreEngine
 
 namespace GameComponents {
     class RailPathComponent;
+    class MapGeneratorComponent;
     class ModelRenderPoolComponent;
     class CameraManagerComponent;
 }
@@ -31,6 +32,8 @@ namespace GameComponents
             GameComponents::ModelRenderPoolComponent* railPool = nullptr,
             GameComponents::ModelRenderPoolComponent* railLeftPool = nullptr,
             GameComponents::ModelRenderPoolComponent* railRightPool = nullptr,
+            GameComponents::ModelRenderPoolComponent* bridgePool = nullptr,
+            GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
             GameComponents::CameraManagerComponent* cameraManager = nullptr,
             std::function<void(float, float)> onRailBuildSE = nullptr,
             uint32_t viewDistanceX = 30)
@@ -38,6 +41,8 @@ namespace GameComponents
             railPool_(railPool),
             railLeftPool_(railLeftPool),
             railRightPool_(railRightPool),
+            bridgePool_(bridgePool),
+            mapGenerator_(mapGenerator),
             cameraManager_(cameraManager),
             viewDistanceX_(viewDistanceX),
             onRailBuildSE_(onRailBuildSE) {
@@ -80,11 +85,15 @@ namespace GameComponents
         GameComponents::ModelRenderPoolComponent* railPool_ = nullptr;
         GameComponents::ModelRenderPoolComponent* railLeftPool_ = nullptr;
         GameComponents::ModelRenderPoolComponent* railRightPool_ = nullptr;
+        GameComponents::ModelRenderPoolComponent* bridgePool_ = nullptr;
+        GameComponents::MapGeneratorComponent* mapGenerator_ = nullptr;
         GameComponents::CameraManagerComponent* cameraManager_ = nullptr;
         float gridSize_ = 5.0f;
         uint32_t viewDistanceX_ = 30;
         float railHeight_ = 0.6f;
         float railScale_ = 0.6f;
+        float bridgeHeight_ = 0.5f;
+        float bridgeScale_ = 1.0f;
         float confirmationJumpHeight_ = 0.8f;
         float confirmationJumpDuration_ = 0.35f;
         float confirmationStaggerInterval_ = 0.06f;

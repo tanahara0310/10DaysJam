@@ -5,6 +5,7 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Components/Rail/RailPathComponent.h"
+#include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Utility/ModelRenderPoolComponent.h"
 #include "Components/Camera/CameraManagerComponent.h"
 #include "Input/InputAction.h"
@@ -38,6 +39,8 @@ json GameComponents::RailViewComponent::OnSerialize() const {
         { "viewDistanceX", viewDistanceX_ },
         { "railHeight", railHeight_ },
         { "railScale", railScale_ },
+        { "bridgeHeight", bridgeHeight_ },
+        { "bridgeScale", bridgeScale_ },
         { "jumpHeight", confirmationJumpHeight_ },
         { "jumpDuration", confirmationJumpDuration_ },
         { "staggerInterval", confirmationStaggerInterval_ },
@@ -53,6 +56,8 @@ void GameComponents::RailViewComponent::OnDeserialize(const json& j) {
     viewDistanceX_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "viewDistanceX", viewDistanceX_));
     railHeight_ = JsonManager::SafeGet<float>(j, "railHeight", railHeight_);
     railScale_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "railScale", railScale_));
+    bridgeHeight_ = JsonManager::SafeGet<float>(j, "bridgeHeight", bridgeHeight_);
+    bridgeScale_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "bridgeScale", bridgeScale_));
     confirmationJumpHeight_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "jumpHeight", confirmationJumpHeight_));
     confirmationJumpDuration_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "jumpDuration", confirmationJumpDuration_));
     confirmationStaggerInterval_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "staggerInterval", confirmationStaggerInterval_));
@@ -70,6 +75,8 @@ bool GameComponents::RailViewComponent::DrawInspector() {
     if (ImGui::DragInt("描画距離X", &distance, 1.0f, 1, 500)) { viewDistanceX_ = static_cast<uint32_t>(std::max(distance, 1)); changed = true; }
     changed |= ImGui::DragFloat("レール高さ", &railHeight_, 0.05f, -20.0f, 20.0f);
     changed |= ImGui::DragFloat("レールスケール", &railScale_, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("橋の高さ", &bridgeHeight_, 0.05f, -20.0f, 20.0f);
+    changed |= ImGui::DragFloat("橋のスケール", &bridgeScale_, 0.01f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat("確定ジャンプ高さ", &confirmationJumpHeight_, 0.01f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat("確定ジャンプ時間", &confirmationJumpDuration_, 0.01f, 0.01f, 10.0f);
     changed |= ImGui::DragFloat("確定演出の時間差", &confirmationStaggerInterval_, 0.01f, 0.0f, 5.0f);
@@ -204,7 +211,8 @@ float GameComponents::RailViewComponent::GetConfirmationJumpOffset(
 }
 
 void GameComponents::RailViewComponent::DrawRailModels() {
-    if (!railPool_ || !railLeftPool_ || !railRightPool_) {
+    if (!railPool_ || !railLeftPool_ || !railRightPool_ ||
+        !bridgePool_ || !mapGenerator_) {
         return;
     }
 
@@ -280,6 +288,21 @@ void GameComponents::RailViewComponent::DrawRailModels() {
 
         float scaleOffset = railScale_;
         const Vector3 scale = { scaleOffset, scaleOffset, scaleOffset };
+
+        // 水チップはそのまま描画し、地面と同じ高さへ橋モデルを追加する。
+        if (current.first >= 0 && current.second >= 0 &&
+            mapGenerator_->GetMapChip(
+                static_cast<std::size_t>(current.first),
+                static_cast<std::size_t>(current.second)) == MapChipType::Water) {
+            bridgePool_->Draw(
+                {
+                    static_cast<float>(current.first) * gridSize_,
+                    bridgeHeight_,
+                    static_cast<float>(current.second) * gridSize_
+                },
+                { 0.0f, yawFromDirection(outgoing), 0.0f },
+                { bridgeScale_, bridgeScale_, bridgeScale_ });
+        }
 
         // XZ平面の外積。正なら進行方向に対して左折、負なら右折。
         const int32_t turn =

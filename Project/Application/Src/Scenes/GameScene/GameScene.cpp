@@ -15,16 +15,20 @@
 
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Building/MapViewComponent.h"
+#include "Components/Building/RockThrowComponent.h"
 #include "Components/Camera/CameraManagerComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Rail/RailViewComponent.h"
 #include "Components/Rail/RailResourceManagerComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
+#include "Components/UI/HungerUIComponent.h"
 #include "Components/UI/RailResourceUIComponent.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
+#include "Components/GameCore/GameResultData.h"
 #include "Components/GameCore/GameSettingsComponent.h"
+#include "Components/GameCore/HungerComponent.h"
 #include "GameObjects/GameSceneObject.h"
 
 #include <algorithm>
@@ -42,6 +46,8 @@ namespace {
 GameScene::GameScene::~GameScene() = default;
 
 void GameScene::GameScene::OnInitialize() {
+    GameComponents::GameResultData::Reset();
+
     // ========== シーンの設定 ==========
     SetSceneName("GameScene");
     SetDefaultGroundEnabled(true);
@@ -81,6 +87,13 @@ void GameScene::GameScene::OnInitialize() {
         if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
             audioSystem->PlayOneShot(
                 "Application/Assets/Sounds/SE/build_return.mp3",
+                { .bus = AudioBus::SE });
+        }
+        };
+    std::function<void()> playFailureSe = [this] {
+        if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
+            audioSystem->PlayOneShot(
+                "Application/Assets/Sounds/SE/beep.mp3",
                 { .bus = AudioBus::SE });
         }
         };
@@ -168,6 +181,18 @@ void GameScene::GameScene::OnInitialize() {
     rockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "rock.obj",
         ToUInt(GameComponents::GameSettings::RockPoolCapacity.Get(), 1), true);
+    // バナナの木のオブジェクトプールを生成（仮モデルとしてbox.objを使用）
+    auto* bananaTreePoolManager = CreateObject<GameSceneObject>("BananaTreePoolManager");
+    bananaTreePoolManager->AddComponent<CoreEngine::TransformComponent>();
+    bananaTreePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "banana_tree.obj",
+        ToUInt(GameComponents::GameSettings::BananaTreePoolCapacity.Get(), 1), true);
+    // 水上レールの下へ表示する橋のオブジェクトプールを生成
+    auto* bridgePoolManager = CreateObject<GameSceneObject>("BridgePoolManager");
+    bridgePoolManager->AddComponent<CoreEngine::TransformComponent>();
+    bridgePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "bridge.obj",
+        ToUInt(GameComponents::GameSettings::BridgePoolCapacity.Get(), 1), true);
     // レールのオブジェクトプールを生成
     auto* railPoolManager = CreateObject<GameSceneObject>("RailPoolManager");
     railPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -192,6 +217,11 @@ void GameScene::GameScene::OnInitialize() {
     mapGenerator->AddComponent<CoreEngine::TransformComponent>();
     mapGenerator->AddComponent<GameComponents::MapGeneratorComponent>(
         mapSizeZ, initialGenerateMapSizeX, mapSettings);
+
+    // 列車の発車後に減少し、バナナの木で回復する空腹値を管理する。
+    auto* hungerComponent = gameManager->AddComponent<GameComponents::HungerComponent>(
+        mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
+        gameManagerComponent);
     
     // レールの配置を管理するコンポーネントを追加
     auto* railPath = CreateObject<GameSceneObject>("RailPath");
@@ -215,17 +245,27 @@ void GameScene::GameScene::OnInitialize() {
         gridSize, GameComponents::GameSettings::TrainMoveSpeed.Get(),
         initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
-        gameManagerComponent);
+        gameManagerComponent,
+        hungerComponent);
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
+
+    // 岩破壊時に列車から投げる石。アニメーションはゲーム終了演出中も完了させる。
+    auto* rockProjectile = CreateObject<GameSceneObject>("RockProjectile");
+    rockProjectile->AddComponent<CoreEngine::TransformComponent>();
+    rockProjectile->AddComponent<CoreEngine::MeshRendererComponent>("rock.obj");
+    auto* rockThrow = rockProjectile->AddComponent<GameComponents::RockThrowComponent>();
+
     // 列車の描画は、列車の移動ロジックを持つコンポーネントとは別のコンポーネントで行う。
-    railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
+    auto* railBuilderComponent = railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
         gridSize, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
         railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>(),
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         train->GetComponent<GameComponents::TrainMovementComponent>(),
-        playBuildSe, playUndoSe);
+        hungerComponent,
+        rockThrow,
+        playBuildSe, playUndoSe, playFailureSe);
 
     railBuilder->AddComponent<CoreEngine::MeshRendererComponent>("arrow.obj");
 
@@ -263,6 +303,8 @@ void GameScene::GameScene::OnInitialize() {
         railPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         railLeftPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         railRightPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        bridgePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
         playRailBuildSe,
         renderWorldDistance);
@@ -276,6 +318,7 @@ void GameScene::GameScene::OnInitialize() {
         waterPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        bananaTreePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
         gridSize, renderWorldDistance);
 
@@ -287,7 +330,7 @@ void GameScene::GameScene::OnInitialize() {
         fontDesc.systemFamilyNames = {
             L"Yu Gothic UI", L"Meiryo", L"Segoe UI"
         };
-        fontDesc.charsetUtf8 = "残りレール: 0123456789";
+        fontDesc.charsetUtf8 = "残りレール空腹値: 0123456789";
 
         if (auto* font = fontManager->Acquire(fontDesc)) {
             auto* railResourceText = CreateObject<CoreEngine::UIText>();
@@ -305,13 +348,31 @@ void GameScene::GameScene::OnInitialize() {
                 GameComponents::GameSettings::HudOutlineWidth.Get());
             railResourceText->SetSortOrder(
                 GameComponents::GameSettings::HudSortOrder.Get());
-            railResourceText->AddComponent<GameComponents::RailResourceUIComponent>(
+            auto* railResourceUi = railResourceText->AddComponent<GameComponents::RailResourceUIComponent>(
                 railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>());
+
+            auto* hungerText = CreateObject<CoreEngine::UIText>();
+            hungerText->Initialize(font, "空腹値: 100", "HungerText");
+            hungerText->SetAnchor(CoreEngine::UIAnchor::TopLeft);
+            auto hungerPosition = GameComponents::GameSettings::HudPosition.Get();
+            hungerPosition.y += GameComponents::GameSettings::HudFontSize.Get() + 8.0f;
+            hungerText->SetAnchoredPosition(hungerPosition);
+            hungerText->SetPivot({ 0.0f, 0.0f });
+            hungerText->SetFontSize(GameComponents::GameSettings::HudFontSize.Get());
+            hungerText->SetColor(GameComponents::GameSettings::HudColor.Get());
+            hungerText->SetOutline(
+                GameComponents::GameSettings::HudOutlineColor.Get(),
+                GameComponents::GameSettings::HudOutlineWidth.Get());
+            hungerText->SetSortOrder(GameComponents::GameSettings::HudSortOrder.Get());
+            auto* hungerUi = hungerText->AddComponent<GameComponents::HungerUIComponent>(hungerComponent);
+            railBuilderComponent->SetInsufficientFeedback(
+                [railResourceUi]() { railResourceUi->PlayInsufficientShake(); },
+                [hungerUi]() { hungerUi->PlayInsufficientShake(); });
         }
     } else {
         CoreEngine::Logger::GetInstance().Errorf(
             CoreEngine::LogCategory::Game,
-            "GameScene: FontManager が取得できないためレール数UIを生成できません");
+            "GameScene: FontManager が取得できないためHUDを生成できません");
     }
 }
 

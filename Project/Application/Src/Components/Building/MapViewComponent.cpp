@@ -32,7 +32,9 @@ json GameComponents::MapViewComponent::OnSerialize() const {
         { "stationHeight", stationHeight_ },
         { "stationScale", JsonManager::Vector3ToJson(stationScale_) },
         { "rockHeight", rockHeight_ },
-        { "rockScale", JsonManager::Vector3ToJson(rockScale_) }
+        { "rockScale", JsonManager::Vector3ToJson(rockScale_) },
+        { "bananaTreeHeight", bananaTreeHeight_ },
+        { "bananaTreeScale", JsonManager::Vector3ToJson(bananaTreeScale_) }
     };
 }
 
@@ -47,6 +49,8 @@ void GameComponents::MapViewComponent::OnDeserialize(const json& j) {
     stationScale_ = JsonManager::SafeGetVector3(j, "stationScale", stationScale_);
     rockHeight_ = JsonManager::SafeGet<float>(j, "rockHeight", rockHeight_);
     rockScale_ = JsonManager::SafeGetVector3(j, "rockScale", rockScale_);
+    bananaTreeHeight_ = JsonManager::SafeGet<float>(j, "bananaTreeHeight", bananaTreeHeight_);
+    bananaTreeScale_ = JsonManager::SafeGetVector3(j, "bananaTreeScale", bananaTreeScale_);
 }
 
 #ifdef USE_IMGUI
@@ -63,6 +67,8 @@ bool GameComponents::MapViewComponent::DrawInspector() {
     changed |= ImGui::DragFloat3("駅スケール", &stationScale_.x, 0.01f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat("岩の高さ", &rockHeight_, 0.05f);
     changed |= ImGui::DragFloat3("岩スケール", &rockScale_.x, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("バナナの木の高さ", &bananaTreeHeight_, 0.05f);
+    changed |= ImGui::DragFloat3("バナナの木スケール", &bananaTreeScale_.x, 0.01f, 0.0f, 10.0f);
     return changed;
 }
 #endif
@@ -120,6 +126,14 @@ void GameComponents::MapViewComponent::Update() {
             // 岩チップの表示
             if (rockRenderPool_ && chipType == MapChipType::Resource) {
                 rockRenderPool_->Draw({ x * gridSize_, rockHeight_, z * gridSize_ }, rotate, rockScale_);
+            }
+
+            // バナナの木チップの表示
+            if (bananaTreeRenderPool_ && chipType == MapChipType::BananaTree) {
+                bananaTreeRenderPool_->Draw(
+                    { x * gridSize_, bananaTreeHeight_, z * gridSize_ },
+                    rotate,
+                    bananaTreeScale_);
             }
         }
     }

@@ -182,9 +182,11 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
   <ItemGroup>
     <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\GameCore\HungerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailResourceManagerComponent.cpp" />
@@ -198,6 +200,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\RailResourceUIComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\UI\HungerUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
     <ClCompile Include="Application\Src\Editor\Stage\StageCsvDocument.cpp" />
     <ClCompile Include="Application\Src\Editor\Stage\StageEditorPanel.cpp" />
@@ -771,9 +774,12 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Building\MapChipData.h" />
     <ClInclude Include="Application\Src\Components\Building\MapGeneratorComponent.h" />
     <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h" />
+    <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h" />
     <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h" />
+    <ClInclude Include="Application\Src\Components\GameCore\GameResultData.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h" />
+    <ClInclude Include="Application\Src\Components\GameCore\HungerComponent.h" />
     <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailResourceManagerComponent.h" />
@@ -787,6 +793,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\RailResourceUIComponent.h" />
+    <ClInclude Include="Application\Src\Components\UI\HungerUIComponent.h" />
     <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageCsvDocument.h" />

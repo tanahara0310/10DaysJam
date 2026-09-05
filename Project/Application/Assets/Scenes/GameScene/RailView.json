@@ -25,6 +25,8 @@
         {
             "enabled": true,
             "parameters": {
+                "bridgeHeight": 0.5,
+                "bridgeScale": 1.0,
                 "gridSize": 1.0,
                 "jumpDuration": 0.3499999940395355,
                 "jumpHeight": 0.800000011920929,
