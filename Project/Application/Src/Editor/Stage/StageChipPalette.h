@@ -34,6 +34,7 @@ namespace GameEditors
         { GameComponents::MapChipType::Ground,   2, "地面 (Ground)",   "",   "レール設置コスト1",                      PackChipColor( 96, 150,  72) },
         { GameComponents::MapChipType::Station,  3, "駅 (Station)",    "駅", "到達で報酬15。そこまでのレールが確定する", PackChipColor(230, 170,  50) },
         { GameComponents::MapChipType::Resource, 4, "資源 (Resource)", "資", "到達で報酬5。取得後は地面へ戻る",         PackChipColor(170, 130, 205) },
+        { GameComponents::MapChipType::BananaTree, 5, "バナナの木 (Banana Tree)", "バ", "レール設置不可。隣接マス通過時に空腹値を回復", PackChipColor(220, 190,  45) },
     };
 
     /// @brief パレットの要素数

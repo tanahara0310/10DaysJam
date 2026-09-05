@@ -11,6 +11,16 @@
         {
             "enabled": true,
             "type": "GameSettings"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "bananaRecovery": 20.0,
+                "drainPerSecond": 1.0,
+                "initialHunger": 100.0,
+                "maximumHunger": 100.0
+            },
+            "type": "Hunger"
         }
     ],
     "name": "GameManager"

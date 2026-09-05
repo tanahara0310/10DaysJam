@@ -13,6 +13,7 @@ namespace CoreEngine
 namespace GameComponents {
     class RailPathComponent;
     class GameManagerComponent;
+    class HungerComponent;
 }
 
 namespace GameComponents
@@ -25,8 +26,9 @@ namespace GameComponents
             float gridSize = 5.0f, float moveSpeed = 0.5f,
             int32_t gridX = 0, int32_t gridZ = 0,
             GameComponents::RailPathComponent* railPath = nullptr,
-            GameManagerComponent* gameManager = nullptr)
-            : railPath_(railPath), gameManager_(gameManager), gridSize_(gridSize),
+            GameManagerComponent* gameManager = nullptr,
+            HungerComponent* hunger = nullptr)
+            : railPath_(railPath), gameManager_(gameManager), hunger_(hunger), gridSize_(gridSize),
               initialMoveSpeed_(moveSpeed), moveSpeed_(moveSpeed),
               initialGridX_(gridX), initialGridZ_(gridZ), gridX_(gridX), gridZ_(gridZ) {
         }
@@ -74,6 +76,7 @@ namespace GameComponents
         CoreEngine::TransformComponent* transform_ = nullptr;
         GameComponents::RailPathComponent* railPath_ = nullptr;
         GameManagerComponent* gameManager_ = nullptr;
+        HungerComponent* hunger_ = nullptr;
         float gridSize_ = 5.0f;
 
         float initialMoveSpeed_ = 0.5f;

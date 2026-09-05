@@ -6,6 +6,7 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/GameCore/GameManagerComponent.h"
+#include "Components/GameCore/HungerComponent.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -82,10 +83,10 @@ bool GameComponents::TrainMovementComponent::DrawInspector() {
 void GameComponents::TrainMovementComponent::Start() {
     transform_ = Sibling<TransformComponent>();
     // RailPathComponent がアタッチされていない場合は処理を中断する
-    if (!transform_ || !railPath_ || !gameManager_) {
+    if (!transform_ || !railPath_ || !gameManager_ || !hunger_) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
-            "TrainMovementComponent: Transform、RailPath または GameManager が未設定です");
+            "TrainMovementComponent: Transform、RailPath、GameManager または Hunger が未設定です");
         SetEnabled(false);
         return;
     }
@@ -179,6 +180,8 @@ void GameComponents::TrainMovementComponent::Update() {
         transform_->Get().translate.x = static_cast<float>(gridX_) * gridSize_;
         transform_->Get().translate.z = static_cast<float>(gridZ_) * gridSize_;
 
+        hunger_->OnTrainEnteredCell(gridX_, gridZ_);
+
         // 発車後に終端へ到着した時点でゲームオーバーにする。
         if (railPath_->GetUnconfirmedRailCount() == 0) {
             NotifyGameOver();
@@ -236,6 +239,7 @@ bool GameComponents::TrainMovementComponent::BeginNextSegment() {
         return false;
     }
 
+    hunger_->StartDraining();
     movementProgress_ = 0.0f;
     isMoving_ = true;
     UpdateRotation();

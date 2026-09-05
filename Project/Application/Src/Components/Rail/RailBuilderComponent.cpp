@@ -304,11 +304,11 @@ void GameComponents::RailBuilderComponent::Update() {
     const MapChipType mapChip = mapGenerator_->GetMapChip(
         static_cast<std::size_t>(nextX), static_cast<std::size_t>(nextZ));
 
-    // Void はマップ外も含む非建設マスとして扱う。
-    if (mapChip == MapChipType::Void) {
+    // Voidとバナナの木は非建設マスとして扱う。
+    if (mapChip == MapChipType::Void || mapChip == MapChipType::BananaTree) {
         Logger::GetInstance().Infof(
             LogCategory::Game,
-            "RailBuilder: Voidチップのためレールを設置できません ({}, {})",
+            "RailBuilder: 建設不可チップのためレールを設置できません ({}, {})",
             nextX, nextZ);
         return;
     }

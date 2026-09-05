@@ -21,10 +21,12 @@
 #include "Components/Rail/RailViewComponent.h"
 #include "Components/Rail/RailResourceManagerComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
+#include "Components/UI/HungerUIComponent.h"
 #include "Components/UI/RailResourceUIComponent.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/GameSettingsComponent.h"
+#include "Components/GameCore/HungerComponent.h"
 #include "GameObjects/GameSceneObject.h"
 
 #include <algorithm>
@@ -168,6 +170,13 @@ void GameScene::GameScene::OnInitialize() {
     rockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "rock.obj",
         ToUInt(GameComponents::GameSettings::RockPoolCapacity.Get(), 1), true);
+    // バナナの木のオブジェクトプールを生成（仮モデルとしてbox.objを使用）
+    auto* bananaTreePoolManager = CreateObject<GameSceneObject>("BananaTreePoolManager");
+    bananaTreePoolManager->AddComponent<CoreEngine::TransformComponent>();
+    bananaTreePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "box.obj",
+        ToUInt(GameComponents::GameSettings::BananaTreePoolCapacity.Get(), 1), true,
+        CoreEngine::Vector4{ 0.95f, 0.75f, 0.15f, 1.0f });
     // レールのオブジェクトプールを生成
     auto* railPoolManager = CreateObject<GameSceneObject>("RailPoolManager");
     railPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -192,6 +201,11 @@ void GameScene::GameScene::OnInitialize() {
     mapGenerator->AddComponent<CoreEngine::TransformComponent>();
     mapGenerator->AddComponent<GameComponents::MapGeneratorComponent>(
         mapSizeZ, initialGenerateMapSizeX, mapSettings);
+
+    // 列車の発車後に減少し、バナナの木で回復する空腹値を管理する。
+    auto* hungerComponent = gameManager->AddComponent<GameComponents::HungerComponent>(
+        mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
+        gameManagerComponent);
     
     // レールの配置を管理するコンポーネントを追加
     auto* railPath = CreateObject<GameSceneObject>("RailPath");
@@ -215,7 +229,8 @@ void GameScene::GameScene::OnInitialize() {
         gridSize, GameComponents::GameSettings::TrainMoveSpeed.Get(),
         initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
-        gameManagerComponent);
+        gameManagerComponent,
+        hungerComponent);
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
     // 列車の描画は、列車の移動ロジックを持つコンポーネントとは別のコンポーネントで行う。
@@ -276,6 +291,7 @@ void GameScene::GameScene::OnInitialize() {
         waterPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        bananaTreePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         cameraController->GetComponent<GameComponents::CameraManagerComponent>(),
         gridSize, renderWorldDistance);
 
@@ -287,7 +303,7 @@ void GameScene::GameScene::OnInitialize() {
         fontDesc.systemFamilyNames = {
             L"Yu Gothic UI", L"Meiryo", L"Segoe UI"
         };
-        fontDesc.charsetUtf8 = "残りレール: 0123456789";
+        fontDesc.charsetUtf8 = "残りレール空腹値: 0123456789";
 
         if (auto* font = fontManager->Acquire(fontDesc)) {
             auto* railResourceText = CreateObject<CoreEngine::UIText>();
@@ -307,11 +323,26 @@ void GameScene::GameScene::OnInitialize() {
                 GameComponents::GameSettings::HudSortOrder.Get());
             railResourceText->AddComponent<GameComponents::RailResourceUIComponent>(
                 railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>());
+
+            auto* hungerText = CreateObject<CoreEngine::UIText>();
+            hungerText->Initialize(font, "空腹値: 100", "HungerText");
+            hungerText->SetAnchor(CoreEngine::UIAnchor::TopLeft);
+            auto hungerPosition = GameComponents::GameSettings::HudPosition.Get();
+            hungerPosition.y += GameComponents::GameSettings::HudFontSize.Get() + 8.0f;
+            hungerText->SetAnchoredPosition(hungerPosition);
+            hungerText->SetPivot({ 0.0f, 0.0f });
+            hungerText->SetFontSize(GameComponents::GameSettings::HudFontSize.Get());
+            hungerText->SetColor(GameComponents::GameSettings::HudColor.Get());
+            hungerText->SetOutline(
+                GameComponents::GameSettings::HudOutlineColor.Get(),
+                GameComponents::GameSettings::HudOutlineWidth.Get());
+            hungerText->SetSortOrder(GameComponents::GameSettings::HudSortOrder.Get());
+            hungerText->AddComponent<GameComponents::HungerUIComponent>(hungerComponent);
         }
     } else {
         CoreEngine::Logger::GetInstance().Errorf(
             CoreEngine::LogCategory::Game,
-            "GameScene: FontManager が取得できないためレール数UIを生成できません");
+            "GameScene: FontManager が取得できないためHUDを生成できません");
     }
 }
 
