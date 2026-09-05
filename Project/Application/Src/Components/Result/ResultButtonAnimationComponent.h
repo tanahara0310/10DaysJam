@@ -24,6 +24,7 @@ namespace GameComponents
     public:
         static CoreEngine::CVar<float> ReactionScale;
         static CoreEngine::CVar<float> ReactionDuration;
+        static CoreEngine::CVar<float> SelectedScale;
         static CoreEngine::CVar<float> ConfirmScale;
         static CoreEngine::CVar<float> ConfirmDuration;
         static CoreEngine::CVar<float> UnselectedFadeScale;
