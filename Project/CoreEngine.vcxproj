@@ -777,6 +777,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h" />
     <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h" />
+    <ClInclude Include="Application\Src\Components\GameCore\GameResultData.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\HungerComponent.h" />
     <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h" />

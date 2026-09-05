@@ -225,6 +225,7 @@ void GameComponents::TrainMovementComponent::Update() {
         const float progressToDestination = 1.0f - movementProgress_;
         const float appliedProgress = std::min(remainingProgress, progressToDestination);
         movementProgress_ += appliedProgress;
+        travelDistance_ += appliedProgress * gridSize_;
         remainingProgress -= appliedProgress;
         SyncTransformToProgress();
 

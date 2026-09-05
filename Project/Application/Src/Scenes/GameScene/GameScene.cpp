@@ -26,6 +26,7 @@
 #include "Components/UI/RailResourceUIComponent.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
+#include "Components/GameCore/GameResultData.h"
 #include "Components/GameCore/GameSettingsComponent.h"
 #include "Components/GameCore/HungerComponent.h"
 #include "GameObjects/GameSceneObject.h"
@@ -45,6 +46,8 @@ namespace {
 GameScene::GameScene::~GameScene() = default;
 
 void GameScene::GameScene::OnInitialize() {
+    GameComponents::GameResultData::Reset();
+
     // ========== シーンの設定 ==========
     SetSceneName("GameScene");
     SetDefaultGroundEnabled(true);

@@ -57,6 +57,8 @@ namespace GameComponents
 
         float GetMoveSpeed() const { return moveSpeed_; }
         CoreEngine::Vector3 GetWorldPosition() const;
+        /// @brief 発車後に列車が実際に進んだワールド距離。
+        float GetTravelDistance() const { return travelDistance_; }
         float GetMinMoveSpeed() const { return minMoveSpeed_; }
         float GetSpeedRatio() const {
             return minMoveSpeed_ > 0.0f ? moveSpeed_ / minMoveSpeed_ : 1.0f;
@@ -101,6 +103,7 @@ namespace GameComponents
         int32_t destinationGridZ_ = 0;
 
         float movementProgress_ = 0.0f;
+        float travelDistance_ = 0.0f;
         float completedRailPauseDuration_ = 1.0f;
         float completedRailPauseRemaining_ = 0.0f;
         float boostJumpHeight_ = 0.8f;
