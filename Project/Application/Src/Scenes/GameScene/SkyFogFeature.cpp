@@ -1,11 +1,17 @@
 #include "pch.h"
 #include "SkyFogFeature.h"
 
+#include "EngineSystem/EngineSystem.h"
 #include "Graphics/Fog/Settings/FogCVars.h"
+#include "Graphics/Light/Light.h"
+#include "Graphics/Light/LightManager.h"
+#include "Math/MathCore.h"
 #include "Math/Vector/Vector4.h"
 #include "Scene/Feature/ISceneFeature.h"
 #include "Utility/CVar/CVar.h"
 
+#include <algorithm>
+#include <cmath>
 #include <memory>
 
 using namespace CoreEngine;
@@ -38,11 +44,19 @@ namespace {
     //   下げる（0.2 以下）と雲が上へ広がってステージまで霞む。上げる（10 以上）と
     //   境目が刃物のように鋭くなり、見下ろしカメラでは「白い床」に見える。4 前後。
     //
+    // ■ 夜は雲も暗くする（NightBrightnessEV）
+    //   フォグ色は Color × Brightness の絶対値で、FogManager がそのまま定数バッファへ
+    //   入れる（時刻には追従しない）。一方でサーフェスは月光 80lx ＝ 太陽 100000lx の
+    //   1/1250 まで落ち、自動露出は TimeOfDayFeature が上限 +7.5EV（≒×180）へ張り付か
+    //   せる。昼と同じ色のままだと雲だけが露出に持ち上げられて白飛びし、ステージへ
+    //   掛かるわずか 1〜3% の雲まで画面上では真っ白になる（＝ステージが霞んで見える）。
+    //   そこで太陽高度から「夜の度合い」を出し、Brightness を EV で落として釣り合わせる。
+    //
     // 値は CVars.json へ自動保存され、インスペクターの「ゲーム設定」から編集できる。
 
     CVar<bool> cvEnabled{
         "Game.Fog.Enabled", true,
-        "ゲームシーンで雲を出す。切るとシーン開始前のフォグ設定へ戻る" };
+        "ゲーム・リザルトシーンで雲を出す。切るとシーン開始前のフォグ設定へ戻る" };
 
     CVar<float> cvBaseHeight{
         "Game.Fog.BaseHeight", -0.5f,
@@ -101,6 +115,66 @@ namespace {
         "Game.Fog.SunExponent", 8.0f,
         "太陽まわりの光り方の鋭さ。大きいほど太陽の周りだけが狭く光る",
         CVarRange{ 1.0f, 128.0f } };
+
+    CVar<float> cvNightBrightnessEV{
+        "Game.Fog.NightBrightnessEV", -10.0f,
+        "夜に Brightness を何段（EV）落とすか。0 にすると昼と同じ色のままになり、"
+        "夜の自動露出に持ち上げられて雲が白飛びする。"
+        "既定 -10（≒1/1000）は月光 80lx と太陽 100000lx の比に合わせた値",
+        CVarRange{ -16.0f, 0.0f } };
+
+    CVar<float> cvNightStartElevationDeg{
+        "Game.Fog.NightStartElevationDeg", 5.0f,
+        "暗くし始める太陽高度 [deg]。Game.StageLights.OnElevationDeg と揃えてある",
+        CVarRange{ -20.0f, 30.0f } };
+
+    CVar<float> cvNightFullElevationDeg{
+        "Game.Fog.NightFullElevationDeg", -6.0f,
+        "落としきる太陽高度 [deg]（-6 = 市民薄明の終わり）。"
+        "Game.StageLights.FullElevationDeg と揃えてある",
+        CVarRange{ -30.0f, 20.0f } };
+
+    // ──────────────────────────────────────────────────────────
+    // 夜の度合い
+    // ──────────────────────────────────────────────────────────
+
+    /// @brief 太陽の高度角 [deg]（太陽が無いシーンは昼として扱う）
+    /// @note TimeOfDayFeature は地平線下でも太陽ライトの向きを更新し続けるので、
+    ///       夜は素直に負の値になる。月は別ライトなのでここには出てこない
+    float ComputeSunElevationDeg(LightManager& lightManager)
+    {
+        const Light* sun = lightManager.GetAtmosphereSunLight();
+        if (!sun) {
+            return 90.0f;
+        }
+        // ライト方向は「太陽 → 地表」なので、太陽を見る方向の Y が sin(高度)
+        const Vector3 direction = Normalize(sun->direction);
+        return std::asin(std::clamp(-direction.y, -1.0f, 1.0f))
+            * MathCore::Constants::kRadToDeg;
+    }
+
+    /// @brief 太陽高度から夜の度合い（0 = 昼 / 1 = 夜）を求める
+    /// @note StageLightsFeature::ComputeLitRatio と同じ式。灯りと雲の変わり方を揃える
+    float ComputeNightFactor(float sunElevationDeg)
+    {
+        const float start = cvNightStartElevationDeg.Get();
+        const float full = cvNightFullElevationDeg.Get();
+
+        float t = (start > full)
+            ? std::clamp((start - sunElevationDeg) / (start - full), 0.0f, 1.0f)
+            : ((sunElevationDeg <= start) ? 1.0f : 0.0f);
+
+        // 変わり始めと変わり終わりの角を丸める（線形だと切り替わりが唐突に見える）
+        return t * t * (3.0f - 2.0f * t);
+    }
+
+    /// @brief 夜の度合いから Brightness へ掛ける倍率を求める
+    /// @details 補間は EV（対数）で行う。明るさは対数で効くので線形に混ぜると、
+    ///          薄明のあいだ雲だけが明るいまま取り残される。昼（0）では 1 倍で恒等
+    float ComputeNightBrightnessScale(float nightFactor)
+    {
+        return std::exp2(cvNightBrightnessEV.Get() * nightFactor);
+    }
 
     // ──────────────────────────────────────────────────────────
     // エンジン側フォグ（r.Fog.*）の読み書き
@@ -165,12 +239,15 @@ namespace {
     }
 
     /// @brief 調整値から、このシーンで使う r.Fog.* を組み立てる
-    EngineFogState BuildGameFog()
+    /// @param nightBrightnessScale 夜の落とし込み倍率（1 = 昼。ComputeNightBrightnessScale）
+    EngineFogState BuildGameFog(float nightBrightnessScale)
     {
         EngineFogState state{};
         state.enabled = true;
         state.color = cvColor.Get();
-        state.colorIntensity = cvBrightness.Get();
+        // 色ではなく明るさ側を落とす。色を暗くすると Color の色味そのものが
+        // 分からなくなり、インスペクターで昼の色を決められなくなる
+        state.colorIntensity = cvBrightness.Get() * nightBrightnessScale;
         state.density = cvDensity.Get();
         state.heightFalloff = cvHeightFalloff.Get();
         state.heightRef = cvBaseHeight.Get();
@@ -190,27 +267,53 @@ namespace {
     // Feature
     // ──────────────────────────────────────────────────────────
 
-    /// @brief ゲームシーンの間だけ、ステージより下を雲で埋める Feature
+    /// @brief 登録したシーン（ゲーム・リザルト）の間だけ、ステージより下を雲で埋める Feature
     /// @details フォグ設定はエンジン寿命の CVar（r.Fog.*）なので、シーン開始時に現在値を
-    ///          退避し、終了時に書き戻す。タイトル・リザルトへ持ち出さないため。
+    ///          退避し、終了時に書き戻す。タイトルへ持ち出さないため。
     /// @note シーン中は毎フレーム Game.Fog.* を r.Fog.* へ流し込む。エディタの
     ///       「Height Fog」から r.Fog.* を直接いじっても次のフレームで戻るので、
     ///       このシーンの見た目は「ゲーム設定」の Game.Fog.* だけで決まる。
-    class SkyFogFeature final : public ISceneFeature {
+    /// @note オン/オフは 2 系統ある。シーン側の SetEnabled()（開発者の指定）と
+    ///       CVar Game.Fog.Enabled（「ゲーム設定」からの全体スイッチ）の AND。
+    ///       どちらで切っても、書き戻す先はシーン開始時点の r.Fog.* で同じ。
+    class SkyFogFeature final : public GameComponents::ISkyFogFeature {
     public:
+        explicit SkyFogFeature(bool enabled) : sceneEnabled_(enabled) {}
+
         const char* GetName() const override { return "GameSkyFog"; }
 
-        void Initialize(SceneContext&) override
+        /// @brief シーン側のオン/オフ（CVar Game.Fog.Enabled との AND で決まる）
+        void SetEnabled(bool enabled) override
+        {
+            if (sceneEnabled_ == enabled) {
+                return;
+            }
+            sceneEnabled_ = enabled;
+            // Initialize 前は savedFog_ が空なので書き戻してはいけない
+            // （初期化時の Sync() がこの値を見て反映する）
+            if (initialized_) {
+                Sync();
+            }
+        }
+
+        bool IsEnabled() const override { return sceneEnabled_; }
+
+        void Initialize(SceneContext& ctx) override
         {
             savedFog_ = ReadEngineFog();
+            initialized_ = true;
+            RefreshNightBrightnessScale(ctx);
             Sync();
         }
 
-        void Update(SceneContext&, SceneUpdatePhase phase) override
+        void Update(SceneContext& ctx, SceneUpdatePhase phase) override
         {
             // フォグ設定を読むのは EnvironmentFeature（PostLogic）なので、
-            // それより前のフェーズで流し込む
+            // それより前のフェーズで流し込む。
+            // 太陽を動かす TimeOfDayFeature も同じ FrameStart だが、GameScene が
+            // 先に登録しているので、ここで読む高度はこのフレームの値になる
             if (phase == SceneUpdatePhase::FrameStart) {
+                RefreshNightBrightnessScale(ctx);
                 Sync();
             }
         }
@@ -221,18 +324,46 @@ namespace {
         void Finalize(SceneContext&) override { WriteEngineFog(savedFog_); }
 
     private:
+        /// @brief 太陽高度から夜の落とし込み倍率を求め直す
+        /// @note ライトが引けないフレームは直前の倍率を保つ。1 へ戻すと、
+        ///       シーン遷移などで一瞬だけ夜に雲が白く光ることになる
+        void RefreshNightBrightnessScale(SceneContext& ctx)
+        {
+            auto* lightManager = ctx.engine
+                ? ctx.engine->GetService<LightManager>() : nullptr;
+            if (!lightManager) {
+                return;
+            }
+            nightBrightnessScale_ =
+                ComputeNightBrightnessScale(
+                    ComputeNightFactor(ComputeSunElevationDeg(*lightManager)));
+        }
+
         /// @brief 調整値を r.Fog.* へ反映する（無効なら退避した値へ戻す）
+        /// @note シーン側（sceneEnabled_）と「ゲーム設定」の CVar は AND。
+        ///       どちらか一方でも切れば雲は出ない
         void Sync() const
         {
-            WriteEngineFog(cvEnabled.Get() ? BuildGameFog() : savedFog_);
+            const bool show = sceneEnabled_ && cvEnabled.Get();
+            WriteEngineFog(show ? BuildGameFog(nightBrightnessScale_) : savedFog_);
         }
 
         /// シーン開始時点の r.Fog.*（シーン終了時にここへ戻す）
         EngineFogState savedFog_{};
+
+        /// 直近の夜の落とし込み倍率（1 = 昼）
+        float nightBrightnessScale_ = 1.0f;
+
+        /// シーン側のオン/オフ（CVar Game.Fog.Enabled とは独立）
+        bool sceneEnabled_ = true;
+
+        /// Initialize 済みか（savedFog_ が有効かの判定に使う）
+        bool initialized_ = false;
     };
 }
 
-std::unique_ptr<CoreEngine::ISceneFeature> GameComponents::CreateSkyFogFeature()
+std::unique_ptr<GameComponents::ISkyFogFeature>
+GameComponents::CreateSkyFogFeature(bool enabled)
 {
-    return std::make_unique<SkyFogFeature>();
+    return std::make_unique<SkyFogFeature>(enabled);
 }

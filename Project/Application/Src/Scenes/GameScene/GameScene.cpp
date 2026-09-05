@@ -8,6 +8,7 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
+#include "SkyFogFeature.h"
 #include "StageLightsFeature.h"
 #include "Text/FontManager.h"
 #include "UI/UIText.h"
@@ -54,9 +55,6 @@ void GameScene::GameScene::OnInitialize() {
     // ========== シーンの設定 ==========
     SetSceneName("GameScene");
     SetDefaultGroundEnabled(true);
-    SetReleaseCameraTransform(
-        GameComponents::GameSettings::ReleaseCameraPosition.Get(),
-        GameComponents::GameSettings::ReleaseCameraRotation.Get());
 
     // ========== 昼夜サイクル ==========
     // 時刻を進めて空と太陽・月を昼→夕→夜と変えるだけの Feature。
@@ -64,6 +62,9 @@ void GameScene::GameScene::OnInitialize() {
     AddFeature(std::make_unique<CoreEngine::TimeOfDayFeature>());
     // 夕方から夜にかけて灯る、ビルダーとトロッコの灯り（ポイントライト）
     AddFeature(std::make_unique<StageLightsFeature>());
+    // ステージのブロックより下を埋める雲（高さフォグ）。
+    // 濃さ・色・高さは「ゲーム設定」の Game.Fog.* から調整する。
+    AddFeature(GameComponents::CreateSkyFogFeature());
 
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
