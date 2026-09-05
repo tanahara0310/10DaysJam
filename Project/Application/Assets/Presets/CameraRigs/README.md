@@ -94,14 +94,14 @@ GameScene が実際に使う俯瞰カメラです。`_camera.json` の `startupR
 
 ## Train_CloseUp
 
-`CameraManagerComponent::BeginTrainCloseUp(duration, distanceScale)` に対応します。
-既定の `distanceScale = 0.3` を前提に、オフセットは `(0, 20, -18) * 0.3 = (0, 6, -5.4)`。
+ゲームオーバー・ゲームクリアで列車へ寄る構図です。`GameManagerComponent::BeginEnding()` が
+名前で呼び出します（`blendSeconds = 1.5` / `useUnscaledTime = true`）。寄りの動きは
+減衰ではなく繋ぎ（ブレンド）が作るので、リグ側の減衰はすべて 0 です。
 
-呼び出しは `blendSeconds` を元コードの `duration`（既定 1.5 秒）に合わせ、
-`useUnscaledTime = true` にしてください。元コードも `UnscaledDeltaTime` で進めています。
+オフセット `(0, 5.55, -3.45)` は GamePlay の `(0, 18.5, -11.5)` の 30% で、
+俯角 58.1 度をそのままに距離だけ詰めた純粋なドリーインになります。GamePlay の
+オフセットを変えたら、ここも同じ倍率で追従させてください。
 
-リグ側の減衰はすべて 0 です。寄りの動きは減衰ではなく繋ぎ（ブレンド）が作ります。
+画面内の位置は (0.5, 0.5)。GamePlay は手前を広く取るため 0.44 ですが、寄りでは
+列車を中央に置きます。差は繋ぎの中で吸収されます。
 
-> 元コードの補間は smoothstep `t*t*(3-2t)`、リグの繋ぎは EaseInOutCubic です。
-> どちらも両端で速度 0 になる曲線なので体感はほぼ同じですが、厳密には一致しません。
-> このリグは実機で突き合わせていません（作成時点のブランチにこの機能が無いため）。

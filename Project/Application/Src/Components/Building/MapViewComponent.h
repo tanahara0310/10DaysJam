@@ -6,10 +6,13 @@
 
 #include "MapChipData.h"
 
+namespace CoreEngine {
+    class Camera;
+}
+
 namespace GameComponents {
     class MapGeneratorComponent;
     class ModelRenderPoolComponent;
-    class CameraManagerComponent;
 }
 
 namespace GameComponents
@@ -25,7 +28,7 @@ namespace GameComponents
             ModelRenderPoolComponent* stationRenderPool,
             ModelRenderPoolComponent* rockRenderPool,
             ModelRenderPoolComponent* bananaTreeRenderPool,
-            CameraManagerComponent* cameraManager,
+            CoreEngine::Camera* viewCamera,
             float gridSize = 1.0f, uint32_t viewDistanceX = 30)
             : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
             mapGenerator_(mapGenerator),
@@ -34,7 +37,7 @@ namespace GameComponents
             stationRenderPool_(stationRenderPool),
             rockRenderPool_(rockRenderPool),
             bananaTreeRenderPool_(bananaTreeRenderPool),
-            cameraManager_(cameraManager) {}
+            viewCamera_(viewCamera) {}
 
         // コンポーネントを識別する名前。必須
         const char* GetTypeName() const override {
@@ -81,7 +84,8 @@ namespace GameComponents
         ModelRenderPoolComponent* stationRenderPool_ = nullptr;
         ModelRenderPoolComponent* rockRenderPool_ = nullptr;
         ModelRenderPoolComponent* bananaTreeRenderPool_ = nullptr;
-        CameraManagerComponent* cameraManager_ = nullptr;
+        // 描画範囲はゲーム視点カメラの位置から決める（構図は CameraRig が握る）
+        CoreEngine::Camera* viewCamera_ = nullptr;
 
     };
 }

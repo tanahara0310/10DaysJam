@@ -8,14 +8,6 @@
 
 namespace GameComponents::GameSettings
 {
-    CoreEngine::CVar<CoreEngine::Vector3> ReleaseCameraPosition{
-        "Game.Scene.ReleaseCameraPosition", { 0.0f, 2.0f, 0.0f },
-        "リリース用カメラの初期位置",
-        CoreEngine::CVarRange{ -100.0f, 100.0f } };
-    CoreEngine::CVar<CoreEngine::Vector3> ReleaseCameraRotation{
-        "Game.Scene.ReleaseCameraRotation", { 0.3f, 0.0f, 0.0f },
-        "リリース用カメラの初期回転（ラジアン）",
-        CoreEngine::CVarRange{ -6.283185f, 6.283185f } };
     CoreEngine::CVar<float> BgmVolume{
         "Game.Scene.BgmVolume", 1.0f / 3.0f,
         "ゲームBGMの音量", CoreEngine::CVarRange{ 0.0f, 1.0f } };
@@ -84,35 +76,6 @@ namespace GameComponents::GameSettings
     CoreEngine::CVar<int> RailRightPoolCapacity{
         "Game.Pools.RailRightCapacity", 50, "右カーブレールモデルの初期プール数",
         CoreEngine::CVarRange{ 1.0f, 5000.0f } };
-
-    CoreEngine::CVar<float> CameraFocusRatio{
-        "Game.Camera.FocusRatio", 0.8f,
-        "カメラX位置の寄せ具合（0=列車、1=ビルダー）",
-        CoreEngine::CVarRange{ 0.0f, 1.0f } };
-    CoreEngine::CVar<CoreEngine::Vector3> CameraOffset{
-        "Game.Camera.Offset", { 0.0f, 20.0f, -18.0f },
-        "注視点からカメラまでのオフセット",
-        CoreEngine::CVarRange{ -100.0f, 100.0f } };
-    CoreEngine::CVar<float> CameraMinTargetDistance{
-        "Game.Camera.MinTargetDistance", 5.0f,
-        "最小FOVを使う列車・ビルダー間距離",
-        CoreEngine::CVarRange{ 0.0f, 100.0f } };
-    CoreEngine::CVar<float> CameraMaxTargetDistance{
-        "Game.Camera.MaxTargetDistance", 30.0f,
-        "最大FOVを使う列車・ビルダー間距離",
-        CoreEngine::CVarRange{ 0.1f, 300.0f } };
-    CoreEngine::CVar<float> CameraMinFovDegrees{
-        "Game.Camera.MinFovDegrees", 35.0f,
-        "列車とビルダーが近いときの視野角",
-        CoreEngine::CVarRange{ 1.0f, 179.0f } };
-    CoreEngine::CVar<float> CameraMaxFovDegrees{
-        "Game.Camera.MaxFovDegrees", 70.0f,
-        "列車とビルダーが遠いときの視野角",
-        CoreEngine::CVarRange{ 1.0f, 179.0f } };
-    CoreEngine::CVar<float> CameraFollowSpeed{
-        "Game.Camera.FollowSpeed", 3.0f,
-        "カメラ位置・注視点・FOVの追従速度",
-        CoreEngine::CVarRange{ 0.01f, 30.0f } };
 
     CoreEngine::CVar<CoreEngine::Vector2> HudPosition{
         "Game.Hud.Position", { 32.0f, 32.0f },

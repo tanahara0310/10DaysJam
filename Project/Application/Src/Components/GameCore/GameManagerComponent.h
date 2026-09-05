@@ -10,7 +10,6 @@ namespace GameComponents
 {
     class TrainMovementComponent;
     class RailBuilderComponent;
-    class CameraManagerComponent;
 
     // ゲームの進行を管理するコンポーネント
     class GameManagerComponent final
@@ -43,7 +42,6 @@ namespace GameComponents
 
         // GameScene の構築時に接続する。描画・カメラ更新は終了演出中も止めない。
         void SetGameplayComponents(TrainMovementComponent* train, RailBuilderComponent* builder);
-        void SetEndingCamera(CameraManagerComponent* camera) { endingCamera_ = camera; }
 
         Phase GetPhase() const { return phase_; }
         bool IsGameOver() const { return isGameOver_; }
@@ -59,12 +57,14 @@ namespace GameComponents
         CoreEngine::SceneManager* sceneManager_ = nullptr;
         TrainMovementComponent* train_ = nullptr;
         RailBuilderComponent* builder_ = nullptr;
-        CameraManagerComponent* endingCamera_ = nullptr;
         Phase phase_ = Phase::Playing;
         bool isGameClear_ = false;
         bool isGameOver_ = false;
 
         float changeDelayTimer_ = 0.0f;
         float defaultChangeDelay_ = 1.0f;
+
+        // 列車へ寄るカメラリグへ繋ぎ終えるまでの残り秒数
+        float closeUpTimer_ = 0.0f;
     };
 }
