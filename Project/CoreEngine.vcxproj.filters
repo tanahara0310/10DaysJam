@@ -292,6 +292,9 @@
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
@@ -1114,6 +1117,9 @@
     <ClCompile Include="Engine\Src\Math\Spline\Spline.cpp">
       <Filter>Engine\Src\Math\Spline</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Particle\Modules\CollisionModule.cpp">
+      <Filter>Engine\Src\Particle\Modules</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Modules\ColorModule.cpp">
       <Filter>Engine\Src\Particle\Modules</Filter>
     </ClCompile>
@@ -1510,6 +1516,9 @@
       <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h">
@@ -2840,6 +2849,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Spline\Spline.h">
       <Filter>Engine\Src\Math\Spline</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\Modules\CollisionModule.h">
+      <Filter>Engine\Src\Particle\Modules</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Modules\ColorModule.h">
       <Filter>Engine\Src\Particle\Modules</Filter>

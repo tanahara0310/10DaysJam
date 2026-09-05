@@ -31,6 +31,7 @@
 #include "Components/GameCore/GameResultData.h"
 #include "Components/GameCore/GameSettingsComponent.h"
 #include "Components/GameCore/HungerComponent.h"
+#include "GameObjects/Effect/RockBreakDebris.h"
 #include "GameObjects/GameSceneObject.h"
 
 #include <algorithm>
@@ -296,6 +297,9 @@ void GameScene::GameScene::OnInitialize() {
     // 岩破壊の揺れは静的に鳴らす。ここでは調整用CVarをインスペクタへ出すために付ける。
     auto* cameraSettings = CreateObject<GameSceneObject>("CameraSettings");
     cameraSettings->AddComponent<GameComponents::RockBreakShakeSettingsComponent>();
+
+    // 岩が砕けた瞬間に散る破片。揺れと同じく RailBuilder から静的に鳴らす。
+    AddFeature(GameComponents::CreateRockBreakDebrisFeature());
 
     railView->AddComponent<GameComponents::RailViewComponent>(
         gridSize,
