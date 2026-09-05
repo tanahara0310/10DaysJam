@@ -58,6 +58,9 @@ namespace {
         if (cell == "2" || cell == "ground") return MapChipType::Ground;
         if (cell == "3" || cell == "station") return MapChipType::Station;
         if (cell == "4" || cell == "resource") return MapChipType::Resource;
+        if (cell == "5" || cell == "banana" || cell == "banana_tree" || cell == "bananatree") {
+            return MapChipType::BananaTree;
+        }
         ++invalidCount;
         return MapChipType::Void;
     }

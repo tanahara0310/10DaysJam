@@ -24,6 +24,7 @@ namespace GameComponents
             ModelRenderPoolComponent* waterRenderPool,
             ModelRenderPoolComponent* stationRenderPool,
             ModelRenderPoolComponent* rockRenderPool,
+            ModelRenderPoolComponent* bananaTreeRenderPool,
             CameraManagerComponent* cameraManager,
             float gridSize = 1.0f, uint32_t viewDistanceX = 30)
             : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
@@ -32,6 +33,7 @@ namespace GameComponents
             waterRenderPool_(waterRenderPool),
             stationRenderPool_(stationRenderPool),
             rockRenderPool_(rockRenderPool),
+            bananaTreeRenderPool_(bananaTreeRenderPool),
             cameraManager_(cameraManager) {}
 
         // コンポーネントを識別する名前。必須
@@ -70,12 +72,15 @@ namespace GameComponents
         CoreEngine::Vector3 stationScale_ = { 0.5f, 0.5f, 0.5f };
         float rockHeight_ = 0.7f;
         CoreEngine::Vector3 rockScale_ = { 0.7f, 0.7f, 0.7f };
+        float bananaTreeHeight_ = 0.5f;
+        CoreEngine::Vector3 bananaTreeScale_ = { 1.0f, 1.0f, 1.0f };
 
         MapGeneratorComponent* mapGenerator_ = nullptr;
         ModelRenderPoolComponent* groundRenderPool_ = nullptr;
         ModelRenderPoolComponent* waterRenderPool_ = nullptr;
         ModelRenderPoolComponent* stationRenderPool_ = nullptr;
         ModelRenderPoolComponent* rockRenderPool_ = nullptr;
+        ModelRenderPoolComponent* bananaTreeRenderPool_ = nullptr;
         CameraManagerComponent* cameraManager_ = nullptr;
 
     };

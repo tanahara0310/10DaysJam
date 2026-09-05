@@ -3,6 +3,7 @@
 #include "GameObject/Component/Core/IComponent.h"
 
 #include <cstdint>
+#include <deque>
 #include <functional>
 
 namespace CoreEngine
@@ -16,6 +17,8 @@ namespace GameComponents
     class RailResourceManagerComponent;
     class MapGeneratorComponent;
     class TrainMovementComponent;
+    class HungerComponent;
+    class RockThrowComponent;
 }   
 
 namespace GameComponents
@@ -30,13 +33,17 @@ namespace GameComponents
             GameComponents::RailResourceManagerComponent* resourceManager = nullptr,
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
             GameComponents::TrainMovementComponent* trainMovement = nullptr,
+            GameComponents::HungerComponent* hunger = nullptr,
+            GameComponents::RockThrowComponent* rockThrow = nullptr,
             std::function<void()> OnBuildSE = nullptr,
-            std::function<void()> OnUndoSE = nullptr)
+            std::function<void()> OnUndoSE = nullptr,
+            std::function<void()> OnFailureSE = nullptr)
             : gridSize_(gridSize), initialGridPosX_(gridPosX), initialGridPosZ_(gridPosZ),
               gridPosX_(gridPosX), gridPosZ_(gridPosZ),
               railPath_(railPath), resourceManager_(resourceManager),
               mapGenerator_(mapGenerator), trainMovement_(trainMovement),
-              OnBuildSE_(OnBuildSE), OnUndoSE_(OnUndoSE) {
+              hunger_(hunger), rockThrow_(rockThrow),
+              OnBuildSE_(OnBuildSE), OnUndoSE_(OnUndoSE), OnFailureSE_(OnFailureSE) {
         }
 
         // コンポーネントを識別する名前。必須
@@ -61,6 +68,9 @@ namespace GameComponents
         void SetGridSize(float size);
         // 水平方向優先かどうかを設定する
         void SetHorizontalPrioritize(bool prioritize);
+        void SetInsufficientFeedback(
+            std::function<void()> onRailInsufficient,
+            std::function<void()> onHungerInsufficient);
 
     private:
         // 論理グリッド座標を Transform のワールド座標へ反映する
@@ -69,12 +79,25 @@ namespace GameComponents
         bool TryUndoLastRail();
         // 列車の現在速度に応じた整数の報酬量を求める
         uint32_t CalculateSpeedReward(uint32_t baseAmount) const;
+        // キュー先頭の岩へ投石を開始する
+        void StartNextRockThrow();
+        // 投石の着弾時に岩を地面へ変え、カーソルを通常位置へ戻す
+        void CompleteRockBreak();
+        void NotifyRailInsufficient();
+        void NotifyHungerInsufficient();
+
+        struct RockBreakRequest {
+            int32_t gridX = 0;
+            int32_t gridZ = 0;
+        };
 
         CoreEngine::TransformComponent* transform_ = nullptr;
         GameComponents::RailPathComponent* railPath_ = nullptr;
         GameComponents::RailResourceManagerComponent* resourceManager_ = nullptr;
         GameComponents::MapGeneratorComponent* mapGenerator_ = nullptr;
         GameComponents::TrainMovementComponent* trainMovement_ = nullptr;
+        GameComponents::HungerComponent* hunger_ = nullptr;
+        GameComponents::RockThrowComponent* rockThrow_ = nullptr;
 
         // 左・後ろ方向へ移動したときの符号なし整数アンダーフローを避ける
         int32_t initialGridPosX_ = 0;
@@ -101,6 +124,13 @@ namespace GameComponents
         float pulseAmplitude_ = 0.2f;
         float pulseSpeed_ = 5.0f;
         float rotationSpeed_ = 2.0f;
+        float rockCursorHeightOffset_ = 1.0f;
+        float rockThrowStartHeight_ = 0.5f;
+        float rockImpactHeight_ = 0.7f;
+        float rockHungerCost_ = 20.0f;
+        bool isBreakingRock_ = false;
+        bool isCursorAboveRock_ = false;
+        std::deque<RockBreakRequest> rockBreakQueue_;
 
         uint32_t groundCost_ = 1;
         uint32_t waterCost_ = 2;
@@ -110,5 +140,8 @@ namespace GameComponents
 
         std::function<void()> OnBuildSE_ = nullptr;
         std::function<void()> OnUndoSE_ = nullptr;
+        std::function<void()> OnFailureSE_ = nullptr;
+        std::function<void()> OnRailInsufficient_ = nullptr;
+        std::function<void()> OnHungerInsufficient_ = nullptr;
     };
 }

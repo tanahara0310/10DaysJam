@@ -1,9 +1,9 @@
 #include "pch.h"
-#include "RailResourceUIComponent.h"
+#include "HungerUIComponent.h"
 
+#include "Components/GameCore/HungerComponent.h"
 #include "GameObject/GameObject.h"
 #include "UI/UIText.h"
-#include "Components/Rail/RailResourceManagerComponent.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FrameRate/Time.h"
 
@@ -13,26 +13,28 @@
 
 using namespace CoreEngine;
 
-void GameComponents::RailResourceUIComponent::Start() {
+void GameComponents::HungerUIComponent::Start()
+{
     text_ = dynamic_cast<UIText*>(GetOwner());
-    if (!text_ || !resourceManager_) {
+    if (!text_ || !hunger_) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
-            "RailResourceUIComponent: UIText または RailResourceManager が未設定です");
+            "HungerUIComponent: UIText または Hunger が未設定です");
         SetEnabled(false);
         return;
     }
-
     basePosition_ = text_->GetAnchoredPosition();
     RefreshText();
 }
 
-void GameComponents::RailResourceUIComponent::Update() {
-    if (!text_ || !resourceManager_) {
+void GameComponents::HungerUIComponent::Update()
+{
+    if (!text_ || !hunger_) {
         return;
     }
 
-    if (displayedResourceCount_ != resourceManager_->GetResourceCount()) {
+    const int currentHunger = static_cast<int>(std::ceil(hunger_->GetCurrentHunger()));
+    if (displayedHunger_ != currentHunger) {
         RefreshText();
     }
 
@@ -50,12 +52,12 @@ void GameComponents::RailResourceUIComponent::Update() {
     }
 }
 
-void GameComponents::RailResourceUIComponent::PlayInsufficientShake() {
+void GameComponents::HungerUIComponent::PlayInsufficientShake() {
     shakeRemaining_ = shakeDuration_;
 }
 
-void GameComponents::RailResourceUIComponent::RefreshText() {
-    displayedResourceCount_ = resourceManager_->GetResourceCount();
-    text_->SetText(
-        "残りレール: " + std::to_string(displayedResourceCount_));
+void GameComponents::HungerUIComponent::RefreshText()
+{
+    displayedHunger_ = static_cast<int>(std::ceil(hunger_->GetCurrentHunger()));
+    text_->SetText("空腹値: " + std::to_string(displayedHunger_));
 }

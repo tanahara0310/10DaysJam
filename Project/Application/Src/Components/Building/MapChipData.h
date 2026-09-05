@@ -7,5 +7,6 @@ namespace GameComponents
         Ground,
         Station,
         Resource,
+        BananaTree,
     };
 }

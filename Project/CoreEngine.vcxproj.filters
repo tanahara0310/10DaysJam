@@ -7,6 +7,9 @@
     <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp">
       <Filter>Application\Src\Components\Building</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Camera\CameraManagerComponent.cpp">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClCompile>
@@ -14,6 +17,9 @@
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\GameCore\HungerComponent.cpp">
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp">
@@ -55,6 +61,9 @@
     <ClCompile Include="Application\Src\Components\UI\RailResourceUIComponent.cpp">
       <Filter>Application\Src\Components\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\HungerUIComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp">
       <Filter>Application\Src\Components\Utility</Filter>
     </ClCompile>
@@ -71,6 +80,9 @@
       <Filter>Application\Src</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp">
@@ -1398,13 +1410,22 @@
     <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h">
       <Filter>Application\Src\Components\Building</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Camera\CameraManagerComponent.h">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h">
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\GameResultData.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\GameCore\GameSettingsComponent.h">
+      <Filter>Application\Src\Components\GameCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\GameCore\HungerComponent.h">
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h">
@@ -1446,6 +1467,9 @@
     <ClInclude Include="Application\Src\Components\UI\RailResourceUIComponent.h">
       <Filter>Application\Src\Components\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\HungerUIComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h">
       <Filter>Application\Src\Components\Utility</Filter>
     </ClInclude>
@@ -1462,6 +1486,9 @@
       <Filter>Application\Src\Editor\Stage</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h">

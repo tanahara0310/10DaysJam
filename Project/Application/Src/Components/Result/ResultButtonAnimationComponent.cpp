@@ -26,6 +26,12 @@ namespace GameComponents
         "リザルトボタンの縮小リアクション時間（秒）",
         CVarRange{ 0.05f, 1.0f } };
 
+    CVar<float> ResultButtonAnimationComponent::SelectedScale{
+        "Result.Animation.SelectedScale",
+        1.08f,
+        "選択中リザルトボタンの表示倍率",
+        CVarRange{ 1.0f, 1.5f } };
+
     CVar<float> ResultButtonAnimationComponent::ConfirmScale{
         "Result.Animation.ConfirmScale",
         1.28f,
@@ -89,6 +95,7 @@ void GameComponents::ResultButtonAnimationComponent::Start()
     basePositionY_ = text_->GetAnchoredPosition().y;
     started_ = true;
 
+    text_->SetFontSize(selected_ ? baseFontSize_ * SelectedScale.Get() : baseFontSize_);
     text_->SetColor(selected_ ? SelectedColor.Get() : normalColor_);
     if (selected_) {
         StartSelectedIdle();
@@ -120,8 +127,11 @@ void GameComponents::ResultButtonAnimationComponent::SetSelected(bool selected)
         .SetUpdateType(TweenUpdate::Unscaled)
         .SetId(tweenId_ + "_color");
 
-    if (!selected_) {
+    if (selected_) {
+        text_->SetFontSize(baseFontSize_ * SelectedScale.Get());
+    } else {
         Tween::KillById(tweenId_ + "_reaction");
+        Tween::KillById(tweenId_ + "_confirm");
         Tween::KillById(tweenId_ + "_bob");
         text_->SetAnchoredPosition({ text_->GetAnchoredPosition().x, basePositionY_ });
         text_->SetFontSize(baseFontSize_);
@@ -157,7 +167,8 @@ void GameComponents::ResultButtonAnimationComponent::PlayConfirmReaction(
     const float growDuration = duration * 0.30f;
     const float fadeDuration = duration - growDuration;
     const float currentFontSize = text_->GetFontSize();
-    const float peakFontSize = baseFontSize_ * ConfirmScale.Get();
+    const float selectedFontSize = baseFontSize_ * SelectedScale.Get();
+    const float peakFontSize = selectedFontSize * ConfirmScale.Get();
     const Vector4 startColor = text_->GetColor();
     Vector4 endColor = startColor;
     endColor.w = 0.0f;
@@ -178,7 +189,7 @@ void GameComponents::ResultButtonAnimationComponent::PlayConfirmReaction(
         .Append(
             Tween::To<float>(
                 peakFontSize,
-                baseFontSize_,
+                selectedFontSize,
                 fadeDuration,
                 [this](const float& fontSize) {
                     if (text_) {
@@ -256,7 +267,8 @@ void GameComponents::ResultButtonAnimationComponent::PlayScaleReaction(
     const float duration = ReactionDuration.Get();
     const float growDuration = duration * 0.35f;
     const float restoreDuration = duration - growDuration;
-    const float pressedFontSize = baseFontSize_ * ReactionScale.Get();
+    const float selectedFontSize = baseFontSize_ * SelectedScale.Get();
+    const float pressedFontSize = selectedFontSize * ReactionScale.Get();
     const float currentFontSize = text_->GetFontSize();
 
     TweenSequence sequence;
@@ -275,7 +287,7 @@ void GameComponents::ResultButtonAnimationComponent::PlayScaleReaction(
         .Append(
             Tween::To<float>(
                 pressedFontSize,
-                baseFontSize_,
+                selectedFontSize,
                 restoreDuration,
                 [this](const float& fontSize) {
                     if (text_) {

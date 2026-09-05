@@ -5,6 +5,7 @@
     "Result.Animation.ReactionScale": 0.7089999914169312,
     "Result.Animation.SelectedBobDistance": 9.600000381469727,
     "Result.Animation.SelectedBobDuration": 0.6340000033378601,
+    "Result.Animation.SelectedScale": 1.156000018119812,
     "Result.Animation.UnselectedFadeDuration": 0.08699999749660492,
     "Result.Animation.UnselectedFadeScale": 0.5,
     "Result.UI.ButtonColor": [
@@ -13,12 +14,12 @@
         1.0,
         1.0
     ],
-    "Result.UI.ButtonFontSize": 61.08000183105469,
+    "Result.UI.ButtonFontSize": 56.599998474121094,
     "Result.UI.ButtonPosition": [
         0.0,
-        360.0
+        280.0
     ],
-    "Result.UI.ButtonSpacing": 277.6000061035156,
+    "Result.UI.ButtonSpacing": 300.0,
     "Result.UI.SelectedButtonColor": [
         0.3019607961177826,
         0.7215686440467834,

@@ -1,0 +1,32 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "rotate": [0.0, 0.0, 0.0],
+                "scale": [1.0, 1.0, 1.0],
+                "translate": [0.0, 0.0, 0.0]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "arcHeight": 2.0,
+                "duration": 0.6,
+                "rotationSpeed": 12.0,
+                "stoneScale": 0.2
+            },
+            "type": "RockThrow"
+        }
+    ],
+    "name": "RockProjectile"
+}
