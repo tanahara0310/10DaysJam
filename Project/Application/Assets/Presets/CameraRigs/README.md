@@ -49,7 +49,7 @@ GameScene が実際に使う俯瞰カメラです。`_camera.json` の `startupR
 **2 つを同じ値にすると振れは完全に消え、以前の「ただ固定」に戻ります。**
 
 **視野角が速度で開く。** `TrainMovementComponent` は発車後 `speedUpFactor`（既定 0.5/秒）で
-加速し続け、カーブで半減、完成済みレールの上では `kCompletedRailSpeedMultiplier = 10` 倍。
+加速し続け、カーブで減速し、完成済みレールの上では `completedRailSpeedMultiplier` 倍（既定 10 倍）。
 その速度域を 32→41 度に割り当ててあります。実測で通常走行中に 32.0 → 36.7 度まで開き、
 止まると 32.0 へ戻ることを確認しました。`fovMinDegrees` が据わりの構図そのものなので、
 寄せ具合を変えるときはここも一緒に動かしてください。
