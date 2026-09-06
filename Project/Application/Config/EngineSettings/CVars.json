@@ -80,9 +80,9 @@
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        -0.4216686189174652,
-        0.6022050976753235,
-        0.6778972148895264
+        -0.40319395065307617,
+        0.5758208632469177,
+        0.7112418413162231
     ],
     "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
     "r.AtmosphereLights.SunDirection": [
@@ -109,7 +109,9 @@
     "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,
-    "r.SSAOTemporal.Enabled": false,
+    "r.SSAO.Enabled": false,
+    "r.SSAOBlur.Enabled": false,
+    "r.TAA.Enabled": false,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
     "r.Water.AbsorptionBase": [

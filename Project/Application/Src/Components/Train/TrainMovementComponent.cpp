@@ -72,6 +72,8 @@ void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
 #ifdef USE_IMGUI
 bool GameComponents::TrainMovementComponent::DrawInspector() {
     bool changed = false;
+
+    ImGui::SeparatorText("走行");
     changed |= ImGui::DragFloat("グリッドサイズ", &gridSize_, 0.05f, 0.01f, 20.0f);
     if (ImGui::DragFloat("初期速度", &initialMoveSpeed_, 0.01f, 0.0f, 20.0f)) {
         moveSpeed_ = std::max(initialMoveSpeed_, minMoveSpeed_);
@@ -91,6 +93,8 @@ bool GameComponents::TrainMovementComponent::DrawInspector() {
         "投石ジャンプ高さ", &rockThrowJumpHeight_, 0.05f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat(
         "投石ジャンプ時間", &rockThrowJumpDuration_, 0.01f, 0.0f, 5.0f);
+
+    ImGui::SeparatorText("配置");
     changed |= ImGui::DragFloat("列車の高さ", &trainHeight_, 0.05f, -20.0f, 20.0f);
     int required = static_cast<int>(requiredRailCount_);
     if (ImGui::DragInt("発車に必要なレール数", &required, 1.0f, 1, 100)) {

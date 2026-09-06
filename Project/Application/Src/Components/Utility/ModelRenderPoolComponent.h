@@ -9,6 +9,7 @@
 #include <limits>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -76,6 +77,13 @@ namespace GameComponents
         };
 
         Entry* CreateEntry();
+
+        /// @brief フレームが変わっていたら割り当て状態を繰り越す
+        void BeginFrameIfNeeded(std::uint64_t frame);
+
+        /// @brief 前フレームに同じ場所を描いた要素を返す（無ければ nullptr）
+        Entry* FindEntryForPosition(std::uint64_t positionKey, std::uint64_t frame);
+
         Entry* FindAvailableEntry(std::uint64_t frame);
         void ResizePool(std::size_t capacity);
         void ApplyColorToEntries();
@@ -90,5 +98,15 @@ namespace GameComponents
         std::uint64_t lastExhaustedWarningFrame_ =
             (std::numeric_limits<std::uint64_t>::max)();
         std::vector<Entry> entries_;
+
+        /// @brief 位置キー → entries_ の添字（今フレーム分と前フレーム分）
+        /// @details 同じ場所を毎フレーム同じ要素へ割り当てるために持つ。
+        ///          呼び出し順で先頭から配ると、描画範囲が 1 マスずれた瞬間に
+        ///          全要素の担当がずれ、画面は静止して見えるのに
+        ///          オブジェクトだけが 1 マス飛ぶ。GBuffer のモーションベクターは
+        ///          その「飛び」をそのまま出すので、RT シャドウのテンポラル再投影が
+        ///          誤った履歴を拾って影がちらつく。
+        std::unordered_map<std::uint64_t, std::size_t> entryByPosition_;
+        std::unordered_map<std::uint64_t, std::size_t> prevEntryByPosition_;
     };
 }

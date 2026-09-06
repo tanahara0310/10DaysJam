@@ -37,6 +37,7 @@ void ResultScene::ResultScene::OnInitialize() {
         auto* transform = resultGround->AddComponent<TransformComponent>();
         if (transform) {
             transform->Translate() = { 0.0f, -5.0f, 0.0f };
+            transform->Scale() = { 100.0f, 1.0f, 100.0f };
         }
         resultGround->AddComponent<MeshRendererComponent>("result_ground.obj");
         resultGround->SetActive(true);

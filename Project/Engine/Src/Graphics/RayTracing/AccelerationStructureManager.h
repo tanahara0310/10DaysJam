@@ -2,7 +2,9 @@
 
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Command/FrameSync.h" // kMaxFramesInFlight（インスタンスバッファのリング段数）
 #include <wrl.h>
+#include <array>
 #include <vector>
 #include <cstdint>
 #include "Math/Matrix/Matrix4x4.h"
@@ -121,9 +123,19 @@ namespace CoreEngine
 
         // TLAS リソース
         Microsoft::WRL::ComPtr<ID3D12Resource> tlasResult_;
-        Microsoft::WRL::ComPtr<ID3D12Resource> tlasInstanceDescBuffer_;
         Microsoft::WRL::ComPtr<ID3D12Resource> tlasScratch_;
         DescriptorHandle tlasSRVDescriptor_{};
+
+        /// @brief TLAS インスタンス記述子バッファ（フレームインフライトぶんのリング）
+        /// @details UPLOAD ヒープなので GPU はコマンド実行時に直接ここを読む。
+        ///          1 枚を使い回すと、CPU が次フレームぶんを書いている最中に
+        ///          GPU がまだ前フレームの TLAS ビルドで同じ番地を読んでいる。
+        ///          フレームごとに別の番地へ書けばその競合が起きない。
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMaxFramesInFlight>
+            tlasInstanceDescBuffers_{};
+
+        /// @brief 次に書き込むリングスロット（BuildTLAS 呼び出しごとに 1 つ進む）
+        uint32_t tlasInstanceRingIndex_ = 0;
 
         // BLAS 構築用スクラッチ（再利用）
         Microsoft::WRL::ComPtr<ID3D12Resource> blasScratch_;

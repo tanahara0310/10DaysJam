@@ -9,6 +9,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 
 #ifdef USE_IMGUI
@@ -16,6 +17,20 @@
 #endif
 
 using namespace CoreEngine;
+
+namespace {
+    /// @brief 位置から安定した割り当てキーを作る
+    /// @details Y は演出（レール確定時の跳ね上げなど）で毎フレーム変わりうるので使わない。
+    ///          XZ を 0.01 単位へ量子化して 64bit へ詰める。マップ 1 マスは
+    ///          必ず同じ座標で Draw されるので、これで毎フレーム同じキーになる。
+    std::uint64_t MakePositionKey(const Vector3& position) {
+        const auto x = static_cast<std::uint32_t>(
+            static_cast<std::int32_t>(std::llround(position.x * 100.0)));
+        const auto z = static_cast<std::uint32_t>(
+            static_cast<std::int32_t>(std::llround(position.z * 100.0)));
+        return (static_cast<std::uint64_t>(x) << 32) | static_cast<std::uint64_t>(z);
+    }
+}
 
 json GameComponents::ModelRenderPoolComponent::OnSerialize() const {
     json result = {
@@ -124,7 +139,19 @@ bool GameComponents::ModelRenderPoolComponent::Draw(
     const Vector3& rotation,
     const Vector3& scale) {
     const std::uint64_t frame = Time::FrameCount();
-    Entry* entry = FindAvailableEntry(frame);
+    BeginFrameIfNeeded(frame);
+
+    // 前フレームに同じ場所を描いた要素を優先して使い回す。
+    // 呼び出し順で先頭から配ると、カメラが 1 マス進んで描画範囲がずれた瞬間に
+    // 全要素の担当マスが 1 つずつずれる。画面上の地形は静止して見えるのに
+    // オブジェクトだけが 1 マス飛ぶので、GBuffer のモーションベクターが
+    // 「動いた」と嘘をつき、RT シャドウのテンポラル再投影が 1 マスずれた履歴を
+    // 拾ってしまう（＝プレイヤーが動いている間だけ影がちらつく）。
+    const std::uint64_t positionKey = MakePositionKey(position);
+    Entry* entry = FindEntryForPosition(positionKey, frame);
+    if (!entry) {
+        entry = FindAvailableEntry(frame);
+    }
     if (!entry && allowGrowth_) {
         entry = CreateEntry();
     }
@@ -149,6 +176,8 @@ bool GameComponents::ModelRenderPoolComponent::Draw(
 
     entry->lastSubmittedFrame = frame;
     entry->object->SetActive(true);
+    entryByPosition_[positionKey] =
+        static_cast<std::size_t>(entry - entries_.data());
     return true;
 }
 
@@ -190,13 +219,37 @@ GameComponents::ModelRenderPoolComponent::CreateEntry() {
     return &entries_.back();
 }
 
+void GameComponents::ModelRenderPoolComponent::BeginFrameIfNeeded(std::uint64_t frame) {
+    if (allocationFrame_ == frame) {
+        return;
+    }
+    allocationFrame_ = frame;
+    nextEntryIndex_ = 0;
+    prevEntryByPosition_ = std::move(entryByPosition_);
+    entryByPosition_.clear();
+}
+
 GameComponents::ModelRenderPoolComponent::Entry*
-GameComponents::ModelRenderPoolComponent::FindAvailableEntry(std::uint64_t frame) {
-    if (allocationFrame_ != frame) {
-        allocationFrame_ = frame;
-        nextEntryIndex_ = 0;
+GameComponents::ModelRenderPoolComponent::FindEntryForPosition(
+    std::uint64_t positionKey, std::uint64_t frame) {
+    const auto it = prevEntryByPosition_.find(positionKey);
+    if (it == prevEntryByPosition_.end() || it->second >= entries_.size()) {
+        return nullptr;
     }
 
+    Entry& entry = entries_[it->second];
+    // 既に今フレーム使われている（＝同じ場所へ二重に Draw された）なら諦める
+    if (entry.lastSubmittedFrame == frame) {
+        return nullptr;
+    }
+    if (!entry.object || entry.object->IsMarkedForDestroy()) {
+        return nullptr;
+    }
+    return &entry;
+}
+
+GameComponents::ModelRenderPoolComponent::Entry*
+GameComponents::ModelRenderPoolComponent::FindAvailableEntry(std::uint64_t frame) {
     while (nextEntryIndex_ < entries_.size()) {
         Entry& entry = entries_[nextEntryIndex_++];
         if (entry.lastSubmittedFrame != frame && entry.object &&
@@ -221,6 +274,9 @@ void GameComponents::ModelRenderPoolComponent::ResizePool(std::size_t capacity) 
         entries_.pop_back();
     }
     nextEntryIndex_ = std::min(nextEntryIndex_, entries_.size());
+    // 添字が指す先が変わるので、位置キーの対応付けは作り直す
+    entryByPosition_.clear();
+    prevEntryByPosition_.clear();
 }
 
 void GameComponents::ModelRenderPoolComponent::ApplyColorToEntries() {
