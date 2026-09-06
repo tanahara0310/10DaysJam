@@ -97,9 +97,6 @@
     <ClCompile Include="Application\Src\Scenes\TestScene\TestScene.cpp">
       <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Scenes\Text3DTestScene\Text3DTestScene.cpp">
-      <Filter>Application\Src\Scenes\Text3DTestScene</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\TitleScene\TitleScene.cpp">
       <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClCompile>
@@ -2883,9 +2880,6 @@
     <ClInclude Include="Application\Src\Scenes\TestScene\TestScene.h">
       <Filter>Application\Src\Scenes\TestScene</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Scenes\Text3DTestScene\Text3DTestScene.h">
-      <Filter>Application\Src\Scenes\Text3DTestScene</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\DockingUI.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
@@ -3240,9 +3234,6 @@
     </Filter>
     <Filter Include="Application\Src\Scenes\ResultScene">
       <UniqueIdentifier>{0E3C3B7C-C1A6-42A7-BFC6-0A37DB4F0787}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Application\Src\Scenes\Text3DTestScene">
-      <UniqueIdentifier>{f078ea02-7b04-45d1-b33e-7cfdab1d2e2b}</UniqueIdentifier>
     </Filter>
     <Filter Include="Application\Src\Scenes\TestScene">
       <UniqueIdentifier>{0F580D97-5827-428A-AF9A-6D974CE04F90}</UniqueIdentifier>
