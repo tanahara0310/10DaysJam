@@ -72,8 +72,21 @@ namespace CoreEngine
         float fov = 0.0f;
         Vector3 aimPoint = { 0.0f, 0.0f, 0.0f };
 
+        /// @brief Spring で寄せるときの速度（Exponential では使わない）
+        /// @details バネは速度を次のフレームへ持ち越すことで、目標が飛んだ瞬間に
+        ///          速度が跳ねないようにする。ここを落とすとカクつきが戻る。
+        Vector3 positionVelocity = { 0.0f, 0.0f, 0.0f };
+        Vector3 aimVelocity = { 0.0f, 0.0f, 0.0f };
+        float fovVelocity = 0.0f;
+
         /// @brief 次の評価を初回として扱う
-        void Reset() { initialized = false; }
+        void Reset()
+        {
+            initialized = false;
+            positionVelocity = { 0.0f, 0.0f, 0.0f };
+            aimVelocity = { 0.0f, 0.0f, 0.0f };
+            fovVelocity = 0.0f;
+        }
     };
 
     /// @brief リグをシーンの状態で評価する
@@ -99,6 +112,21 @@ namespace CoreEngine
         ///          初回に減衰を掛けると、原点から目標へ滑り込む見苦しい動きになる。
         static void ApplyDamping(const CameraRigAsset& asset, const CameraRigPose& desired,
             float deltaTime, CameraRigState& state);
+
+        /// @brief 臨界減衰のバネで 1 フレーム分寄せる
+        /// @param current 今の値（書き換える）
+        /// @param velocity 今の速度（書き換える）
+        /// @param target 目標値
+        /// @param speed 1 秒あたりの追従の速さ（0 以下で目標へ直接置く）
+        /// @param deltaTime 経過時間 [秒]
+        /// @details 指数減衰と違って速度が連続に変わるので、目標が飛び飛びでも
+        ///          画がカクつかない。同じ speed なら寄る速さは指数減衰とほぼ揃う。
+        static void SpringDamp(float& current, float& velocity, float target,
+            float speed, float deltaTime);
+
+        /// @brief 臨界減衰のバネで 1 フレーム分寄せる（軸ごと）
+        static void SpringDamp(Vector3& current, Vector3& velocity, const Vector3& target,
+            float speed, float deltaTime);
 
         /// @brief 指数減衰の係数を求める
         /// @param speed 1 秒あたりの追従の速さ（0 以下で減衰なし）

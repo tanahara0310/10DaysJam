@@ -156,6 +156,38 @@ namespace CoreEngine
         return 1.0f - std::exp(-speed * deltaTime);
     }
 
+    void CameraRigEvaluator::SpringDamp(float& current, float& velocity, float target,
+        float speed, float deltaTime)
+    {
+        if (speed <= 0.0f || deltaTime <= 0.0f) {
+            // 減衰なし。目標へそのまま置く。
+            current = target;
+            velocity = 0.0f;
+            return;
+        }
+
+        // 固有角振動数。speed の意味を指数減衰と揃えるために 2 倍する。
+        // こうすると 1/speed 秒で 6 割ほど詰まる点が両方で一致する。
+        const float omega = 2.0f * speed;
+        const float x = omega * deltaTime;
+
+        // exp(-x) の有理式近似。フレームが長くなっても発散しない形にしてある。
+        const float decay = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
+
+        const float difference = current - target;
+        const float temp = (velocity + omega * difference) * deltaTime;
+        velocity = (velocity - omega * temp) * decay;
+        current = target + (difference + temp) * decay;
+    }
+
+    void CameraRigEvaluator::SpringDamp(Vector3& current, Vector3& velocity, const Vector3& target,
+        float speed, float deltaTime)
+    {
+        SpringDamp(current.x, velocity.x, target.x, speed, deltaTime);
+        SpringDamp(current.y, velocity.y, target.y, speed, deltaTime);
+        SpringDamp(current.z, velocity.z, target.z, speed, deltaTime);
+    }
+
     Vector3 CameraRigEvaluator::LookRotation(const Vector3& eye, const Vector3& target, float roll)
     {
         const Vector3 delta = target - eye;
@@ -337,8 +369,16 @@ namespace CoreEngine
             // 離れたら引いて両方を収める。オフセットの向きへ後退するので画角は保たれる。
             if (asset.body.framePullBackPerMeter > 0.0f
                 && LengthSquared(asset.body.offset) > 1.0e-12f) {
+                float pullBack = bodySpread * asset.body.framePullBackPerMeter;
+
+                // 上限を入れると、対象がどれだけ離れても画に入る範囲がここで止まる。
+                // 見せたくない外側を画へ入れないための歯止め。
+                if (asset.body.framePullBackMax > 0.0f) {
+                    pullBack = (std::min)(pullBack, asset.body.framePullBackMax);
+                }
+
                 const Vector3 back = Normalize(asset.body.offset);
-                pose.position += back * (bodySpread * asset.body.framePullBackPerMeter);
+                pose.position += back * pullBack;
             }
             break;
         }
@@ -453,22 +493,40 @@ namespace CoreEngine
             state.rotation = desired.rotation;
             state.fov = desired.fov;
             state.aimPoint = desired.aimPoint;
+            state.positionVelocity = { 0.0f, 0.0f, 0.0f };
+            state.aimVelocity = { 0.0f, 0.0f, 0.0f };
+            state.fovVelocity = 0.0f;
             state.initialized = true;
             return;
         }
 
-        const float positionRate = DampingFactor(asset.damping.position, deltaTime);
-        const float fovRate = DampingFactor(asset.damping.fov, deltaTime);
-        const float aimRate = DampingFactor(asset.damping.aim, deltaTime);
-        const float rotationRate = DampingFactor(asset.damping.rotation, deltaTime);
+        const bool useSpring = (asset.damping.mode == CameraRigDampingMode::Spring);
 
-        state.position += (desired.position - state.position) * positionRate;
-        state.fov += (desired.fov - state.fov) * fovRate;
+        if (useSpring) {
+            SpringDamp(state.position, state.positionVelocity, desired.position,
+                asset.damping.position, deltaTime);
+            SpringDamp(state.fov, state.fovVelocity, desired.fov,
+                asset.damping.fov, deltaTime);
+        } else {
+            state.position += (desired.position - state.position)
+                * DampingFactor(asset.damping.position, deltaTime);
+            state.fov += (desired.fov - state.fov)
+                * DampingFactor(asset.damping.fov, deltaTime);
+        }
+
+        const float rotationRate = DampingFactor(asset.damping.rotation, deltaTime);
 
         Vector3 targetRotation = desired.rotation;
         if (desired.hasAimPoint) {
             // 注視先そのものを鈍らせてから向きを引き直す。対象が跳ねても画がぶれない。
-            state.aimPoint += (desired.aimPoint - state.aimPoint) * aimRate;
+            // 向きは位置と注視先から引き直すので、両方をバネで寄せれば向きも連続になる。
+            if (useSpring) {
+                SpringDamp(state.aimPoint, state.aimVelocity, desired.aimPoint,
+                    asset.damping.aim, deltaTime);
+            } else {
+                state.aimPoint += (desired.aimPoint - state.aimPoint)
+                    * DampingFactor(asset.damping.aim, deltaTime);
+            }
             targetRotation = LookRotation(state.position, state.aimPoint, asset.aim.roll);
             targetRotation = ApplyScreenComposition(targetRotation,
                 asset.aim.screenX, asset.aim.screenY, state.fov, 0.0f);
