@@ -34,6 +34,8 @@ namespace ResultSceneUi
     extern CoreEngine::CVar<CoreEngine::Vector2> TitlePosition;
     extern CoreEngine::CVar<CoreEngine::Vector4> TitleColor;
     extern CoreEngine::CVar<int> TitleSortOrder;
+    extern CoreEngine::CVar<float> ScoreFontSize;
+    extern CoreEngine::CVar<CoreEngine::Vector2> ScorePosition;
     extern CoreEngine::CVar<float> ButtonFontSize;
     extern CoreEngine::CVar<CoreEngine::Vector2> ButtonPosition;
     extern CoreEngine::CVar<float> ButtonSpacing;

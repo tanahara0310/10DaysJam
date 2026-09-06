@@ -2,6 +2,7 @@
 #include "ResultSceneUi.h"
 
 #include "Components/Result/ResultButtonAnimationComponent.h"
+#include "Components/GameCore/GameResultData.h"
 #include "UI/UIText.h"
 
 namespace ResultSceneUi
@@ -30,6 +31,14 @@ namespace ResultSceneUi
         1000,
         "リザルト見出しの描画順",
         CVarRange{ 0.0f, 5000.0f } };
+
+    CVar<float> ScoreFontSize{
+        "Result.UI.ScoreFontSize", 52.0f,
+        "進行ブロック数のフォントサイズ", CVarRange{ 16.0f, 160.0f } };
+
+    CVar<Vector2> ScorePosition{
+        "Result.UI.ScorePosition", { 0.0f, -40.0f },
+        "進行ブロック数の位置", CVarRange{ -2000.0f, 2000.0f } };
 
     CVar<float> ButtonFontSize{
         "Result.UI.ButtonFontSize",
@@ -78,6 +87,17 @@ namespace ResultSceneUi
             resultTitle->SetSerializeEnabled(false);
             resultTitle->SetPivot({ 0.5f, 0.5f });
             resultTitle->SetSortOrder(TitleSortOrder.Get());
+        }
+
+        UIText* scoreText = createText(
+            "進んだ距離: " + std::to_string(
+                GameComponents::GameResultData::GetHorizontalProgressBlocks()) + " ブロック",
+            ScoreFontSize.Get(), UIAnchor::Center, ScorePosition.Get(),
+            TitleColor.Get(), "ResultScore");
+        if (scoreText) {
+            scoreText->SetSerializeEnabled(false);
+            scoreText->SetPivot({ 0.5f, 0.5f });
+            scoreText->SetSortOrder(TitleSortOrder.Get());
         }
 
         const Vector2 firstButtonPosition = ButtonPosition.Get();

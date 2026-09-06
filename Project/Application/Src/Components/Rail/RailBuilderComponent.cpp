@@ -5,7 +5,6 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "RailPathComponent.h"
-#include "RailResourceManagerComponent.h"
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Building/RockThrowComponent.h"
 #include "Components/Camera/RockBreakShakeSettingsComponent.h"
@@ -45,12 +44,9 @@ json GameComponents::RailBuilderComponent::OnSerialize() const {
         { "rockCursorHeightOffset", rockCursorHeightOffset_ },
         { "rockThrowStartHeight", rockThrowStartHeight_ },
         { "rockImpactHeight", rockImpactHeight_ },
-        { "rockHungerCost", rockHungerCost_ },
-        { "groundCost", groundCost_ },
-        { "waterCost", waterCost_ },
-        { "stationReward", stationReward_ },
-        { "resourceReward", resourceReward_ },
-        { "maxSpeedRewardRatio", maxSpeedRewardRatio_ }
+        { "railStaminaCost", railStaminaCost_ },
+        { "rockStaminaCost", rockStaminaCost_ },
+        { "bridgeStaminaCost", bridgeStaminaCost_ }
     };
 }
 
@@ -73,14 +69,13 @@ void GameComponents::RailBuilderComponent::OnDeserialize(const json& j) {
     rockThrowStartHeight_ = JsonManager::SafeGet<float>(
         j, "rockThrowStartHeight", rockThrowStartHeight_);
     rockImpactHeight_ = JsonManager::SafeGet<float>(j, "rockImpactHeight", rockImpactHeight_);
-    rockHungerCost_ = std::max(
-        0.0f, JsonManager::SafeGet<float>(j, "rockHungerCost", rockHungerCost_));
-    groundCost_ = JsonManager::SafeGet<uint32_t>(j, "groundCost", groundCost_);
-    waterCost_ = JsonManager::SafeGet<uint32_t>(j, "waterCost", waterCost_);
-    stationReward_ = JsonManager::SafeGet<uint32_t>(j, "stationReward", stationReward_);
-    resourceReward_ = JsonManager::SafeGet<uint32_t>(j, "resourceReward", resourceReward_);
-    maxSpeedRewardRatio_ = std::max(1.0f,
-        JsonManager::SafeGet<float>(j, "maxSpeedRewardRatio", maxSpeedRewardRatio_));
+    railStaminaCost_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "railStaminaCost", railStaminaCost_));
+    rockStaminaCost_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "rockStaminaCost",
+            JsonManager::SafeGet<float>(j, "rockHungerCost", rockStaminaCost_)));
+    bridgeStaminaCost_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "bridgeStaminaCost", bridgeStaminaCost_));
     gridPosX_ = initialGridPosX_;
     gridPosZ_ = initialGridPosZ_;
 }
@@ -108,16 +103,11 @@ bool GameComponents::RailBuilderComponent::DrawInspector() {
     changed |= ImGui::DragFloat(
         "投石着弾高さ", &rockImpactHeight_, 0.05f, -10.0f, 10.0f);
     changed |= ImGui::DragFloat(
-        "岩破壊の空腹コスト", &rockHungerCost_, 1.0f, 0.0f, 1000.0f);
-    int groundCost = static_cast<int>(groundCost_);
-    int waterCost = static_cast<int>(waterCost_);
-    int stationReward = static_cast<int>(stationReward_);
-    int resourceReward = static_cast<int>(resourceReward_);
-    if (ImGui::DragInt("地上レールコスト", &groundCost, 1.0f, 0, 100)) { groundCost_ = static_cast<uint32_t>(groundCost); changed = true; }
-    if (ImGui::DragInt("水上レールコスト", &waterCost, 1.0f, 0, 100)) { waterCost_ = static_cast<uint32_t>(waterCost); changed = true; }
-    if (ImGui::DragInt("駅報酬", &stationReward, 1.0f, 0, 999)) { stationReward_ = static_cast<uint32_t>(stationReward); changed = true; }
-    if (ImGui::DragInt("資源報酬", &resourceReward, 1.0f, 0, 999)) { resourceReward_ = static_cast<uint32_t>(resourceReward); changed = true; }
-    changed |= ImGui::DragFloat("速度報酬の最大倍率", &maxSpeedRewardRatio_, 0.05f, 1.0f, 10.0f);
+        "岩破壊スタミナコスト", &rockStaminaCost_, 1.0f, 0.0f, 1000.0f);
+    changed |= ImGui::DragFloat(
+        "レール設置スタミナコスト", &railStaminaCost_, 0.5f, 0.0f, 1000.0f);
+    changed |= ImGui::DragFloat(
+        "橋建設スタミナコスト", &bridgeStaminaCost_, 0.5f, 0.0f, 1000.0f);
     return changed;
 }
 #endif
@@ -125,7 +115,7 @@ bool GameComponents::RailBuilderComponent::DrawInspector() {
 void GameComponents::RailBuilderComponent::Start() {
     transform_ = Sibling<TransformComponent>();
 
-    if (!transform_ || !railPath_ || !resourceManager_ ||
+    if (!transform_ || !railPath_ ||
         !mapGenerator_ || !trainMovement_ || !hunger_ || !rockThrow_) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
@@ -156,11 +146,6 @@ void GameComponents::RailBuilderComponent::Update() {
     if (!railPath_) {
         return;
     }
-    // RailResourceManagerComponent がアタッチされていない場合は処理を中断する
-    if (!resourceManager_) {
-        return;
-    }
-
     // タイマーを更新する
     timer_ += Time::DeltaTime();
 
@@ -341,51 +326,32 @@ void GameComponents::RailBuilderComponent::Update() {
         return;
     }
 
-    // レールが0本なら、報酬マスであっても新しいレールは設置できない。
-    if (resourceManager_->GetResourceCount() == 0) {
-        Logger::GetInstance().Warnf(
-            LogCategory::Game,
-            "RailBuilder: レールがありません");
-        NotifyRailInsufficient();
-        return;
-    }
-
-    uint32_t resourceCost = 0;
-    if (mapChip == MapChipType::Ground) {
-        resourceCost = groundCost_;
-    } else if (mapChip == MapChipType::Water) {
-        resourceCost = waterCost_;
+    float baseCost = railStaminaCost_;
+    if (mapChip == MapChipType::Water) {
+        baseCost += bridgeStaminaCost_;
     } else if (mapChip == MapChipType::Resource) {
-        resourceCost = groundCost_;
+        baseCost += rockStaminaCost_;
     }
-
-    if (!resourceManager_->HasEnoughResource(resourceCost)) {
+    const float staminaCost = hunger_->CalculateActionCost(baseCost);
+    if (hunger_->GetCurrentHunger() < staminaCost) {
         Logger::GetInstance().Warnf(
             LogCategory::Game,
-            "RailBuilder: レールが不足しています (必要={}, 所持={})",
-            resourceCost, resourceManager_->GetResourceCount());
-        NotifyRailInsufficient();
-        return;
-    }
-
-    // 岩破壊で空腹値が0以下になる入力は、ゲームオーバーにせず拒否する。
-    if (mapChip == MapChipType::Resource &&
-        hunger_->GetCurrentHunger() - rockHungerCost_ <= 0.0f) {
-        Logger::GetInstance().Warnf(
-            LogCategory::Game,
-            "RailBuilder: 岩を壊すための空腹値が不足しています (必要={}, 現在={})",
-            rockHungerCost_, hunger_->GetCurrentHunger());
-        NotifyHungerInsufficient();
+            "RailBuilder: スタミナ不足です (必要={}, 現在={})",
+            staminaCost, hunger_->GetCurrentHunger());
+        NotifyStaminaInsufficient();
         return;
     }
 
     OnBuildSE_();
-    if (!resourceManager_->UseResource(resourceCost)) {
+    const float refundableCost = mapChip == MapChipType::Resource
+        ? hunger_->CalculateActionCost(railStaminaCost_)
+        : staminaCost;
+    if (!railPath_->PlaceRail(nextX, nextZ, refundableCost)) {
         return;
     }
-
-    if (!railPath_->PlaceRail(nextX, nextZ, resourceCost)) {
-        resourceManager_->AddResource(resourceCost);
+    if (!hunger_->TryConsumeStamina(staminaCost)) {
+        railPath_->UndoLastRailPlacement();
+        NotifyStaminaInsufficient();
         return;
     }
 
@@ -399,36 +365,23 @@ void GameComponents::RailBuilderComponent::Update() {
         rockBreakQueue_.push_back({ gridPosX_, gridPosZ_ });
         if (!wasBreakingRock) {
             trainMovement_->SetRockBreakPaused(true);
-            hunger_->SetRockBreakPaused(true);
         }
         SyncTransformToGrid();
 
-        // 岩と空腹値はUndoの履歴へ入れず、この時点の変更を維持する。
-        hunger_->ConsumeHunger(rockHungerCost_);
         if (!wasBreakingRock) {
             StartNextRockThrow();
         }
 
         Logger::GetInstance().Infof(
             LogCategory::Game,
-            "RailBuilder: 岩破壊命令を追加しました ({}, {}), 空腹コスト={}, 待機数={}",
-            gridPosX_, gridPosZ_, rockHungerCost_, rockBreakQueue_.size());
+            "RailBuilder: 岩破壊命令を追加しました ({}, {}), スタミナコスト={}, 待機数={}",
+            gridPosX_, gridPosZ_, staminaCost, rockBreakQueue_.size());
         return;
     }
 
     // 投石キューが残っていても、通常マスへの追加敷設ではカーソルを通常高さにする。
     isCursorAboveRock_ = false;
     SyncTransformToGrid();
-
-    if (mapChip == MapChipType::Station) {
-        const uint32_t reward = CalculateSpeedReward(stationReward_);
-        resourceManager_->AddResource(reward);
-        railPath_->ConfirmAllPendingRailPlacements();
-        Logger::GetInstance().Infof(
-            LogCategory::Game,
-            "RailBuilder: 駅に到達しました (報酬={}, 駅までのレールを確定)",
-            reward);
-    }
 
     Logger::GetInstance().Infof(
         LogCategory::Game,
@@ -446,7 +399,7 @@ bool GameComponents::RailBuilderComponent::TryUndoLastRail() {
         return false;
     }
 
-    resourceManager_->AddResource(undo.refundAmount);
+    hunger_->AddStamina(undo.refundAmount);
     gridPosX_ = undo.builderPosition.first;
     gridPosZ_ = undo.builderPosition.second;
     SyncTransformToGrid();
@@ -459,11 +412,6 @@ bool GameComponents::RailBuilderComponent::TryUndoLastRail() {
 
     OnUndoSE_();
     return true;
-}
-
-uint32_t GameComponents::RailBuilderComponent::CalculateSpeedReward(
-    uint32_t baseAmount) const {
-    return baseAmount;
 }
 
 void GameComponents::RailBuilderComponent::StartNextRockThrow() {
@@ -525,7 +473,6 @@ void GameComponents::RailBuilderComponent::CompleteRockBreak() {
 
     isBreakingRock_ = false;
     trainMovement_->SetRockBreakPaused(false);
-    hunger_->SetRockBreakPaused(false);
     SyncTransformToGrid();
 }
 
@@ -550,24 +497,13 @@ void GameComponents::RailBuilderComponent::SetHorizontalPrioritize(bool prioriti
 }
 
 void GameComponents::RailBuilderComponent::SetInsufficientFeedback(
-    std::function<void()> onRailInsufficient,
-    std::function<void()> onHungerInsufficient) {
-    OnRailInsufficient_ = std::move(onRailInsufficient);
-    OnHungerInsufficient_ = std::move(onHungerInsufficient);
+    std::function<void()> onStaminaInsufficient) {
+    OnStaminaInsufficient_ = std::move(onStaminaInsufficient);
 }
 
-void GameComponents::RailBuilderComponent::NotifyRailInsufficient() {
-    if (OnRailInsufficient_) {
-        OnRailInsufficient_();
-    }
-    if (OnFailureSE_) {
-        OnFailureSE_();
-    }
-}
-
-void GameComponents::RailBuilderComponent::NotifyHungerInsufficient() {
-    if (OnHungerInsufficient_) {
-        OnHungerInsufficient_();
+void GameComponents::RailBuilderComponent::NotifyStaminaInsufficient() {
+    if (OnStaminaInsufficient_) {
+        OnStaminaInsufficient_();
     }
     if (OnFailureSE_) {
         OnFailureSE_();

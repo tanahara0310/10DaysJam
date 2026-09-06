@@ -57,11 +57,10 @@ namespace GameComponents
 
         float GetMoveSpeed() const { return moveSpeed_; }
         CoreEngine::Vector3 GetWorldPosition() const;
-        /// @brief 発車後に列車が実際に進んだワールド距離。
-        float GetTravelDistance() const { return travelDistance_; }
+        uint32_t GetHorizontalProgressBlocks() const { return horizontalProgressBlocks_; }
         float GetMinMoveSpeed() const { return minMoveSpeed_; }
         float GetSpeedRatio() const {
-            return minMoveSpeed_ > 0.0f ? moveSpeed_ / minMoveSpeed_ : 1.0f;
+            return initialMoveSpeed_ > 0.0f ? moveSpeed_ / initialMoveSpeed_ : 1.0f;
         }
 
         // グリッドサイズを設定する
@@ -78,10 +77,6 @@ namespace GameComponents
         bool BeginNextSegment();
         // 現在の移動進捗を Transform に反映する
         void SyncTransformToProgress();
-        // 確定レールへ高速発進するときのジャンプを進める
-        void UpdateBoostJump(float deltaTime);
-        // 現在のジャンプによる高さ加算値を取得する
-        float GetBoostJumpOffset() const;
         void UpdateRockThrowJump(float deltaTime);
         float GetRockThrowJumpOffset() const;
         // 移動方向に合わせて Y 軸回転を更新する
@@ -103,27 +98,23 @@ namespace GameComponents
         int32_t destinationGridZ_ = 0;
 
         float movementProgress_ = 0.0f;
-        float travelDistance_ = 0.0f;
-        float completedRailPauseDuration_ = 1.0f;
-        float completedRailPauseRemaining_ = 0.0f;
-        float boostJumpHeight_ = 0.8f;
-        float boostJumpDuration_ = 1.0f;
-        float boostJumpElapsed_ = 0.0f;
+        uint32_t horizontalProgressBlocks_ = 0;
         float rockThrowJumpHeight_ = 0.6f;
         float rockThrowJumpDuration_ = 0.35f;
         float rockThrowJumpElapsed_ = 0.0f;
         bool isMoving_ = false;
-        bool isMovingOnCompletedRail_ = false;
-        bool isBoostJumping_ = false;
         bool isRockThrowJumping_ = false;
         bool hasStarted_ = false;
-        bool hasDirection_ = false;
         bool isGameOver_ = false;
         bool isPausedForRockBreak_ = false;
 
-        float speedUpFactor_ = 0.5f; // 移動速度の加速係数
         float minMoveSpeed_ = 0.5f; // 最低移動速度
-        float turnSlowdownFactor_ = 0.5f;
+        std::size_t speedIncreaseIntervalBlocks_ = 20;
+        float speedIncreaseAmount_ = 0.25f;
+        float maximumMoveSpeed_ = 8.0f;
+        float stationSlowdownMultiplier_ = 0.5f;
+        float stationSlowdownDuration_ = 2.0f;
+        float stationSlowdownRemaining_ = 0.0f;
         float trainHeight_ = 1.0f;
         std::size_t requiredRailCount_ = 5;
     };

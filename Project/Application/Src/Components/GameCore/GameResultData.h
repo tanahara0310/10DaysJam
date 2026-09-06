@@ -1,6 +1,6 @@
 #pragma once
 
-#include <algorithm>
+#include <cstdint>
 
 namespace GameComponents
 {
@@ -11,22 +11,22 @@ namespace GameComponents
     public:
         static void Reset()
         {
-            travelDistance_ = 0.0f;
+            horizontalProgressBlocks_ = 0;
         }
 
-        static void SetTravelDistance(float distance)
+        static void SetHorizontalProgressBlocks(uint32_t blocks)
         {
-            travelDistance_ = std::max(0.0f, distance);
+            horizontalProgressBlocks_ = blocks;
         }
 
-        /// @brief 列車が進んだワールド距離を取得する。
+        /// @brief 列車が開始位置からX正方向へ進んだ最大ブロック数を取得する。
         /// @note ResultScene からこの getter を呼ぶと、直前のプレイ結果を取得できる。
-        static float GetTravelDistance()
+        static uint32_t GetHorizontalProgressBlocks()
         {
-            return travelDistance_;
+            return horizontalProgressBlocks_;
         }
 
     private:
-        static inline float travelDistance_ = 0.0f;
+        static inline uint32_t horizontalProgressBlocks_ = 0;
     };
 }

@@ -89,7 +89,8 @@ void GameComponents::GameManagerComponent::BeginEnding(bool isClear, float chang
         : defaultChangeDelay_;
 
     // GameScene のオブジェクトが破棄される前に、リザルト用の共有データへ確定する。
-    GameResultData::SetTravelDistance(train_ ? train_->GetTravelDistance() : 0.0f);
+    GameResultData::SetHorizontalProgressBlocks(
+        train_ ? train_->GetHorizontalProgressBlocks() : 0);
 
     if (train_) {
         train_->SetEnabled(false);

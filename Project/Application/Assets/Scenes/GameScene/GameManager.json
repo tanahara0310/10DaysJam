@@ -16,9 +16,9 @@
             "enabled": true,
             "parameters": {
                 "bananaRecovery": 20.0,
-                "drainPerSecond": 1.0,
-                "initialHunger": 100.0,
-                "maximumHunger": 100.0
+                "additionalMonkeyCostRate": 0.25,
+                "initialStamina": 100.0,
+                "maximumStamina": 100.0
             },
             "type": "Hunger"
         }

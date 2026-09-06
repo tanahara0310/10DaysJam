@@ -13,7 +13,7 @@ namespace GameComponents
         bool succeeded = false;
         std::pair<int32_t, int32_t> removedPosition = { -1, -1 };
         std::pair<int32_t, int32_t> builderPosition = { -1, -1 };
-        uint32_t refundAmount = 0;
+        float refundAmount = 0.0f;
     };
 
     // レールの配置、撤去を管理するコンポーネント
@@ -43,7 +43,7 @@ namespace GameComponents
         void Update() override;
 
         // レールを設置する
-        bool PlaceRail(int32_t x, int32_t z, uint32_t resourceCost);
+        bool PlaceRail(int32_t x, int32_t z, float refundableStaminaCost);
         // 最後のUndo可能なレールを撤去し、設置時に消費したレール数を返す
         RailUndoResult UndoLastRailPlacement();
 
@@ -61,6 +61,7 @@ namespace GameComponents
         std::vector<std::pair<int32_t, int32_t>>& GetRailMap();
         // Z方向のマップサイズを取得する。X正方向には上限を設けない
         uint32_t GetMapSizeZ() const;
+        int32_t GetFurthestRailX() const;
 
         // Undoスタックを取得する
         const std::vector<std::pair<int32_t, int32_t>>& GetRailUndoStack() const;
@@ -75,7 +76,7 @@ namespace GameComponents
 
         // Undo/Redo スタック
         std::vector<std::pair<int32_t, int32_t>> railUndoStack_;
-        std::vector<uint32_t> railUndoCosts_;
+        std::vector<float> railUndoCosts_;
 
         // 駅でレールが確定された後も、列車が走行できるよう経路を独立して保持する
         std::vector<std::pair<int32_t, int32_t>> trainRouteQueue_;

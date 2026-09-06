@@ -25,33 +25,24 @@
         {
             "enabled": true,
             "parameters": {
-                "initialResourceCount": 15
-            },
-            "type": "RailResourceManager"
-        },
-        {
-            "enabled": true,
-            "parameters": {
                 "gridSize": 1.0,
-                "groundCost": 1,
+                "railStaminaCost": 2.0,
                 "height": 1.0,
                 "horizontalPrioritize": true,
                 "initialGridX": 3,
                 "initialGridZ": 4,
-                "maxSpeedRewardRatio": 2.0,
+                "bridgeStaminaCost": 5.0,
                 "pulseAmplitude": 0.20000000298023224,
                 "pulseBaseScale": 0.800000011920929,
                 "pulseSpeed": 5.0,
                 "rockCursorHeightOffset": 1.0,
-                "rockHungerCost": 20.0,
+                "rockStaminaCost": 20.0,
                 "rockImpactHeight": 0.7,
                 "rockThrowStartHeight": 0.5,
-                "resourceReward": 5,
                 "rotationSpeed": 2.0,
-                "stationReward": 15,
                 "undoHoldTime": 0.30000001192092896,
                 "undoInterval": 0.05000000074505806,
-                "waterCost": 2
+                "version": 2
             },
             "type": "RailBuilder"
         },

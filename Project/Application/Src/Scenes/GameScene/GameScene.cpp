@@ -23,10 +23,8 @@
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Rail/RailViewComponent.h"
-#include "Components/Rail/RailResourceManagerComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "Components/UI/HungerUIComponent.h"
-#include "Components/UI/RailResourceUIComponent.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/GameResultData.h"
@@ -36,6 +34,8 @@
 #include "GameObjects/GameSceneObject.h"
 
 #include <algorithm>
+#include <cmath>
+#include <string>
 
 using namespace CoreEngine;
 
@@ -124,8 +124,6 @@ void GameScene::GameScene::OnInitialize() {
     const uint32_t mapSizeZ = ToUInt(
         GameComponents::GameSettings::MapSizeZ.Get(), 1);
 
-    const uint32_t railResourceCount = ToUInt(
-        GameComponents::GameSettings::InitialRailResources.Get());
     const uint32_t initialBuilderPosX = ToUInt(
         GameComponents::GameSettings::BuilderStartX.Get());
     const uint32_t initialBuilderPosZ = std::min(
@@ -229,7 +227,7 @@ void GameScene::GameScene::OnInitialize() {
     mapGenerator->AddComponent<GameComponents::MapGeneratorComponent>(
         mapSizeZ, initialGenerateMapSizeX, mapSettings);
 
-    // 列車の発車後に減少し、バナナの木で回復する空腹値を管理する。
+    // 建設行動で消費し、バナナの木で回復するスタミナを管理する。
     auto* hungerComponent = gameManager->AddComponent<GameComponents::HungerComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         gameManagerComponent);
@@ -247,7 +245,6 @@ void GameScene::GameScene::OnInitialize() {
     // レールを配置するオブジェクトを生成
     auto* railBuilder = CreateObject<GameSceneObject>("RailBuilder");
     railBuilder->AddComponent<CoreEngine::TransformComponent>();
-    railBuilder->AddComponent<GameComponents::RailResourceManagerComponent>(railResourceCount);
 
     // 列車の移動ロジックを持つオブジェクト。描画とアニメーションは別コンポーネントで追加する。
     auto* train = CreateObject<GameSceneObject>("Train");
@@ -271,7 +268,6 @@ void GameScene::GameScene::OnInitialize() {
     auto* railBuilderComponent = railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
         gridSize, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
-        railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>(),
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         train->GetComponent<GameComponents::TrainMovementComponent>(),
         hungerComponent,
@@ -290,6 +286,26 @@ void GameScene::GameScene::OnInitialize() {
     monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
     monkeyTransform->Get().SetParent(&trainTransform->Get());
     monkeyTransform->Get().rotate.y = 3.14f;
+    hungerComponent->SetMonkeyAddedCallback(
+        [this, trainTransform](std::size_t monkeyCount) {
+            auto* addedMonkey = CreateObject<GameSceneObject>(
+                "Monkey_" + std::to_string(monkeyCount));
+            if (!addedMonkey) {
+                return;
+            }
+            auto* addedTransform = addedMonkey->AddComponent<CoreEngine::TransformComponent>();
+            addedMonkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
+            if (addedTransform) {
+                addedTransform->Get().SetParent(&trainTransform->Get());
+                const float index = static_cast<float>(monkeyCount - 1);
+                addedTransform->Get().translate = {
+                    ((static_cast<int>(monkeyCount) % 3) - 1) * 0.35f,
+                    0.15f * std::floor(index / 3.0f),
+                    -0.3f * std::floor(index / 3.0f)
+                };
+                addedTransform->Get().rotate.y = 3.14f;
+            }
+        });
 
     // カメラの構図は Presets/CameraRigs/GamePlay.json が持つ。
     // 起動は _camera.json の startupRigName 任せで、ここでは何も駆動しない。
@@ -327,7 +343,7 @@ void GameScene::GameScene::OnInitialize() {
         gameCamera,
         gridSize, renderWorldDistance);
 
-    // 残りレール数を画面左上へ表示するHUD
+    // スタミナ・進行ブロック数・サル数を画面左上へ表示するHUD
     auto* fontManager = engine_->GetService<CoreEngine::FontManager>();
     if (fontManager) {
         CoreEngine::MsdfFontDesc fontDesc;
@@ -335,32 +351,13 @@ void GameScene::GameScene::OnInitialize() {
         fontDesc.systemFamilyNames = {
             L"Yu Gothic UI", L"Meiryo", L"Segoe UI"
         };
-        fontDesc.charsetUtf8 = "残りレール空腹値: 0123456789";
+        fontDesc.charsetUtf8 = "スタミナ進行ブロックサル: 0123456789";
 
         if (auto* font = fontManager->Acquire(fontDesc)) {
-            auto* railResourceText = CreateObject<CoreEngine::UIText>();
-            railResourceText->Initialize(font, "残りレール: 0", "RailResourceText");
-            railResourceText->SetAnchor(CoreEngine::UIAnchor::TopLeft);
-            railResourceText->SetAnchoredPosition(
-                GameComponents::GameSettings::HudPosition.Get());
-            railResourceText->SetPivot({ 0.0f, 0.0f });
-            railResourceText->SetFontSize(
-                GameComponents::GameSettings::HudFontSize.Get());
-            railResourceText->SetColor(
-                GameComponents::GameSettings::HudColor.Get());
-            railResourceText->SetOutline(
-                GameComponents::GameSettings::HudOutlineColor.Get(),
-                GameComponents::GameSettings::HudOutlineWidth.Get());
-            railResourceText->SetSortOrder(
-                GameComponents::GameSettings::HudSortOrder.Get());
-            auto* railResourceUi = railResourceText->AddComponent<GameComponents::RailResourceUIComponent>(
-                railBuilder->GetComponent<GameComponents::RailResourceManagerComponent>());
-
             auto* hungerText = CreateObject<CoreEngine::UIText>();
-            hungerText->Initialize(font, "空腹値: 100", "HungerText");
+            hungerText->Initialize(font, "スタミナ: 100", "StaminaText");
             hungerText->SetAnchor(CoreEngine::UIAnchor::TopLeft);
             auto hungerPosition = GameComponents::GameSettings::HudPosition.Get();
-            hungerPosition.y += GameComponents::GameSettings::HudFontSize.Get() + 8.0f;
             hungerText->SetAnchoredPosition(hungerPosition);
             hungerText->SetPivot({ 0.0f, 0.0f });
             hungerText->SetFontSize(GameComponents::GameSettings::HudFontSize.Get());
@@ -369,9 +366,10 @@ void GameScene::GameScene::OnInitialize() {
                 GameComponents::GameSettings::HudOutlineColor.Get(),
                 GameComponents::GameSettings::HudOutlineWidth.Get());
             hungerText->SetSortOrder(GameComponents::GameSettings::HudSortOrder.Get());
-            auto* hungerUi = hungerText->AddComponent<GameComponents::HungerUIComponent>(hungerComponent);
+            auto* hungerUi = hungerText->AddComponent<GameComponents::HungerUIComponent>(
+                hungerComponent,
+                train->GetComponent<GameComponents::TrainMovementComponent>());
             railBuilderComponent->SetInsufficientFeedback(
-                [railResourceUi]() { railResourceUi->PlayInsufficientShake(); },
                 [hungerUi]() { hungerUi->PlayInsufficientShake(); });
         }
     } else {

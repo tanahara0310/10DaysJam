@@ -80,9 +80,9 @@
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        -0.5733447670936584,
-        0.8188212513923645,
-        0.028417011722922325
+        -0.4216686189174652,
+        0.6022050976753235,
+        0.6778972148895264
     ],
     "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
     "r.AtmosphereLights.SunDirection": [

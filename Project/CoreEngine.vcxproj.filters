@@ -28,9 +28,6 @@
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
-    <ClCompile Include="Application\Src\Components\Rail\RailResourceManagerComponent.cpp">
-      <Filter>Application\Src\Components\Rail</Filter>
-    </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
@@ -57,9 +54,6 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
-    </ClCompile>
-    <ClCompile Include="Application\Src\Components\UI\RailResourceUIComponent.cpp">
-      <Filter>Application\Src\Components\UI</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\UI\HungerUIComponent.cpp">
       <Filter>Application\Src\Components\UI</Filter>
@@ -1446,9 +1440,6 @@
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClInclude>
-    <ClInclude Include="Application\Src\Components\Rail\RailResourceManagerComponent.h">
-      <Filter>Application\Src\Components\Rail</Filter>
-    </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClInclude>
@@ -1475,9 +1466,6 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
-    </ClInclude>
-    <ClInclude Include="Application\Src\Components\UI\RailResourceUIComponent.h">
-      <Filter>Application\Src\Components\UI</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\UI\HungerUIComponent.h">
       <Filter>Application\Src\Components\UI</Filter>
