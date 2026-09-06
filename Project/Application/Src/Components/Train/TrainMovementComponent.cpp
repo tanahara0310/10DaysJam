@@ -21,10 +21,6 @@
 
 using namespace CoreEngine;
 
-namespace {
-    constexpr float kCompletedRailSpeedMultiplier = 10.0f;
-}
-
 json GameComponents::TrainMovementComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
@@ -33,6 +29,7 @@ json GameComponents::TrainMovementComponent::OnSerialize() const {
         { "initialGridZ", initialGridZ_ },
         { "speedUpFactor", speedUpFactor_ },
         { "minMoveSpeed", minMoveSpeed_ },
+        { "completedRailSpeedMultiplier", completedRailSpeedMultiplier_ },
         { "turnSlowdownFactor", turnSlowdownFactor_ },
         { "completedRailPauseDuration", completedRailPauseDuration_ },
         { "boostJumpHeight", boostJumpHeight_ },
@@ -51,6 +48,9 @@ void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
     initialGridZ_ = std::max(0, JsonManager::SafeGet<int32_t>(j, "initialGridZ", initialGridZ_));
     speedUpFactor_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "speedUpFactor", speedUpFactor_));
     minMoveSpeed_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "minMoveSpeed", minMoveSpeed_));
+    completedRailSpeedMultiplier_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(
+            j, "completedRailSpeedMultiplier", completedRailSpeedMultiplier_));
     turnSlowdownFactor_ = std::clamp(
         JsonManager::SafeGet<float>(j, "turnSlowdownFactor", turnSlowdownFactor_), 0.0f, 1.0f);
     completedRailPauseDuration_ = std::max(0.0f,
@@ -75,6 +75,8 @@ void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
 #ifdef USE_IMGUI
 bool GameComponents::TrainMovementComponent::DrawInspector() {
     bool changed = false;
+
+    ImGui::SeparatorText("走行");
     changed |= ImGui::DragFloat("グリッドサイズ", &gridSize_, 0.05f, 0.01f, 20.0f);
     if (ImGui::DragFloat("初期速度", &initialMoveSpeed_, 0.01f, 0.0f, 20.0f)) {
         moveSpeed_ = std::max(initialMoveSpeed_, minMoveSpeed_);
@@ -82,17 +84,25 @@ bool GameComponents::TrainMovementComponent::DrawInspector() {
     }
     changed |= ImGui::DragFloat("加速係数", &speedUpFactor_, 0.01f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat("最低速度", &minMoveSpeed_, 0.01f, 0.0f, 20.0f);
+    changed |= ImGui::DragFloat(
+        "確定レール速度倍率", &completedRailSpeedMultiplier_, 0.1f, 0.0f, 100.0f);
     changed |= ImGui::SliderFloat("カーブ減速倍率", &turnSlowdownFactor_, 0.0f, 1.0f);
+
+    ImGui::SeparatorText("確定レール演出");
     changed |= ImGui::DragFloat(
         "確定レール発進待機", &completedRailPauseDuration_, 0.05f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat(
         "確定レール待機ジャンプ高さ", &boostJumpHeight_, 0.05f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat(
         "確定レール待機ジャンプ時間", &boostJumpDuration_, 0.01f, 0.0f, 5.0f);
+
+    ImGui::SeparatorText("投石演出");
     changed |= ImGui::DragFloat(
         "投石ジャンプ高さ", &rockThrowJumpHeight_, 0.05f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat(
         "投石ジャンプ時間", &rockThrowJumpDuration_, 0.01f, 0.0f, 5.0f);
+
+    ImGui::SeparatorText("配置");
     changed |= ImGui::DragFloat("列車の高さ", &trainHeight_, 0.05f, -20.0f, 20.0f);
     int required = static_cast<int>(requiredRailCount_);
     if (ImGui::DragInt("発車に必要なレール数", &required, 1.0f, 1, 100)) {
@@ -193,7 +203,7 @@ void GameComponents::TrainMovementComponent::Update() {
 
     // DeltaTime に応じて移動進捗を加算する。
     float remainingProgress = moveSpeed_ * movementDeltaTime *
-        (isMovingOnCompletedRail_ ? kCompletedRailSpeedMultiplier : 1.0f);
+        (isMovingOnCompletedRail_ ? completedRailSpeedMultiplier_ : 1.0f);
     if (remainingProgress <= 0.0f) {
         return;
     }
@@ -202,7 +212,7 @@ void GameComponents::TrainMovementComponent::Update() {
     while (remainingProgress > 0.0f && !isGameOver_) {
         if (!isMoving_) {
             const float effectiveSpeedBeforeSegment = moveSpeed_ *
-                (isMovingOnCompletedRail_ ? kCompletedRailSpeedMultiplier : 1.0f);
+                (isMovingOnCompletedRail_ ? completedRailSpeedMultiplier_ : 1.0f);
             if (!BeginNextSegment()) {
                 NotifyGameOver();
                 break;
@@ -214,7 +224,7 @@ void GameComponents::TrainMovementComponent::Update() {
             // 同じフレーム内で区間が切り替わった場合も、完成状態の違いと
             // カーブ減速を残りの移動量へ反映する。
             const float effectiveSpeedAfterSegment = moveSpeed_ *
-                (isMovingOnCompletedRail_ ? kCompletedRailSpeedMultiplier : 1.0f);
+                (isMovingOnCompletedRail_ ? completedRailSpeedMultiplier_ : 1.0f);
             if (effectiveSpeedBeforeSegment > 0.0f &&
                 effectiveSpeedAfterSegment > 0.0f) {
                 remainingProgress *= effectiveSpeedAfterSegment /

@@ -289,7 +289,6 @@ void GameScene::GameScene::OnInitialize() {
     auto* monkeyTransform = monkey->AddComponent<CoreEngine::TransformComponent>();
     monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
     monkeyTransform->Get().SetParent(&trainTransform->Get());
-    monkeyTransform->Get().rotate.y = 3.14f;
 
     // カメラの構図は Presets/CameraRigs/GamePlay.json が持つ。
     // 起動は _camera.json の startupRigName 任せで、ここでは何も駆動しない。

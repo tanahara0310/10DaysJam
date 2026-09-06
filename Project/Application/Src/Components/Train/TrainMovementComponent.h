@@ -123,6 +123,7 @@ namespace GameComponents
 
         float speedUpFactor_ = 0.5f; // 移動速度の加速係数
         float minMoveSpeed_ = 0.5f; // 最低移動速度
+        float completedRailSpeedMultiplier_ = 10.0f; // 確定レール上の速度倍率
         float turnSlowdownFactor_ = 0.5f;
         float trainHeight_ = 1.0f;
         std::size_t requiredRailCount_ = 5;
