@@ -109,7 +109,9 @@
     "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,
-    "r.SSAOTemporal.Enabled": false,
+    "r.SSAO.Enabled": false,
+    "r.SSAOBlur.Enabled": false,
+    "r.TAA.Enabled": false,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
     "r.Water.AbsorptionBase": [
