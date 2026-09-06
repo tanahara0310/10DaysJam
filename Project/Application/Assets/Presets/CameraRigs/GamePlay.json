@@ -43,7 +43,8 @@
       0.5,
       0.5
     ],
-    "framePullBackPerMeter": 0.6,
+    "framePullBackPerMeter": 0.3,
+    "framePullBackMax": 2.5,
     "offset": [
       0.0,
       18.5,
@@ -103,10 +104,11 @@
     ]
   },
   "damping": {
-    "position": 4.5,
-    "aim": 10.0,
+    "position": 3.5,
+    "aim": 4.0,
     "rotation": 0.0,
-    "fov": 3.5
+    "fov": 3.0,
+    "mode": 1
   },
   "lens": {
     "mode": 2,
@@ -115,6 +117,6 @@
     "inputMin": 0.5,
     "inputMax": 6.0,
     "fovMinDegrees": 32.0,
-    "fovMaxDegrees": 41.0
+    "fovMaxDegrees": 35.0
   }
 }

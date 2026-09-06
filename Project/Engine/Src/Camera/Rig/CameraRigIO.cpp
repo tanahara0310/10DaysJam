@@ -105,6 +105,15 @@ namespace CoreEngine
                 : CameraRigDistanceSource::TargetSpread;
         }
 
+        /// @brief 保存された番号を寄せ方へ戻す（未知の値は Exponential 扱い）
+        /// @details 指定を持たない古いファイルもここを通って従来の挙動になる。
+        CameraRigDampingMode ToDampingMode(int value)
+        {
+            return (value == static_cast<int>(CameraRigDampingMode::Spring))
+                ? CameraRigDampingMode::Spring
+                : CameraRigDampingMode::Exponential;
+        }
+
         json BodyToJson(const CameraRigBody& body)
         {
             json jsonData;
@@ -120,6 +129,7 @@ namespace CoreEngine
             jsonData["targets"] = TargetsToJson(body.targets);
             jsonData["frameBias"] = JsonManager::Vector3ToJson(body.frameBias);
             jsonData["framePullBackPerMeter"] = body.framePullBackPerMeter;
+            jsonData["framePullBackMax"] = body.framePullBackMax;
 
             json railPoints = json::array();
             for (const auto& point : body.railPoints) {
@@ -172,6 +182,8 @@ namespace CoreEngine
             }
             body.framePullBackPerMeter = JsonManager::SafeGet(jsonData,
                 "framePullBackPerMeter", body.framePullBackPerMeter);
+            body.framePullBackMax = JsonManager::SafeGet(jsonData,
+                "framePullBackMax", body.framePullBackMax);
 
             if (jsonData.contains("railPoints") && jsonData["railPoints"].is_array()) {
                 for (const auto& element : jsonData["railPoints"]) {
@@ -249,6 +261,7 @@ namespace CoreEngine
             jsonData["rotation"] = damping.rotation;
             jsonData["fov"] = damping.fov;
             jsonData["aim"] = damping.aim;
+            jsonData["mode"] = static_cast<int>(damping.mode);
             return jsonData;
         }
 
@@ -259,6 +272,8 @@ namespace CoreEngine
             damping.rotation = JsonManager::SafeGet(jsonData, "rotation", damping.rotation);
             damping.fov = JsonManager::SafeGet(jsonData, "fov", damping.fov);
             damping.aim = JsonManager::SafeGet(jsonData, "aim", damping.aim);
+            damping.mode = ToDampingMode(JsonManager::SafeGet(jsonData, "mode",
+                static_cast<int>(damping.mode)));
             return damping;
         }
     }

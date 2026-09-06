@@ -52,6 +52,11 @@ namespace CoreEngine
             "カメラから注視先まで"
         };
 
+        constexpr const char* kDampingModeLabels[] = {
+            "指数減衰（すぐ動き出す）",
+            "バネ（飛び飛びの目標でもカクつかない）"
+        };
+
         /// @brief 番号付きの列挙をコンボで選ばせる
         /// @return 選び直したら true
         template <typename Enum, size_t Count>
@@ -464,6 +469,11 @@ namespace CoreEngine
                 rig_.body.framePullBackPerMeter, 0.01f, 0.0f, 5.0f, "%.2f m");
             UI::SameLine();
             UI::Hint("離れたら後ろへ下がって両方を収める。0 なら下がらない");
+            changed |= UI::DragFloat("引く量の上限",
+                rig_.body.framePullBackMax, 0.1f, 0.0f, 200.0f, "%.2f m");
+            UI::SameLine();
+            UI::Hint("ここまでしか下がらない。0 なら無制限。"
+                "見せたくない外側が画に入るのを止めたいときに使う");
             changed |= DrawTargetList(nullptr, rig_.body.targets, context);
             break;
 
@@ -602,6 +612,11 @@ namespace CoreEngine
         UI::Spacing();
 
         bool changed = false;
+        changed |= EnumCombo("寄せ方", rig_.damping.mode, kDampingModeLabels);
+        UI::Hint("バネは速度を持って寄るので、グリッド単位で飛ぶ対象を追ってもカクつかない。"
+            "位置・注視先・視野角に効き、向きはその 2 つから引き直される。");
+        UI::Spacing();
+
         changed |= UI::DragFloat("位置", rig_.damping.position, 0.1f, 0.0f, 60.0f, "%.2f");
         changed |= UI::DragFloat("向き", rig_.damping.rotation, 0.1f, 0.0f, 60.0f, "%.2f");
         changed |= UI::DragFloat("視野角", rig_.damping.fov, 0.1f, 0.0f, 60.0f, "%.2f");
@@ -610,13 +625,17 @@ namespace CoreEngine
         UI::Hint("対象が跳ねても画がぶれないようにする");
 
         UI::Spacing();
+        // 速さを一括で置き直すだけのボタン。寄せ方は別の選択なので巻き込まない。
+        const CameraRigDampingMode dampingMode = rig_.damping.mode;
         if (ImGui::SmallButton("全部そろえる (3.0)")) {
             rig_.damping = { 3.0f, 3.0f, 3.0f, 3.0f };
+            rig_.damping.mode = dampingMode;
             changed = true;
         }
         UI::SameLine();
         if (ImGui::SmallButton("減衰なし")) {
             rig_.damping = { 0.0f, 0.0f, 0.0f, 0.0f };
+            rig_.damping.mode = dampingMode;
             changed = true;
         }
 

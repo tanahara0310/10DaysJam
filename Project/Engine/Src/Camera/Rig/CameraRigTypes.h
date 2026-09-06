@@ -78,6 +78,19 @@ namespace CoreEngine
         CameraToAim = 1
     };
 
+    /// @brief 目標への寄せ方
+    /// @note 値は JSON にそのまま入る。番号を変えると既存アセットが壊れる。
+    enum class CameraRigDampingMode {
+        /// @brief 指数減衰。毎フレーム、残りの差の一定割合を詰める
+        /// @details 目標が飛んだ瞬間に速度が最大になる。滞りなく追うが、
+        ///          グリッド移動のような飛び飛びの目標だと毎回ここでカクつく。
+        Exponential = 0,
+        /// @brief 臨界減衰のバネ。速度を持ち、それを連続に変えて寄る
+        /// @details 目標が飛んでも速度が 0 から立ち上がるので、カクつきが出ない。
+        ///          行き過ぎはしない（臨界減衰）。寄る速さの意味は指数減衰と揃えてある。
+        Spring = 1
+    };
+
     /// @brief リグが参照する対象 1 件
     struct CameraRigTargetRef {
         /// @brief シーン内のオブジェクト名（空なら無効）
@@ -143,6 +156,12 @@ namespace CoreEngine
         ///          視野角を広げて対応するなら Lens 側の DistanceToFov を使う。
         float framePullBackPerMeter = 0.0f;
 
+        /// @brief 引く量の上限 [m]（0 で無制限）
+        /// @details 広がりに比例して下がり続けると、対象が離れただけで画がどこまでも
+        ///          引いてしまう。見せたくない外側（未生成の地形など）が画に入るのを
+        ///          防ぐなら、ここで引きの範囲を止める。
+        float framePullBackMax = 0.0f;
+
         // ===== Rail =====
 
         /// @brief レールの制御点（2 点以上で有効）
@@ -207,7 +226,7 @@ namespace CoreEngine
 
     /// @brief 減衰（急に動かないようにする）の設定
     /// @details 値は「1 秒あたりどれだけ目標へ近づくか」の速さ。0 で減衰なし（即座に一致）。
-    ///          指数補間なので、フレームレートが変わっても見た目の追従速度は変わらない。
+    ///          どちらの寄せ方でも、フレームレートが変わっても見た目の追従速度は変わらない。
     struct CameraRigDamping {
         /// @brief 位置の追従の速さ [1/秒]
         float position = 5.0f;
@@ -221,6 +240,11 @@ namespace CoreEngine
         /// @brief 注視先そのものの追従の速さ [1/秒]
         /// @details 対象が跳ねても画がぶれないようにする。回転の減衰とは別に効く。
         float aim = 5.0f;
+
+        /// @brief 寄せ方（位置・注視先・視野角に効く）
+        /// @details 向きは位置と注視先から引き直すので、この指定の影響を自然に受ける。
+        ///          対象がグリッド単位で飛ぶ（カーソルなど）なら Spring にする。
+        CameraRigDampingMode mode = CameraRigDampingMode::Exponential;
     };
 
     /// @brief カメラリグ 1 本分のデータ

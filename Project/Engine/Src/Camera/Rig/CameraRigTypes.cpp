@@ -27,6 +27,8 @@ namespace CoreEngine
         body.frameBias.y = std::clamp(body.frameBias.y, 0.0f, 1.0f);
         body.frameBias.z = std::clamp(body.frameBias.z, 0.0f, 1.0f);
         body.framePullBackPerMeter = (std::max)(body.framePullBackPerMeter, 0.0f);
+        // 負の上限は引きを前へ反転させる。0 は「上限なし」として通す。
+        body.framePullBackMax = (std::max)(body.framePullBackMax, 0.0f);
         body.orbitDistance = (std::max)(body.orbitDistance, 0.0f);
         body.railPosition = std::clamp(body.railPosition, 0.0f, 1.0f);
 
