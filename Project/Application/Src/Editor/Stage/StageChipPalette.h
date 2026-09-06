@@ -32,9 +32,9 @@ namespace GameEditors
         { GameComponents::MapChipType::Void,     0, "空白 (Void)",     "",   "レール設置不可。マップ外と同じ扱い",     PackChipColor( 38,  38,  44) },
         { GameComponents::MapChipType::Water,    1, "水場 (Water)",    "水", "レール設置コスト2",                      PackChipColor( 38, 110, 190) },
         { GameComponents::MapChipType::Ground,   2, "地面 (Ground)",   "",   "レール設置コスト1",                      PackChipColor( 96, 150,  72) },
-        { GameComponents::MapChipType::Station,  3, "駅 (Station)",    "駅", "到達で報酬15。そこまでのレールが確定する", PackChipColor(230, 170,  50) },
-        { GameComponents::MapChipType::Resource, 4, "岩 (Resource)",   "岩", "空腹値を消費して破壊すると地面へ戻る",   PackChipColor(170, 130, 205) },
-        { GameComponents::MapChipType::BananaTree, 5, "バナナの木 (Banana Tree)", "バ", "レール設置不可。隣接マス通過時に空腹値を回復", PackChipColor(220, 190,  45) },
+        { GameComponents::MapChipType::Station,  3, "駅 (Station)",    "駅", "列車到着で減速し、サルが1匹増える", PackChipColor(230, 170,  50) },
+        { GameComponents::MapChipType::Resource, 4, "岩 (Resource)",   "岩", "スタミナを消費して破壊すると地面へ戻る",   PackChipColor(170, 130, 205) },
+        { GameComponents::MapChipType::BananaTree, 5, "バナナの木 (Banana Tree)", "バ", "レール設置不可。隣接マス通過時にスタミナ回復", PackChipColor(220, 190,  45) },
     };
 
     /// @brief パレットの要素数

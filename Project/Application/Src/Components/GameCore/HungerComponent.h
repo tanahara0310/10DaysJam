@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <set>
 #include <tuple>
 
@@ -12,7 +13,7 @@ namespace GameComponents
     class GameManagerComponent;
     class MapGeneratorComponent;
 
-    /// @brief 列車の空腹値とバナナの木による回復を管理する。
+    /// @brief 建設に使うスタミナ、バナナ回復、サルによる消費倍率を管理する。
     class HungerComponent final : public CoreEngine::IComponent
     {
     public:
@@ -27,25 +28,30 @@ namespace GameComponents
         void OnDeserialize(const json& j) override;
 
 #ifdef USE_IMGUI
-        const char* GetInspectorName() const override { return "空腹値"; }
+        const char* GetInspectorName() const override { return "スタミナ"; }
         bool DrawInspector() override;
 #endif
 
         void Start() override;
         void Update() override;
 
-        /// @brief 列車が初めて動き始めたときに空腹値の減少を開始する。
-        void StartDraining();
-        /// @brief 列車が新しいマスへ到着したとき、隣接するバナナの木を判定する。
-        void OnTrainEnteredCell(int32_t gridX, int32_t gridZ);
-        /// @brief 行動コストとして空腹値を減らす。0になればゲームオーバーを要求する。
-        void ConsumeHunger(float amount);
-        /// @brief 岩破壊の投石中だけ時間経過による減少を停止・再開する。
-        void SetRockBreakPaused(bool paused) { isPausedForRockBreak_ = paused; }
+        /// @brief 列車到着時の駅・バナナ処理。未訪問の駅ならtrueを返す。
+        bool OnTrainEnteredCell(int32_t gridX, int32_t gridZ);
+        /// @brief サル倍率込みの行動コストを求める。
+        float CalculateActionCost(float baseAmount) const;
+        /// @brief スタミナが足りる場合だけ消費する。
+        bool TryConsumeStamina(float amount);
+        /// @brief Undoなどでスタミナを回復する。
+        void AddStamina(float amount);
+        void SetMonkeyAddedCallback(std::function<void(std::size_t)> callback)
+        {
+            onMonkeyAdded_ = std::move(callback);
+        }
 
         float GetCurrentHunger() const { return currentHunger_; }
         float GetMaximumHunger() const { return maximumHunger_; }
-        bool IsDraining() const { return isDraining_; }
+        std::size_t GetMonkeyCount() const { return monkeyCount_; }
+        float GetCostMultiplier() const;
 
     private:
         using BananaTriggerKey = std::tuple<int32_t, int32_t, int32_t, int32_t>;
@@ -55,14 +61,15 @@ namespace GameComponents
 
         float initialHunger_ = 100.0f;
         float maximumHunger_ = 100.0f;
-        float drainPerSecond_ = 1.0f;
         float bananaRecovery_ = 20.0f;
+        float additionalMonkeyCostRate_ = 0.25f;
         float currentHunger_ = 100.0f;
-        bool isDraining_ = false;
         bool gameOverRequested_ = false;
-        bool isPausedForRockBreak_ = false;
+        std::size_t monkeyCount_ = 1;
+        std::function<void(std::size_t)> onMonkeyAdded_;
 
         // 木の座標と、列車が通った隣接マスの組ごとに一度だけ発動させる。
         std::set<BananaTriggerKey> activatedBananaSides_;
+        std::set<std::pair<int32_t, int32_t>> activatedStations_;
     };
 }

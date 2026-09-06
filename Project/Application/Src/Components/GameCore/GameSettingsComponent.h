@@ -17,7 +17,6 @@ namespace GameComponents
         extern CoreEngine::CVar<int> RenderDistance;
         extern CoreEngine::CVar<int> CsvChunkSizeX;
 
-        extern CoreEngine::CVar<int> InitialRailResources;
         extern CoreEngine::CVar<int> BuilderStartX;
         extern CoreEngine::CVar<int> BuilderStartZ;
         extern CoreEngine::CVar<float> TrainMoveSpeed;

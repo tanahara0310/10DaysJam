@@ -14,7 +14,6 @@ namespace CoreEngine
 namespace GameComponents
 {
     class RailPathComponent;
-    class RailResourceManagerComponent;
     class MapGeneratorComponent;
     class TrainMovementComponent;
     class HungerComponent;
@@ -30,7 +29,6 @@ namespace GameComponents
         explicit RailBuilderComponent(
             float gridSize = 5.0f, int32_t gridPosX = 0,int32_t gridPosZ = 0,
             GameComponents::RailPathComponent* railPath = nullptr,
-            GameComponents::RailResourceManagerComponent* resourceManager = nullptr,
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
             GameComponents::TrainMovementComponent* trainMovement = nullptr,
             GameComponents::HungerComponent* hunger = nullptr,
@@ -40,7 +38,7 @@ namespace GameComponents
             std::function<void()> OnFailureSE = nullptr)
             : gridSize_(gridSize), initialGridPosX_(gridPosX), initialGridPosZ_(gridPosZ),
               gridPosX_(gridPosX), gridPosZ_(gridPosZ),
-              railPath_(railPath), resourceManager_(resourceManager),
+              railPath_(railPath),
               mapGenerator_(mapGenerator), trainMovement_(trainMovement),
               hunger_(hunger), rockThrow_(rockThrow),
               OnBuildSE_(OnBuildSE), OnUndoSE_(OnUndoSE), OnFailureSE_(OnFailureSE) {
@@ -68,23 +66,18 @@ namespace GameComponents
         void SetGridSize(float size);
         // 水平方向優先かどうかを設定する
         void SetHorizontalPrioritize(bool prioritize);
-        void SetInsufficientFeedback(
-            std::function<void()> onRailInsufficient,
-            std::function<void()> onHungerInsufficient);
+        void SetInsufficientFeedback(std::function<void()> onStaminaInsufficient);
 
     private:
         // 論理グリッド座標を Transform のワールド座標へ反映する
         void SyncTransformToGrid();
         // 最後に置いたレールを撤去して、消費したレールを回収する
         bool TryUndoLastRail();
-        // 列車の現在速度に応じた整数の報酬量を求める
-        uint32_t CalculateSpeedReward(uint32_t baseAmount) const;
         // キュー先頭の岩へ投石を開始する
         void StartNextRockThrow();
         // 投石の着弾時に岩を地面へ変え、カーソルを通常位置へ戻す
         void CompleteRockBreak();
-        void NotifyRailInsufficient();
-        void NotifyHungerInsufficient();
+        void NotifyStaminaInsufficient();
 
         struct RockBreakRequest {
             int32_t gridX = 0;
@@ -93,7 +86,6 @@ namespace GameComponents
 
         CoreEngine::TransformComponent* transform_ = nullptr;
         GameComponents::RailPathComponent* railPath_ = nullptr;
-        GameComponents::RailResourceManagerComponent* resourceManager_ = nullptr;
         GameComponents::MapGeneratorComponent* mapGenerator_ = nullptr;
         GameComponents::TrainMovementComponent* trainMovement_ = nullptr;
         GameComponents::HungerComponent* hunger_ = nullptr;
@@ -127,21 +119,16 @@ namespace GameComponents
         float rockCursorHeightOffset_ = 1.0f;
         float rockThrowStartHeight_ = 0.5f;
         float rockImpactHeight_ = 0.7f;
-        float rockHungerCost_ = 20.0f;
+        float railStaminaCost_ = 2.0f;
+        float rockStaminaCost_ = 20.0f;
+        float bridgeStaminaCost_ = 5.0f;
         bool isBreakingRock_ = false;
         bool isCursorAboveRock_ = false;
         std::deque<RockBreakRequest> rockBreakQueue_;
 
-        uint32_t groundCost_ = 1;
-        uint32_t waterCost_ = 2;
-        uint32_t stationReward_ = 15;
-        uint32_t resourceReward_ = 5;
-        float maxSpeedRewardRatio_ = 2.0f;
-
         std::function<void()> OnBuildSE_ = nullptr;
         std::function<void()> OnUndoSE_ = nullptr;
         std::function<void()> OnFailureSE_ = nullptr;
-        std::function<void()> OnRailInsufficient_ = nullptr;
-        std::function<void()> OnHungerInsufficient_ = nullptr;
+        std::function<void()> OnStaminaInsufficient_ = nullptr;
     };
 }

@@ -27,13 +27,12 @@ json GameComponents::TrainMovementComponent::OnSerialize() const {
         { "initialMoveSpeed", initialMoveSpeed_ },
         { "initialGridX", initialGridX_ },
         { "initialGridZ", initialGridZ_ },
-        { "speedUpFactor", speedUpFactor_ },
         { "minMoveSpeed", minMoveSpeed_ },
-        { "completedRailSpeedMultiplier", completedRailSpeedMultiplier_ },
-        { "turnSlowdownFactor", turnSlowdownFactor_ },
-        { "completedRailPauseDuration", completedRailPauseDuration_ },
-        { "boostJumpHeight", boostJumpHeight_ },
-        { "boostJumpDuration", boostJumpDuration_ },
+        { "speedIncreaseIntervalBlocks", speedIncreaseIntervalBlocks_ },
+        { "speedIncreaseAmount", speedIncreaseAmount_ },
+        { "maximumMoveSpeed", maximumMoveSpeed_ },
+        { "stationSlowdownMultiplier", stationSlowdownMultiplier_ },
+        { "stationSlowdownDuration", stationSlowdownDuration_ },
         { "rockThrowJumpHeight", rockThrowJumpHeight_ },
         { "rockThrowJumpDuration", rockThrowJumpDuration_ },
         { "trainHeight", trainHeight_ },
@@ -46,20 +45,18 @@ void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
     initialMoveSpeed_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "initialMoveSpeed", initialMoveSpeed_));
     initialGridX_ = std::max(0, JsonManager::SafeGet<int32_t>(j, "initialGridX", initialGridX_));
     initialGridZ_ = std::max(0, JsonManager::SafeGet<int32_t>(j, "initialGridZ", initialGridZ_));
-    speedUpFactor_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "speedUpFactor", speedUpFactor_));
     minMoveSpeed_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "minMoveSpeed", minMoveSpeed_));
-    completedRailSpeedMultiplier_ = std::max(0.0f,
-        JsonManager::SafeGet<float>(
-            j, "completedRailSpeedMultiplier", completedRailSpeedMultiplier_));
-    turnSlowdownFactor_ = std::clamp(
-        JsonManager::SafeGet<float>(j, "turnSlowdownFactor", turnSlowdownFactor_), 0.0f, 1.0f);
-    completedRailPauseDuration_ = std::max(0.0f,
-        JsonManager::SafeGet<float>(
-            j, "completedRailPauseDuration", completedRailPauseDuration_));
-    boostJumpHeight_ = std::max(
-        0.0f, JsonManager::SafeGet<float>(j, "boostJumpHeight", boostJumpHeight_));
-    boostJumpDuration_ = std::max(
-        0.0f, JsonManager::SafeGet<float>(j, "boostJumpDuration", boostJumpDuration_));
+    speedIncreaseIntervalBlocks_ = std::max<std::size_t>(1,
+        JsonManager::SafeGet<std::size_t>(j, "speedIncreaseIntervalBlocks", speedIncreaseIntervalBlocks_));
+    speedIncreaseAmount_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "speedIncreaseAmount", speedIncreaseAmount_));
+    maximumMoveSpeed_ = std::max(initialMoveSpeed_,
+        JsonManager::SafeGet<float>(j, "maximumMoveSpeed", maximumMoveSpeed_));
+    stationSlowdownMultiplier_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "stationSlowdownMultiplier", stationSlowdownMultiplier_),
+        0.0f, 1.0f);
+    stationSlowdownDuration_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "stationSlowdownDuration", stationSlowdownDuration_));
     rockThrowJumpHeight_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "rockThrowJumpHeight", rockThrowJumpHeight_));
     rockThrowJumpDuration_ = std::max(0.0f,
@@ -82,21 +79,16 @@ bool GameComponents::TrainMovementComponent::DrawInspector() {
         moveSpeed_ = std::max(initialMoveSpeed_, minMoveSpeed_);
         changed = true;
     }
-    changed |= ImGui::DragFloat("加速係数", &speedUpFactor_, 0.01f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat("最低速度", &minMoveSpeed_, 0.01f, 0.0f, 20.0f);
-    changed |= ImGui::DragFloat(
-        "確定レール速度倍率", &completedRailSpeedMultiplier_, 0.1f, 0.0f, 100.0f);
-    changed |= ImGui::SliderFloat("カーブ減速倍率", &turnSlowdownFactor_, 0.0f, 1.0f);
-
-    ImGui::SeparatorText("確定レール演出");
-    changed |= ImGui::DragFloat(
-        "確定レール発進待機", &completedRailPauseDuration_, 0.05f, 0.0f, 10.0f);
-    changed |= ImGui::DragFloat(
-        "確定レール待機ジャンプ高さ", &boostJumpHeight_, 0.05f, 0.0f, 10.0f);
-    changed |= ImGui::DragFloat(
-        "確定レール待機ジャンプ時間", &boostJumpDuration_, 0.01f, 0.0f, 5.0f);
-
-    ImGui::SeparatorText("投石演出");
+    int speedInterval = static_cast<int>(speedIncreaseIntervalBlocks_);
+    if (ImGui::DragInt("速度上昇間隔（ブロック）", &speedInterval, 1.0f, 1, 1000)) {
+        speedIncreaseIntervalBlocks_ = static_cast<std::size_t>(std::max(speedInterval, 1));
+        changed = true;
+    }
+    changed |= ImGui::DragFloat("段階ごとの速度上昇量", &speedIncreaseAmount_, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("最高速度", &maximumMoveSpeed_, 0.01f, 0.01f, 100.0f);
+    changed |= ImGui::SliderFloat("駅減速倍率", &stationSlowdownMultiplier_, 0.0f, 1.0f);
+    changed |= ImGui::DragFloat("駅減速時間", &stationSlowdownDuration_, 0.05f, 0.0f, 30.0f);
     changed |= ImGui::DragFloat(
         "投石ジャンプ高さ", &rockThrowJumpHeight_, 0.05f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat(
@@ -170,40 +162,23 @@ void GameComponents::TrainMovementComponent::Update() {
         return;
     }
 
-    // 発車後は走行時間に応じて加速する。
-    moveSpeed_ += speedUpFactor_ * deltaTime;
-
-    // 確定レールへ切り替わった直後は、その場で指定時間だけ待機する。
-    float movementDeltaTime = deltaTime;
-    if (completedRailPauseRemaining_ > 0.0f) {
-        const float pauseDeltaTime = std::min(
-            movementDeltaTime, completedRailPauseRemaining_);
-        completedRailPauseRemaining_ -= pauseDeltaTime;
-        movementDeltaTime -= pauseDeltaTime;
-        UpdateBoostJump(pauseDeltaTime);
-        transform_->Get().translate.y = trainHeight_ + GetBoostJumpOffset();
-
-        if (completedRailPauseRemaining_ > 0.0f) {
-            return;
-        }
-
-        // 高速移動へ入る前に必ず着地させる。
-        isBoostJumping_ = false;
-        transform_->Get().translate.y = trainHeight_;
-    }
+    const int32_t extendedBlocks = std::max(
+        0, railPath_->GetFurthestRailX() - initialGridX_);
+    const float dynamicMinimum = initialMoveSpeed_ +
+        static_cast<float>(extendedBlocks / static_cast<int32_t>(speedIncreaseIntervalBlocks_)) *
+        speedIncreaseAmount_;
+    minMoveSpeed_ = std::min(dynamicMinimum, maximumMoveSpeed_);
+    stationSlowdownRemaining_ = std::max(0.0f, stationSlowdownRemaining_ - deltaTime);
+    moveSpeed_ = minMoveSpeed_ *
+        (stationSlowdownRemaining_ > 0.0f ? stationSlowdownMultiplier_ : 1.0f);
 
     // 移動量を計算する前に進行方向を確定し、曲がり角なら減速を反映する。
     if (!isMoving_ && !BeginNextSegment()) {
         NotifyGameOver();
         return;
     }
-    if (completedRailPauseRemaining_ > 0.0f) {
-        return;
-    }
-
     // DeltaTime に応じて移動進捗を加算する。
-    float remainingProgress = moveSpeed_ * movementDeltaTime *
-        (isMovingOnCompletedRail_ ? completedRailSpeedMultiplier_ : 1.0f);
+    float remainingProgress = moveSpeed_ * deltaTime;
     if (remainingProgress <= 0.0f) {
         return;
     }
@@ -211,31 +186,15 @@ void GameComponents::TrainMovementComponent::Update() {
     // 大きな DeltaTime でも目的地を飛び越さないよう、余った進捗を次のマスへ持ち越す。
     while (remainingProgress > 0.0f && !isGameOver_) {
         if (!isMoving_) {
-            const float effectiveSpeedBeforeSegment = moveSpeed_ *
-                (isMovingOnCompletedRail_ ? completedRailSpeedMultiplier_ : 1.0f);
             if (!BeginNextSegment()) {
                 NotifyGameOver();
                 break;
-            }
-            if (completedRailPauseRemaining_ > 0.0f) {
-                break;
-            }
-
-            // 同じフレーム内で区間が切り替わった場合も、完成状態の違いと
-            // カーブ減速を残りの移動量へ反映する。
-            const float effectiveSpeedAfterSegment = moveSpeed_ *
-                (isMovingOnCompletedRail_ ? completedRailSpeedMultiplier_ : 1.0f);
-            if (effectiveSpeedBeforeSegment > 0.0f &&
-                effectiveSpeedAfterSegment > 0.0f) {
-                remainingProgress *= effectiveSpeedAfterSegment /
-                    effectiveSpeedBeforeSegment;
             }
         }
 
         const float progressToDestination = 1.0f - movementProgress_;
         const float appliedProgress = std::min(remainingProgress, progressToDestination);
         movementProgress_ += appliedProgress;
-        travelDistance_ += appliedProgress * gridSize_;
         remainingProgress -= appliedProgress;
         SyncTransformToProgress();
 
@@ -251,7 +210,12 @@ void GameComponents::TrainMovementComponent::Update() {
         transform_->Get().translate.x = static_cast<float>(gridX_) * gridSize_;
         transform_->Get().translate.z = static_cast<float>(gridZ_) * gridSize_;
 
-        hunger_->OnTrainEnteredCell(gridX_, gridZ_);
+        horizontalProgressBlocks_ = std::max(horizontalProgressBlocks_,
+            static_cast<uint32_t>(std::max(0, gridX_ - initialGridX_)));
+        if (hunger_->OnTrainEnteredCell(gridX_, gridZ_)) {
+            stationSlowdownRemaining_ = stationSlowdownDuration_;
+            moveSpeed_ = minMoveSpeed_ * stationSlowdownMultiplier_;
+        }
 
         // 発車後に終端へ到着した時点でゲームオーバーにする。
         if (railPath_->GetUnconfirmedRailCount() == 0) {
@@ -266,7 +230,6 @@ void GameComponents::TrainMovementComponent::NotifyGameOver() {
     }
 
     isGameOver_ = true;
-    isBoostJumping_ = false;
     if (transform_) {
         transform_->Get().translate.y = trainHeight_;
     }
@@ -312,13 +275,6 @@ bool GameComponents::TrainMovementComponent::BeginNextSegment() {
         return false;
     }
 
-    // ConfirmNextRailPlacement() の前に判定することで、今回新しく確定される
-    // レールではなく、すでに完成していたレールだけを加速対象にする。
-    const bool wasMovingOnCompletedRail = isMovingOnCompletedRail_;
-    const auto& completedRails = railPath_->GetRailMap();
-    isMovingOnCompletedRail_ = std::find(
-        completedRails.begin(), completedRails.end(), destination) != completedRails.end();
-
     // 確定でキューから消える前に、移動先をコンポーネント内へ保存する。
     destinationGridX_ = destination.first;
     destinationGridZ_ = destination.second;
@@ -326,14 +282,6 @@ bool GameComponents::TrainMovementComponent::BeginNextSegment() {
         return false;
     }
 
-    // 連続する確定レールでは毎マス停止せず、通常区間から切り替わる瞬間だけ待機する。
-    if (isMovingOnCompletedRail_ && !wasMovingOnCompletedRail) {
-        completedRailPauseRemaining_ = completedRailPauseDuration_;
-        boostJumpElapsed_ = 0.0f;
-        isBoostJumping_ = boostJumpDuration_ > 0.0f && boostJumpHeight_ > 0.0f;
-    }
-
-    hunger_->StartDraining();
     movementProgress_ = 0.0f;
     isMoving_ = true;
     UpdateRotation();
@@ -352,29 +300,7 @@ void GameComponents::TrainMovementComponent::SyncTransformToProgress() {
     transform_->Get().translate.z =
         startZ + (destinationZ - startZ) * movementProgress_;
 
-    transform_->Get().translate.y = trainHeight_ + GetBoostJumpOffset();
-}
-
-void GameComponents::TrainMovementComponent::UpdateBoostJump(float deltaTime) {
-    if (!isBoostJumping_) {
-        return;
-    }
-
-    boostJumpElapsed_ += std::max(deltaTime, 0.0f);
-    if (boostJumpElapsed_ >= boostJumpDuration_) {
-        boostJumpElapsed_ = boostJumpDuration_;
-        isBoostJumping_ = false;
-    }
-}
-
-float GameComponents::TrainMovementComponent::GetBoostJumpOffset() const {
-    if (!isBoostJumping_ || boostJumpDuration_ <= 0.0f) {
-        return 0.0f;
-    }
-
-    const float progress = std::clamp(boostJumpElapsed_ / boostJumpDuration_, 0.0f, 1.0f);
-    // 0→頂点→0となる放物線。確定レール前の停止中に飛び上がる。
-    return boostJumpHeight_ * 4.0f * progress * (1.0f - progress);
+    transform_->Get().translate.y = trainHeight_ + GetRockThrowJumpOffset();
 }
 
 void GameComponents::TrainMovementComponent::PlayRockThrowJump() {
@@ -408,7 +334,6 @@ void GameComponents::TrainMovementComponent::UpdateRotation() {
     // 進行方向に応じて Y 軸回転を設定する
     const int32_t deltaX = destinationGridX_ - gridX_;
     const int32_t deltaZ = destinationGridZ_ - gridZ_;
-    const float oldRotationY = transform_->Get().rotate.y;
 
     // 進行方向が X 軸正方向なら 90 度、X 軸負方向なら -90 度、Z 軸負方向なら 180 度、Z 軸正方向なら 0 度
     if (deltaX > 0) {
@@ -421,17 +346,4 @@ void GameComponents::TrainMovementComponent::UpdateRotation() {
         transform_->Get().rotate.y = 0.0f;
     }
 
-    // 初回の進行方向は曲がり角として扱わない。
-    // 2区間目以降で向きが変わった場合だけ速度を半分にする。
-    const float newRotationY = transform_->Get().rotate.y;
-    if (hasDirection_ && oldRotationY != newRotationY) {
-        moveSpeed_ = std::max(moveSpeed_ * turnSlowdownFactor_, minMoveSpeed_);
-
-        Logger::GetInstance().Infof(
-            LogCategory::Game,
-            "TrainMovementComponent: 方向転換により速度を落としました。新しい速度: {}",
-            moveSpeed_);
-    }
-
-    hasDirection_ = true;
 }

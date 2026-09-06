@@ -76,10 +76,10 @@ void GameComponents::RailPathComponent::Update() {
 }
 
 bool GameComponents::RailPathComponent::PlaceRail(
-    int32_t x, int32_t z, uint32_t resourceCost) {
+    int32_t x, int32_t z, float refundableStaminaCost) {
     if (x >= 0 && z >= 0 && z < static_cast<int32_t>(mapSizeZ_)) {
         railUndoStack_.emplace_back(x, z);
-        railUndoCosts_.push_back(resourceCost);
+        railUndoCosts_.push_back(refundableStaminaCost);
         trainRouteQueue_.emplace_back(x, z);
         return true;
     } else {
@@ -173,6 +173,17 @@ std::vector<std::pair<int32_t, int32_t>>& GameComponents::RailPathComponent::Get
 
 uint32_t GameComponents::RailPathComponent::GetMapSizeZ() const {
     return mapSizeZ_;
+}
+
+int32_t GameComponents::RailPathComponent::GetFurthestRailX() const {
+    int32_t furthest = static_cast<int32_t>(startX_);
+    for (const auto& rail : railMap_) {
+        furthest = std::max(furthest, rail.first);
+    }
+    for (const auto& rail : railUndoStack_) {
+        furthest = std::max(furthest, rail.first);
+    }
+    return furthest;
 }
 
 const std::vector<std::pair<int32_t, int32_t>>&

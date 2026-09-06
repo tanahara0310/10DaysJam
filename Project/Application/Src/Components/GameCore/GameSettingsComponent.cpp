@@ -32,10 +32,6 @@ namespace GameComponents::GameSettings
         "ランダムCSV区画のX方向の幅",
         CoreEngine::CVarRange{ 1.0f, 200.0f } };
 
-    CoreEngine::CVar<int> InitialRailResources{
-        "Game.Rail.InitialResources", 15,
-        "ゲーム開始時に所持するレール数",
-        CoreEngine::CVarRange{ 0.0f, 999.0f } };
     CoreEngine::CVar<int> BuilderStartX{
         "Game.Rail.BuilderStartX", 3,
         "レールビルダーと列車の開始X座標",

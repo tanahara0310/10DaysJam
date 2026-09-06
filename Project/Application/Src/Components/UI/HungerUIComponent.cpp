@@ -2,6 +2,7 @@
 #include "HungerUIComponent.h"
 
 #include "Components/GameCore/HungerComponent.h"
+#include "Components/Train/TrainMovementComponent.h"
 #include "GameObject/GameObject.h"
 #include "UI/UIText.h"
 #include "Utility/Logger/Logger.h"
@@ -16,7 +17,7 @@ using namespace CoreEngine;
 void GameComponents::HungerUIComponent::Start()
 {
     text_ = dynamic_cast<UIText*>(GetOwner());
-    if (!text_ || !hunger_) {
+    if (!text_ || !hunger_ || !train_) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
             "HungerUIComponent: UIText または Hunger が未設定です");
@@ -29,12 +30,14 @@ void GameComponents::HungerUIComponent::Start()
 
 void GameComponents::HungerUIComponent::Update()
 {
-    if (!text_ || !hunger_) {
+    if (!text_ || !hunger_ || !train_) {
         return;
     }
 
     const int currentHunger = static_cast<int>(std::ceil(hunger_->GetCurrentHunger()));
-    if (displayedHunger_ != currentHunger) {
+    if (displayedHunger_ != currentHunger ||
+        displayedProgress_ != train_->GetHorizontalProgressBlocks() ||
+        displayedMonkeyCount_ != hunger_->GetMonkeyCount()) {
         RefreshText();
     }
 
@@ -59,5 +62,10 @@ void GameComponents::HungerUIComponent::PlayInsufficientShake() {
 void GameComponents::HungerUIComponent::RefreshText()
 {
     displayedHunger_ = static_cast<int>(std::ceil(hunger_->GetCurrentHunger()));
-    text_->SetText("空腹値: " + std::to_string(displayedHunger_));
+    displayedProgress_ = train_->GetHorizontalProgressBlocks();
+    displayedMonkeyCount_ = hunger_->GetMonkeyCount();
+    text_->SetText(
+        "スタミナ: " + std::to_string(displayedHunger_) +
+        "\n進行: " + std::to_string(displayedProgress_) + "ブロック" +
+        "\nサル: " + std::to_string(displayedMonkeyCount_));
 }
