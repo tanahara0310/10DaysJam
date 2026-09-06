@@ -47,7 +47,7 @@ namespace ResultSceneUi
         "Result.UI.ButtonSpacing",
         260.0f,
         "リザルトボタンの左右間隔（ピクセル）",
-        CVarRange{ 20.0f, 300.0f } };
+        CVarRange{ 20.0f, 600.0f } };
 
     CVar<Vector4> ButtonColor{
         "Result.UI.ButtonColor",
@@ -78,7 +78,6 @@ namespace ResultSceneUi
             resultTitle->SetSerializeEnabled(false);
             resultTitle->SetPivot({ 0.5f, 0.5f });
             resultTitle->SetSortOrder(TitleSortOrder.Get());
-            resultTitle->SetOutline({ 0.05f, 0.05f, 0.12f, 0.85f }, 0.08f);
         }
 
         const Vector2 firstButtonPosition = ButtonPosition.Get();

@@ -9,24 +9,34 @@
     "Result.Animation.UnselectedFadeDuration": 0.08699999749660492,
     "Result.Animation.UnselectedFadeScale": 0.5,
     "Result.UI.ButtonColor": [
-        1.0,
-        1.0,
-        1.0,
+        0.6585365533828735,
+        0.6585365533828735,
+        0.6585365533828735,
         1.0
     ],
     "Result.UI.ButtonFontSize": 56.599998474121094,
     "Result.UI.ButtonPosition": [
         0.0,
-        280.0
+        200.0
     ],
-    "Result.UI.ButtonSpacing": 300.0,
+    "Result.UI.ButtonSpacing": 500.0,
     "Result.UI.SelectedButtonColor": [
-        0.3019607961177826,
-        0.7215686440467834,
+        0.857723593711853,
+        0.849984884262085,
+        0.5404356122016907,
+        1.0
+    ],
+    "Result.UI.TitleColor": [
+        1.0,
+        1.0,
         1.0,
         1.0
     ],
     "Result.UI.TitleFontSize": 71.68000030517578,
+    "Result.UI.TitlePosition": [
+        0.0,
+        -300.1000061035156
+    ],
     "Title.CameraShake.Strength": 0.7400000095367432,
     "Title.Monkey.Distance": 0.6039999723434448,
     "Title.Monkey.IntroDuration": 0.5109999775886536,
@@ -70,11 +80,16 @@
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        0.43126174807548523,
-        -0.6159056425094604,
-        0.6592977643013
+        -0.5734927654266357,
+        0.8190323114395142,
+        0.017091576009988785
     ],
     "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
+    "r.AtmosphereLights.SunDirection": [
+        -0.21282228827476501,
+        -0.9104350209236145,
+        0.354703813791275
+    ],
     "r.AutoExposure.Enabled": true,
     "r.Bloom.Intensity": 0.9480000138282776,
     "r.Bloom.SoftKnee": 0.35100001096725464,
