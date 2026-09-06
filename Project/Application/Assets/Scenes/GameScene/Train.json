@@ -28,6 +28,7 @@
                 "boostJumpDuration": 1.0,
                 "boostJumpHeight": 0.8,
                 "completedRailPauseDuration": 1.0,
+                "completedRailSpeedMultiplier": 10.0,
                 "gridSize": 1.0,
                 "initialGridX": 3,
                 "initialGridZ": 4,

@@ -3,6 +3,8 @@
 
 #include "Audio/AudioSystem.h"
 #include "Components/Result/ResultButtonAnimationComponent.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/Component/Transform/TransformComponent.h"
 #include "Scenes/GameScene/SkyFogFeature.h"
 #include "Scenes/ResultScene/ResultSceneUi.h"
 #include "EngineSystem/EngineSystem.h"
@@ -14,9 +16,9 @@ using namespace CoreEngine;
 
 namespace
 {
-    constexpr const char* kResultBgmPath = "Sounds/BGM/Result_bgm.mp3";
-    constexpr const char* kRailBuildSePath = "Application/Assets/Sounds/SE/rail_build.mp3";
-    constexpr const char* kDecisionSePath = "Sounds/SE/decision.mp3";
+constexpr const char* kResultBgmPath = "Sounds/BGM/Result_bgm.mp3";
+constexpr const char* kRailBuildSePath = "Application/Assets/Sounds/SE/rail_build.mp3";
+constexpr const char* kDecisionSePath = "Sounds/SE/decision.mp3";
 }
 
 ResultScene::ResultScene::~ResultScene() = default;
@@ -24,7 +26,32 @@ ResultScene::ResultScene::~ResultScene() = default;
 void ResultScene::ResultScene::OnInitialize() {
     // ========== シーンの設定 ==========
     SetSceneName("ResultScene");
-    SetDefaultGroundEnabled(true);
+    // 結果画面専用の地形を使うため、エンジン標準の床は生成しない。
+    SetDefaultGroundEnabled(false);
+
+    // 参照ガイドの「CreateObject + MeshRendererComponent」パターンで、
+    // 結果画面専用のモデルをコードから構築する。
+    auto* resultGround = CreateObject("Result_ground");
+    if (resultGround) {
+        resultGround->SetSerializeEnabled(true);
+        auto* transform = resultGround->AddComponent<TransformComponent>();
+        if (transform) {
+            transform->Translate() = { 0.0f, -5.0f, 0.0f };
+        }
+        resultGround->AddComponent<MeshRendererComponent>("result_ground.obj");
+        resultGround->SetActive(true);
+    }
+
+    auto* resultMonkey = CreateObject("Result_monkey");
+    if (resultMonkey) {
+        resultMonkey->SetSerializeEnabled(true);
+        auto* transform = resultMonkey->AddComponent<TransformComponent>();
+        if (transform) {
+            transform->Translate() = { 0.0f,7.8f, 0.0f };
+        }
+        resultMonkey->AddComponent<MeshRendererComponent>("result_monkey.obj");
+        resultMonkey->SetActive(true);
+    }
 
     // ゲームシーンと同じ雲（高さフォグ）。設定は「ゲーム設定」の Game.Fog.* を共有する。
     AddFeature(GameComponents::CreateSkyFogFeature());
@@ -145,7 +172,7 @@ void ResultScene::ResultScene::ConfirmSelection()
         if (sceneManager_) {
             sceneManager_->ChangeScene(nextScene);
         }
-    };
+        };
 
     if (selectedAnimation) {
         if (unselectedAnimation) {
