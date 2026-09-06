@@ -4,6 +4,9 @@
 #ifdef USE_IMGUI
 #include "Settings/EditorSettingsSubsystem.h"
 #endif
+// ImGui 無しビルドでも CVar の保存値を適用するために常に必要
+#include "Settings/CVarSettingsSection.h"
+#include "Utility/CVar/CVarRegistry.h"
 #include "Factory/GraphicsComponentFactory.h"
 #include "Factory/CoreComponentFactory.h"
 #include "Startup/StartupSequence.h"
@@ -190,6 +193,20 @@ namespace CoreEngine
                     }
                 });
         }
+
+#ifndef USE_IMGUI
+        // ImGui 無しビルドには EditorSettingsSubsystem が無く、セクション登録時の
+        // CVar 復元経路ごと落ちるため、そのままだと全 CVar がコード既定値になる。
+        // 較正済みのプロジェクト設定はゲームの見た目そのものなので、保存はせず
+        // 読み込みだけをここで行う（DebugSubsystem::Initialize と同じ順番＝
+        // サブシステム初期化直後に適用され、Debug ビルドと同じ結果になる）
+        sequence.Add("CVar プロジェクト設定の適用", [] {
+            CVarSettingsSection::LoadProjectConfigFile();
+            // 静的初期化中（main より前）に溜まった CVar の警告をログへ流す
+            CVarRegistry::Get().FlushPendingWarnings();
+            CVarSettingsSection::LogOverriddenCVars();
+        });
+#endif // !USE_IMGUI
 
         sequence.Add("GameObject へのエンジン参照", [this] { GameObject::SetEngine(this); });
 
