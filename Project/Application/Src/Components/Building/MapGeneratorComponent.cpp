@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <numeric>
 #include <utility>
 
 using namespace CoreEngine;
@@ -181,6 +182,11 @@ bool GameComponents::MapGeneratorComponent::SelectCsvPool(const std::string& nam
     }
     for (std::size_t i = 0; i < csvPools_.size(); ++i) {
         if (csvPools_[i].name == name) {
+            if (selectedCsvPoolIndex_ != i) {
+                // エリア切替後は、そのエリアの全チャンクを対象に新しい周回を始める。
+                csvPools_[i].shuffledIndices.clear();
+                csvPools_[i].nextShuffledIndex = 0;
+            }
             selectedCsvPoolIndex_ = i;
             // activeCsvPoolIndex_とactiveCsvColumn_は維持し、区画の途中では混ぜない。
             return true;
@@ -189,6 +195,13 @@ bool GameComponents::MapGeneratorComponent::SelectCsvPool(const std::string& nam
     Logger::GetInstance().Warnf(LogCategory::Game,
         "MapGenerator: CSVプールが見つかりません: {}", name);
     return false;
+}
+
+void GameComponents::MapGeneratorComponent::RefillCsvShuffleBag(LoadedCsvPool& pool) {
+    pool.shuffledIndices.resize(pool.maps.size());
+    std::iota(pool.shuffledIndices.begin(), pool.shuffledIndices.end(), std::size_t{ 0 });
+    std::shuffle(pool.shuffledIndices.begin(), pool.shuffledIndices.end(), csvRandom_);
+    pool.nextShuffledIndex = 0;
 }
 
 std::string GameComponents::MapGeneratorComponent::GetSelectedCsvPoolName() const {
@@ -315,9 +328,11 @@ void GameComponents::MapGeneratorComponent::AddCsvMapChips(std::size_t count) {
             if (activeCsvColumn_ == 0) {
                 activeCsvPoolIndex_ = selectedCsvPoolIndex_;
                 if (activeCsvPoolIndex_ && !csvPools_[*activeCsvPoolIndex_].maps.empty()) {
-                    const auto& maps = csvPools_[*activeCsvPoolIndex_].maps;
-                    std::uniform_int_distribution<std::size_t> pick(0, maps.size() - 1);
-                    activeCsvIndex_ = pick(csvRandom_);
+                    auto& pool = csvPools_[*activeCsvPoolIndex_];
+                    if (pool.nextShuffledIndex >= pool.shuffledIndices.size()) {
+                        RefillCsvShuffleBag(pool);
+                    }
+                    activeCsvIndex_ = pool.shuffledIndices[pool.nextShuffledIndex++];
                 }
             }
             if (activeCsvPoolIndex_ && !csvPools_[*activeCsvPoolIndex_].maps.empty()) {

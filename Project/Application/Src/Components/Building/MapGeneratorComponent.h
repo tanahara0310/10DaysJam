@@ -84,11 +84,15 @@ namespace GameComponents
         struct LoadedCsvPool {
             std::string name;
             std::vector<MapData> maps;
+            // 全チャンクを一度ずつ使うためのシャッフル済みインデックス。
+            std::vector<std::size_t> shuffledIndices;
+            std::size_t nextShuffledIndex = 0;
         };
 
         // CSVは列=X・行=Z。内部のmap[x][z]形式へ変換して一度だけ読み込む。
         MapData LoadCsv(const std::string& path, std::size_t width = 0) const;
         void LoadCsvPools();
+        void RefillCsvShuffleBag(LoadedCsvPool& pool);
         void AddProceduralMapChips(std::size_t count);
         void AddCsvMapChips(std::size_t count);
 

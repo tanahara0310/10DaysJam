@@ -142,7 +142,7 @@ void GameScene::GameScene::OnInitialize() {
     mapSettings.csvChunkSizeX = ToUInt(
         GameComponents::GameSettings::CsvChunkSizeX.Get(), 1);
     // 1プール = 1エリアで使用する複数の区画CSV。地形の種類では分けない。
-    // Area1中はArea1内だけ、Area2へ切替後はArea2内だけから区画を抽選する。
+    // Area内の全区画をランダム順で一巡し、使い切ったら再シャッフルする。
     mapSettings.csvPools = {
         { "Area1", {
             "Application/Assets/Maps/Areas/Area1/chunk_01.csv",
