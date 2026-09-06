@@ -198,7 +198,18 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
     prevF.x = float(coord.x) - mv.x * float(gTraceWidth) * 0.5f;
     prevF.y = float(coord.y) + mv.y * float(gTraceHeight) * 0.5f;
     float motionPixels = length(prevF - float2(coord));
-    float depthTolerance = max(gDepthTolerance * cDepth, depthGradient * (motionPixels + 1.0f));
+
+    // ===== 再投影誤差ぶんの深度許容幅 =====
+    //   勾配で見逃していいのは「再投影先がテクセル中心からずれているぶん」だけで、
+    //   その誤差はバイリニア 2x2 の広がり（±1 テクセル）とモーションベクターの
+    //   量子化しかない。移動量に比例させると、速い移動や誤ったモーションベクターの
+    //   ところで許容幅が青天井に広がり、ディスオクルージョン検証が事実上無効になる
+    //   （＝別の面の履歴をそのまま採用して、動いている間だけ影がちらつく）。
+    //   数テクセルで頭打ちにしておけば、正しい再投影は今までどおり通り、
+    //   嘘のモーションベクターは深度で弾かれて空間前処理結果へフォールバックする。
+    const float kMaxReprojectionTexels = 2.0f;
+    float reprojectionTexels = min(motionPixels, kMaxReprojectionTexels) + 1.0f;
+    float depthTolerance = max(gDepthTolerance * cDepth, depthGradient * reprojectionTexels);
 
     // ===== バイリニア履歴取得 =====
     //   旧実装は round() の最近傍取得だった。サブテクセルのずれが必ず最大 0.5 テクセル残るため、

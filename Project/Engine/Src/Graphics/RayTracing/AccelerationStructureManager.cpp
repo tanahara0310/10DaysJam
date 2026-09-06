@@ -7,6 +7,7 @@
 #include "Graphics/Model/VertexData.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
+#include <string>
 
 namespace CoreEngine
 {
@@ -58,7 +59,11 @@ namespace CoreEngine
 
     UINT64 AccelerationStructureManager::GetTLASResultBytes() const
     {
-        return tlasResult_ ? tlasResult_->GetDesc().Width : 0;
+        UINT64 total = 0;
+        for (const auto& result : tlasResults_) {
+            if (result) { total += result->GetDesc().Width; }
+        }
+        return total;
     }
 
     UINT64 AccelerationStructureManager::GetScratchTotalBytes() const
@@ -152,6 +157,13 @@ namespace CoreEngine
 
         // UAV バリア（BLAS 構築完了を保証）
         Barrier::UAVRaw(cmdList, entry.result.Get());
+
+        // スクラッチバッファは全 BLAS で 1 枚を使い回している。リソースを指定した
+        // UAV バリアは「そのリソースへのアクセス」しか順序付けないので、結果バッファ側の
+        // バリアだけでは次の BuildRaytracingAccelerationStructure が同じスクラッチへ
+        // 同時に書き込むのを止められない。モデルが複数同時にロードされるフレームでは
+        // 実際に 10 個以上の BLAS が連続で積まれるため、ここでスクラッチも直列化する。
+        Barrier::UAVRaw(cmdList, blasScratch_.Get());
 
         UINT blasIndex = static_cast<UINT>(blasList_.size());
         blasList_.push_back(std::move(entry));
@@ -304,35 +316,47 @@ namespace CoreEngine
                 }
             };
 
-        ensureASBuffer(tlasResult_, prebuild.ResultDataMaxSizeInBytes);
+        // 結果バッファは今フレームのリングスロットのものを使う。
+        // 張り直しても、実行待ちの前フレームが参照しているのは別スロットなので影響しない。
+        auto& tlasResult = tlasResults_[tlasInstanceRingIndex_];
+        const D3D12_GPU_VIRTUAL_ADDRESS previousAddress =
+            tlasResult ? tlasResult->GetGPUVirtualAddress() : 0;
+
+        ensureASBuffer(tlasResult, prebuild.ResultDataMaxSizeInBytes);
         ensureScratchBuffer(tlasScratch_, prebuild.ScratchDataSizeInBytes);
 
         // TLAS のビルド
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
-        buildDesc.DestAccelerationStructureData = tlasResult_->GetGPUVirtualAddress();
+        buildDesc.DestAccelerationStructureData = tlasResult->GetGPUVirtualAddress();
         buildDesc.Inputs = inputs;
         buildDesc.ScratchAccelerationStructureData = tlasScratch_->GetGPUVirtualAddress();
 
         cmdList4->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 
         // UAV バリア
-        Barrier::UAVRaw(cmdList, tlasResult_.Get());
+        Barrier::UAVRaw(cmdList, tlasResult.Get());
 
-        // TLAS の SRV を作成（初回のみ確保、以降は更新）
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.RaytracingAccelerationStructure.Location =
-            tlasResult_->GetGPUVirtualAddress();
+        // このスロットの SRV を用意する。番地が変わっていないフレームでは書き直さない
+        // （ディスクリプタへの書き込みは、そのスロットを参照するコマンドが実行待ちの間は
+        //   避けたい。同じ内容でも無駄に触らない）。
+        auto& tlasSRVDescriptor = tlasSRVDescriptors_[tlasInstanceRingIndex_];
+        const D3D12_GPU_VIRTUAL_ADDRESS currentAddress = tlasResult->GetGPUVirtualAddress();
+        if (!tlasSRVDescriptor.IsValid() || currentAddress != previousAddress) {
+            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            srvDesc.RaytracingAccelerationStructure.Location = currentAddress;
 
-        // 初回はスロット確保、2回目以降は同じスロットへ書き直す
-        // （TLAS は毎フレーム作り直すが、シェーダ側のバインド位置は変えない）
-        if (!tlasSRVDescriptor_.IsValid()) {
-            tlasSRVDescriptor_ = descriptorAllocator_->CreateSRV(nullptr, srvDesc, "TLAS");
-            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-                "TLAS built ({} instances, SRV allocated)", instances.size());
-        } else {
-            descriptorAllocator_->WriteSRV(tlasSRVDescriptor_, nullptr, srvDesc);
+            if (!tlasSRVDescriptor.IsValid()) {
+                tlasSRVDescriptor = descriptorAllocator_->CreateSRV(
+                    nullptr, srvDesc,
+                    "TLAS_ring" + std::to_string(tlasInstanceRingIndex_));
+                Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
+                    "TLAS built ({} instances, SRV allocated for ring slot {})",
+                    instances.size(), tlasInstanceRingIndex_);
+            } else {
+                descriptorAllocator_->WriteSRV(tlasSRVDescriptor, nullptr, srvDesc);
+            }
         }
     }
 
