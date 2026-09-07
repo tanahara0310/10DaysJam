@@ -57,6 +57,7 @@ namespace GameEditors
         void OpenCsv(const std::string& path);
         void SaveCsv(const std::string& path);
         void NewDocument(std::size_t sizeX, std::size_t sizeZ);
+        void ResizeDocumentToProjectSize();
 
         // ── 実行中マップ ──────────────────────────────────────
         GameComponents::MapGeneratorComponent* FindMapGenerator() const;

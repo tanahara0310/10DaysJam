@@ -1,4 +1,8 @@
 {
+    "Game.Stamina.AdditionalMonkeyCostRate": 0.20000000298023224,
+    "Game.Stamina.BananaRecovery": 15.0,
+    "Game.Stamina.Cost.Rail": 1.5,
+    "Game.Stamina.Cost.Rock": 5.0,
     "Result.Animation.ConfirmDuration": 0.2290000021457672,
     "Result.Animation.ConfirmScale": 1.4500000476837158,
     "Result.Animation.ReactionDuration": 0.15600000321865082,
@@ -80,9 +84,9 @@
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        -0.5078627467155457,
-        0.7253034114837646,
-        0.464769184589386
+        0.5364911556243896,
+        -0.7661886215209961,
+        -0.3537403643131256
     ],
     "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
     "r.AtmosphereLights.SunDirection": [

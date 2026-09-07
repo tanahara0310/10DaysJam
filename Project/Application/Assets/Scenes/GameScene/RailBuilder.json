@@ -6,18 +6,18 @@
             "parameters": {
                 "rotate": [
                     0.0,
-                    6.61482048034668,
+                    171.93666076660156,
                     0.0
                 ],
                 "scale": [
                     0.625,
-                    0.5,
+                    0.5660324096679688,
                     0.625
                 ],
                 "translate": [
-                    3.0,
+                    0.0,
                     1.0,
-                    4.0
+                    3.0
                 ]
             },
             "type": "Transform"
@@ -25,6 +25,8 @@
         {
             "enabled": true,
             "parameters": {
+                "buildHoldTime": 0.30000001192092896,
+                "buildInterval": 0.05000000074505806,
                 "gridSize": 1.0,
                 "height": 1.0,
                 "horizontalPrioritize": true,
@@ -34,12 +36,11 @@
                 "pulseBaseScale": 0.800000011920929,
                 "pulseSpeed": 5.0,
                 "rockCursorHeightOffset": 1.0,
-                "rockImpactHeight": 0.7,
+                "rockImpactHeight": 0.699999988079071,
                 "rockThrowStartHeight": 0.5,
                 "rotationSpeed": 2.0,
                 "undoHoldTime": 0.30000001192092896,
-                "undoInterval": 0.05000000074505806,
-                "version": 2
+                "undoInterval": 0.05000000074505806
             },
             "type": "RailBuilder"
         },

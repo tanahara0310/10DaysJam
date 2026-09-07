@@ -36,6 +36,14 @@ namespace GameEditors
         constexpr float kRulerWidth = 28.0f;
         constexpr float kRulerHeight = 18.0f;
 
+        /// @brief 画面上の行番号をCSV/ゲーム側のZ座標へ戻す
+        /// @details ゲームカメラは -Z 側（Z=0 側）からマップを見るため、
+        ///          エディタでは手前を画面下へ置く。CSVの行順は変えず、表示だけ反転する。
+        std::size_t DataZFromDisplayRow(std::size_t displayZ, std::size_t sizeZ)
+        {
+            return sizeZ - 1 - displayZ;
+        }
+
         /// @brief パレットの色をそのまま ImU32 として使う（並びは IM_COL32 と同じ）
         ImU32 ToImColor(uint32_t packed)
         {
@@ -151,6 +159,10 @@ namespace GameEditors
             return;
         }
         std::snprintf(saveAsBuffer_, sizeof(saveAsBuffer_), "%s", path.c_str());
+        // サイズ欄は常に現在のドキュメントを編集対象にする。以前のCSVの
+        // サイズが残っていると、「このサイズへ変更」で意図せず戻してしまう。
+        newSizeX_ = static_cast<int>(document_.GetSizeX());
+        newSizeZ_ = static_cast<int>(document_.GetSizeZ());
 
         std::string message = "読み込みました: " + path;
         const std::size_t invalidCount = document_.GetInvalidCellCount();
@@ -178,6 +190,8 @@ namespace GameEditors
     {
         document_.Reset(std::max<std::size_t>(1, sizeX), std::max<std::size_t>(1, sizeZ),
             GameComponents::MapChipType::Ground);
+        newSizeX_ = static_cast<int>(document_.GetSizeX());
+        newSizeZ_ = static_cast<int>(document_.GetSizeZ());
         saveAsBuffer_[0] = '\0';
         SetStatus("新しい区画を作りました。「名前を付けて保存」で保存先を決めてください");
     }
@@ -260,7 +274,19 @@ namespace GameEditors
             }
         }
         document_.SetGrid(grid);
+        newSizeX_ = static_cast<int>(document_.GetSizeX());
+        newSizeZ_ = static_cast<int>(document_.GetSizeZ());
         SetStatus("X=" + std::to_string(startX) + " からの区画を実行中マップから取り込みました");
+    }
+
+    void StageEditorPanel::ResizeDocumentToProjectSize()
+    {
+        const std::size_t sizeX = std::max<std::size_t>(1, project_.chunkSizeX);
+        const std::size_t sizeZ = std::max<std::size_t>(1, project_.mapSizeZ);
+        document_.Resize(sizeX, sizeZ);
+        newSizeX_ = static_cast<int>(sizeX);
+        newSizeZ_ = static_cast<int>(sizeZ);
+        SetStatus("編集中のCSVをステージ構成のサイズへ変更しました（増えた分は空白です）");
     }
 
     void StageEditorPanel::SetStatus(const std::string& message, bool isError)
@@ -481,7 +507,8 @@ namespace GameEditors
         UI::SameLine();
         ImGui::Checkbox("開始位置", &showStartMarker_);
         UI::SameLine();
-        UI::HelpMarker("GameScene が列車とビルダーを置くマス。X=0 の区画に置いたときだけ意味を持ちます。");
+        UI::HelpMarker("GameScene が列車とビルダーを置くマス。X=0 の区画に置いたときだけ意味を持ちます。"
+            "ゲームの手前（-Z側）は画面下、Z=0です。");
         UI::SameLine();
         ImGui::BeginDisabled(!document_.CanUndo());
         if (ImGui::Button("元に戻す")) {
@@ -521,12 +548,14 @@ namespace GameEditors
         ImDrawList* draw = ImGui::GetWindowDrawList();
 
         // ── マス ──
-        for (std::size_t z = 0; z < sizeZ; ++z) {
+        // CSV/ゲームのZ=0（カメラに近い手前）を画面下へ置く。
+        for (std::size_t displayZ = 0; displayZ < sizeZ; ++displayZ) {
+            const std::size_t dataZ = DataZFromDisplayRow(displayZ, sizeZ);
             for (std::size_t x = 0; x < sizeX; ++x) {
-                const StageChipInfo& info = GetChipInfo(document_.Get(x, z));
+                const StageChipInfo& info = GetChipInfo(document_.Get(x, dataZ));
                 const ImVec2 cellMin(
                     gridOrigin.x + cell * static_cast<float>(x),
-                    gridOrigin.y + cell * static_cast<float>(z));
+                    gridOrigin.y + cell * static_cast<float>(displayZ));
                 const ImVec2 cellMax(cellMin.x + cell, cellMin.y + cell);
                 draw->AddRectFilled(cellMin, cellMax, ToImColor(info.color));
 
@@ -553,7 +582,7 @@ namespace GameEditors
                 ImVec2(gridOrigin.x + cell * static_cast<float>(sizeX), lineY), lineColor);
         }
 
-        // ── 番号（左がZ・上がX） ──
+        // ── 番号（上がX、左がZ。画面上はZ最大、下はZ=0） ──
         if (cell >= 16.0f) {
             const ImU32 rulerColor = IM_COL32(170, 170, 175, 255);
             char label[16] = {};
@@ -564,12 +593,13 @@ namespace GameEditors
                     gridOrigin.x + cell * static_cast<float>(x) + (cell - textSize.x) * 0.5f,
                     origin.y + 1.0f), rulerColor, label);
             }
-            for (std::size_t z = 0; z < sizeZ; ++z) {
-                std::snprintf(label, sizeof(label), "%zu", z);
+            for (std::size_t displayZ = 0; displayZ < sizeZ; ++displayZ) {
+                const std::size_t dataZ = DataZFromDisplayRow(displayZ, sizeZ);
+                std::snprintf(label, sizeof(label), "%zu", dataZ);
                 const ImVec2 textSize = ImGui::CalcTextSize(label);
                 draw->AddText(ImVec2(
                     origin.x + kRulerWidth - textSize.x - 4.0f,
-                    gridOrigin.y + cell * static_cast<float>(z) + (cell - textSize.y) * 0.5f),
+                    gridOrigin.y + cell * static_cast<float>(displayZ) + (cell - textSize.y) * 0.5f),
                     rulerColor, label);
             }
         }
@@ -577,9 +607,10 @@ namespace GameEditors
         // ── 開始位置 ──
         const std::size_t startZ = std::max<std::size_t>(1, project_.mapSizeZ) / 2;
         if (showStartMarker_ && kStartPositionX < sizeX && startZ < sizeZ) {
+            const std::size_t displayStartZ = DataZFromDisplayRow(startZ, sizeZ);
             const ImVec2 center(
                 gridOrigin.x + cell * (static_cast<float>(kStartPositionX) + 0.5f),
-                gridOrigin.y + cell * (static_cast<float>(startZ) + 0.5f));
+                gridOrigin.y + cell * (static_cast<float>(displayStartZ) + 0.5f));
             draw->AddCircle(center, cell * 0.34f, IM_COL32(255, 255, 255, 230), 0, 2.0f);
             draw->AddCircleFilled(center, cell * 0.12f, IM_COL32(255, 255, 255, 230));
         }
@@ -589,20 +620,23 @@ namespace GameEditors
         int hoverX = -1;
         int hoverZ = -1;
         const float localX = (mouse.x - gridOrigin.x) / cell;
-        const float localZ = (mouse.y - gridOrigin.y) / cell;
-        if (localX >= 0.0f && localZ >= 0.0f
-            && localX < static_cast<float>(sizeX) && localZ < static_cast<float>(sizeZ)) {
+        const float localDisplayZ = (mouse.y - gridOrigin.y) / cell;
+        if (localX >= 0.0f && localDisplayZ >= 0.0f
+            && localX < static_cast<float>(sizeX) && localDisplayZ < static_cast<float>(sizeZ)) {
             hoverX = static_cast<int>(localX);
-            hoverZ = static_cast<int>(localZ);
+            hoverZ = static_cast<int>(DataZFromDisplayRow(
+                static_cast<std::size_t>(localDisplayZ), sizeZ));
         }
 
         const bool leftDown = ImGui::IsMouseDown(ImGuiMouseButton_Left);
         const bool rightDown = ImGui::IsMouseDown(ImGuiMouseButton_Right);
 
         if ((hovered || active) && hoverX >= 0) {
+            const std::size_t hoverDisplayZ = DataZFromDisplayRow(
+                static_cast<std::size_t>(hoverZ), sizeZ);
             const ImVec2 cellMin(
                 gridOrigin.x + cell * static_cast<float>(hoverX),
-                gridOrigin.y + cell * static_cast<float>(hoverZ));
+                gridOrigin.y + cell * static_cast<float>(hoverDisplayZ));
             draw->AddRect(cellMin, ImVec2(cellMin.x + cell, cellMin.y + cell),
                 IM_COL32(255, 255, 255, 200), 0.0f, 0, 2.0f);
 
@@ -736,12 +770,21 @@ namespace GameEditors
         ImGui::SetNextItemWidth(130.0f);
         if (ImGui::InputInt("区画の幅X", &chunkSizeX)) {
             project_.chunkSizeX = static_cast<std::size_t>(std::clamp(chunkSizeX, 1, 512));
+            newSizeX_ = static_cast<int>(project_.chunkSizeX);
         }
         UI::SameLine();
         ImGui::SetNextItemWidth(130.0f);
         if (ImGui::InputInt("マップの高さZ", &mapSizeZ)) {
             project_.mapSizeZ = static_cast<std::size_t>(std::clamp(mapSizeZ, 1, 128));
+            newSizeZ_ = static_cast<int>(project_.mapSizeZ);
         }
+
+        if (ImGui::Button("編集中のCSVをこのサイズへ変更")) {
+            ResizeDocumentToProjectSize();
+        }
+        UI::SameLine();
+        UI::HelpMarker("上の構成サイズを変更しただけではCSVの中身は切り詰めません。"
+            "編集中のCSVへ反映すると、増えた分は空白になります。");
 
         if (ImGui::BeginCombo("開始エリア",
             project_.initialAreaName.empty() ? "(なし)" : project_.initialAreaName.c_str())) {
