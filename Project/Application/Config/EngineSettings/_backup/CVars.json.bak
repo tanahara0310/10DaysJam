@@ -81,19 +81,18 @@
         0.0,
         285.7139892578125
     ],
-    "r.Atmosphere.SkyAmbientScale": 0.40799999237060547,
+    "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        0.18624700605869293,
-        -0.2659880816936493,
-        0.9458131194114685
+        -0.5735764503479004,
+        0.8191520571708679,
+        2.5071823728239906e-08
     ],
-    "r.AtmosphereLights.MoonEnabled": true,
     "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
     "r.AtmosphereLights.SunDirection": [
-        -0.18624669313430786,
-        0.2659880816936493,
-        -0.9458131790161133
+        0.5735764503479004,
+        -0.8191520571708679,
+        -6.839830923865975e-09
     ],
     "r.AutoExposure.Enabled": true,
     "r.AutoExposure.MaxEV": 7.5,
@@ -117,7 +116,7 @@
         0.9800000190734863,
         1.0
     ],
-    "r.Fog.ColorIntensity": 0.0011718750465661287,
+    "r.Fog.ColorIntensity": 1.2000000476837158,
     "r.Fog.Density": 1.0,
     "r.Fog.Enabled": true,
     "r.Fog.HeightFalloff": 4.0,
@@ -138,6 +137,7 @@
     "r.SSAO.Enabled": false,
     "r.SSAOBlur.Enabled": false,
     "r.TAA.Enabled": false,
+    "r.TimeOfDay.Advance": false,
     "r.Vignette.Intensity": 2.0,
     "r.Vignette.Smoothness": 0.10000000149011612,
     "r.Water.AbsorptionBase": [
