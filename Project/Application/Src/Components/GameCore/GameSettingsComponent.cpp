@@ -45,6 +45,35 @@ namespace GameComponents::GameSettings
         "列車の初期移動速度（マス/秒）",
         CoreEngine::CVarRange{ 0.01f, 10.0f } };
 
+    CoreEngine::CVar<float> InitialStamina{
+        "Game.Stamina.Initial", 100.0f,
+        "全サル共通の初期スタミナ（シーン再読み込み時に反映、上限以下に制限）",
+        CoreEngine::CVarRange{ 0.0f, 10000.0f } };
+    CoreEngine::CVar<float> MaximumStamina{
+        "Game.Stamina.Maximum", 100.0f,
+        "全サル共通のスタミナ上限（現在値は上限を超えない範囲に制限）",
+        CoreEngine::CVarRange{ 0.01f, 10000.0f } };
+    CoreEngine::CVar<float> BananaRecovery{
+        "Game.Stamina.BananaRecovery", 20.0f,
+        "サル1匹がバナナの木の隣を通ったときの共通スタミナ回復量（木1本あたり）",
+        CoreEngine::CVarRange{ 0.0f, 10000.0f } };
+    CoreEngine::CVar<float> AdditionalMonkeyCostRate{
+        "Game.Stamina.AdditionalMonkeyCostRate", 0.25f,
+        "サル1匹追加ごとの消費倍率の加算量（0.25なら1匹増えるごとに25%増加）",
+        CoreEngine::CVarRange{ 0.0f, 10.0f } };
+    CoreEngine::CVar<float> RailStaminaCost{
+        "Game.Stamina.Cost.Rail", 2.0f,
+        "レール1マスの基本スタミナ消費量（サル倍率をかけて切り上げ）",
+        CoreEngine::CVarRange{ 0.0f, 1000.0f } };
+    CoreEngine::CVar<float> RockStaminaCost{
+        "Game.Stamina.Cost.Rock", 20.0f,
+        "岩破壊でレール設置分に加算する基本スタミナ消費量（Undoで返却しない）",
+        CoreEngine::CVarRange{ 0.0f, 1000.0f } };
+    CoreEngine::CVar<float> BridgeStaminaCost{
+        "Game.Stamina.Cost.Bridge", 5.0f,
+        "水上の橋建設でレール設置分に加算する基本スタミナ消費量",
+        CoreEngine::CVarRange{ 0.0f, 1000.0f } };
+
     CoreEngine::CVar<int> GroundPoolCapacity{
         "Game.Pools.GroundCapacity", 600, "床モデルの初期プール数",
         CoreEngine::CVarRange{ 1.0f, 5000.0f } };
@@ -60,6 +89,9 @@ namespace GameComponents::GameSettings
     CoreEngine::CVar<int> BananaTreePoolCapacity{
         "Game.Pools.BananaTreeCapacity", 50, "バナナの木モデルの初期プール数",
         CoreEngine::CVarRange{ 1.0f, 1000.0f } };
+    CoreEngine::CVar<int> GrassPoolCapacity{
+        "Game.Pools.GrassCapacity", 100, "草モデルの初期プール数",
+        CoreEngine::CVarRange{ 1.0f, 5000.0f } };
     CoreEngine::CVar<int> BridgePoolCapacity{
         "Game.Pools.BridgeCapacity", 100, "橋モデルの初期プール数",
         CoreEngine::CVarRange{ 1.0f, 5000.0f } };
@@ -105,7 +137,8 @@ bool GameComponents::GameSettingsComponent::DrawInspector()
     CoreEngine::UI::Separator();
     CoreEngine::UI::Hint(
         "変更はCVars.jsonへ自動保存されます。"
-        "ゲームシーンを再読み込みすると各コンポーネントへ反映されます。");
+        "スタミナの消費・回復設定は次の行動から、上限は即時反映されます。"
+        "初期スタミナとシーン生成時の設定はシーン再読み込み時に反映されます。");
     return changed;
 }
 #endif

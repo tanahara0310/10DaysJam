@@ -70,6 +70,7 @@ namespace GameEditors
             if (cell == "5" || cell == "banana" || cell == "banana_tree" || cell == "bananatree") {
                 return MapChipType::BananaTree;
             }
+            if (cell == "6" || cell == "grass") return MapChipType::Grass;
             ++invalidCount;
             return MapChipType::Void;
         }

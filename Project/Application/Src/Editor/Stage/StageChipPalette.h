@@ -32,9 +32,10 @@ namespace GameEditors
         { GameComponents::MapChipType::Void,     0, "空白 (Void)",     "",   "レール設置不可。マップ外と同じ扱い",     PackChipColor( 38,  38,  44) },
         { GameComponents::MapChipType::Water,    1, "水場 (Water)",    "水", "レール設置コスト2",                      PackChipColor( 38, 110, 190) },
         { GameComponents::MapChipType::Ground,   2, "地面 (Ground)",   "",   "レール設置コスト1",                      PackChipColor( 96, 150,  72) },
-        { GameComponents::MapChipType::Station,  3, "駅 (Station)",    "駅", "列車到着で減速し、サルが1匹増える", PackChipColor(230, 170,  50) },
-        { GameComponents::MapChipType::Resource, 4, "岩 (Resource)",   "岩", "スタミナを消費して破壊すると地面へ戻る",   PackChipColor(170, 130, 205) },
+        { GameComponents::MapChipType::Station,  3, "駅 (Station)",    "駅", "建物には敷設不可。正面（Z-1）の常設レールは曲げて接続でき、列車到着で減速・サル追加", PackChipColor(230, 170,  50) },
+        { GameComponents::MapChipType::Resource, 4, "岩 (Resource)",   "岩", "スタミナを消費して破壊。壊れて地面になってからレールを設置",   PackChipColor(170, 130, 205) },
         { GameComponents::MapChipType::BananaTree, 5, "バナナの木 (Banana Tree)", "バ", "レール設置不可。隣接マス通過時にスタミナ回復", PackChipColor(220, 190,  45) },
+        { GameComponents::MapChipType::Grass,    6, "草 (Grass)",     "草", "地面の上に置く見た目のみの装飾。レール設置などは地面と同じ", PackChipColor( 48, 190, 100) },
     };
 
     /// @brief パレットの要素数

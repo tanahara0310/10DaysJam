@@ -5,6 +5,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <deque>
+#include <utility>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -57,6 +60,8 @@ namespace GameComponents
 
         float GetMoveSpeed() const { return moveSpeed_; }
         CoreEngine::Vector3 GetWorldPosition() const;
+        // 指定位置に重なる先頭・後続車両の上へ矢印を置くための高さ補正。
+        float GetCursorHeightOffsetAt(float worldX, float worldZ) const;
         uint32_t GetHorizontalProgressBlocks() const { return horizontalProgressBlocks_; }
         float GetMinMoveSpeed() const { return minMoveSpeed_; }
         float GetSpeedRatio() const {
@@ -65,6 +70,8 @@ namespace GameComponents
 
         // グリッドサイズを設定する
         void SetGridSize(float size);
+        // 最後尾に車両を連結する。車両は親を持たず、通過済みレールを1マス間隔で追従する。
+        void AddCarriage(CoreEngine::TransformComponent* carriageTransform);
         // 岩破壊の投石中だけ列車の移動を停止・再開する
         void SetRockBreakPaused(bool paused) { isPausedForRockBreak_ = paused; }
         // 投石開始時に、その場でのジャンプを再生する
@@ -77,6 +84,9 @@ namespace GameComponents
         bool BeginNextSegment();
         // 現在の移動進捗を Transform に反映する
         void SyncTransformToProgress();
+        void SyncCarriageTransforms();
+        // マス中央への到着を記録し、最後尾が駅の次のマス中央へ着いたら連結する。
+        void ProcessCarriageArrival(bool stationActivated);
         void UpdateRockThrowJump(float deltaTime);
         float GetRockThrowJumpOffset() const;
         // 移動方向に合わせて Y 軸回転を更新する
@@ -98,6 +108,10 @@ namespace GameComponents
         int32_t destinationGridZ_ = 0;
 
         float movementProgress_ = 0.0f;
+        std::vector<CoreEngine::TransformComponent*> carriageTransforms_;
+        std::deque<std::pair<int32_t, int32_t>> traveledCells_;
+        std::deque<std::size_t> pendingStationSteps_;
+        std::size_t traveledBlockCount_ = 0;
         uint32_t horizontalProgressBlocks_ = 0;
         float rockThrowJumpHeight_ = 0.6f;
         float rockThrowJumpDuration_ = 0.35f;
@@ -115,7 +129,6 @@ namespace GameComponents
         float stationSlowdownMultiplier_ = 0.5f;
         float stationSlowdownDuration_ = 2.0f;
         float stationSlowdownRemaining_ = 0.0f;
-        float trainHeight_ = 1.0f;
         std::size_t requiredRailCount_ = 5;
     };
 }

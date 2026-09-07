@@ -469,7 +469,7 @@ namespace GameEditors
         UI::SameLine();
         UI::HelpMarker("左ドラッグで選択中のチップを塗り、右ドラッグで空白に戻します。"
             "ホイールクリックでその場のチップを吸い取ります。"
-            "マップの上では数字キー 0〜4 でも切り替えられます。");
+            "マップの上では数字キー 0〜6 でも切り替えられます。");
     }
 
     void StageEditorPanel::DrawGridCanvas()

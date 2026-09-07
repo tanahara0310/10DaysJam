@@ -91,10 +91,6 @@ namespace GameComponents
         CoreEngine::Camera* viewCamera_ = nullptr;
         float gridSize_ = 5.0f;
         uint32_t viewDistanceX_ = 30;
-        float railHeight_ = 0.6f;
-        float railScale_ = 0.6f;
-        float bridgeHeight_ = 0.5f;
-        float bridgeScale_ = 1.0f;
         float confirmationJumpHeight_ = 0.8f;
         float confirmationJumpDuration_ = 0.35f;
         float confirmationStaggerInterval_ = 0.06f;

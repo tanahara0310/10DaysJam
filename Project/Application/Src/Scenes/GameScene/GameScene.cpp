@@ -34,7 +34,6 @@
 #include "GameObjects/GameSceneObject.h"
 
 #include <algorithm>
-#include <cmath>
 #include <string>
 
 using namespace CoreEngine;
@@ -196,6 +195,12 @@ void GameScene::GameScene::OnInitialize() {
     bananaTreePoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "banana_tree.obj",
         ToUInt(GameComponents::GameSettings::BananaTreePoolCapacity.Get(), 1), true);
+    // 地面の上に表示する装飾用の草のオブジェクトプールを生成
+    auto* grassPoolManager = CreateObject<GameSceneObject>("GrassPoolManager");
+    grassPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    grassPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "grass.obj",
+        ToUInt(GameComponents::GameSettings::GrassPoolCapacity.Get(), 1), true);
     // 水上レールの下へ表示する橋のオブジェクトプールを生成
     auto* bridgePoolManager = CreateObject<GameSceneObject>("BridgePoolManager");
     bridgePoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -249,7 +254,7 @@ void GameScene::GameScene::OnInitialize() {
     // 列車の移動ロジックを持つオブジェクト。描画とアニメーションは別コンポーネントで追加する。
     auto* train = CreateObject<GameSceneObject>("Train");
     auto* trainTransform = train->AddComponent<CoreEngine::TransformComponent>();
-    train->AddComponent<GameComponents::TrainMovementComponent>(
+    auto* trainMovement = train->AddComponent<GameComponents::TrainMovementComponent>(
         gridSize, GameComponents::GameSettings::TrainMoveSpeed.Get(),
         initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
@@ -287,7 +292,16 @@ void GameScene::GameScene::OnInitialize() {
     monkeyTransform->Get().SetParent(&trainTransform->Get());
     monkeyTransform->Get().rotate.y = 3.14f;
     hungerComponent->SetMonkeyAddedCallback(
-        [this, trainTransform](std::size_t monkeyCount) {
+        [this, trainMovement, monkeyTransform](std::size_t monkeyCount) {
+            auto* carriage = CreateObject<GameSceneObject>(
+                "TrainCarriage_" + std::to_string(monkeyCount));
+            if (!carriage) {
+                return;
+            }
+            auto* carriageTransform = carriage->AddComponent<CoreEngine::TransformComponent>();
+            carriage->AddComponent<CoreEngine::MeshRendererComponent>("trolley.obj");
+            trainMovement->AddCarriage(carriageTransform);
+
             auto* addedMonkey = CreateObject<GameSceneObject>(
                 "Monkey_" + std::to_string(monkeyCount));
             if (!addedMonkey) {
@@ -296,14 +310,10 @@ void GameScene::GameScene::OnInitialize() {
             auto* addedTransform = addedMonkey->AddComponent<CoreEngine::TransformComponent>();
             addedMonkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
             if (addedTransform) {
-                addedTransform->Get().SetParent(&trainTransform->Get());
-                const float index = static_cast<float>(monkeyCount - 1);
-                addedTransform->Get().translate = {
-                    ((static_cast<int>(monkeyCount) % 3) - 1) * 0.35f,
-                    0.15f * std::floor(index / 3.0f),
-                    -0.3f * std::floor(index / 3.0f)
-                };
-                addedTransform->Get().rotate.y = 3.14f;
+                addedTransform->Get().SetParent(&carriageTransform->Get());
+                addedTransform->Get().translate = monkeyTransform->Get().translate;
+                addedTransform->Get().rotate = monkeyTransform->Get().rotate;
+                addedTransform->Get().scale = monkeyTransform->Get().scale;
             }
         });
 
@@ -340,6 +350,7 @@ void GameScene::GameScene::OnInitialize() {
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         bananaTreePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        grassPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         gameCamera,
         gridSize, renderWorldDistance);
 

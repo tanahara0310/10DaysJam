@@ -10,9 +10,9 @@
                     0.0
                 ],
                 "scale": [
-                    1.0,
-                    0.6525367498397827,
-                    1.0
+                    0.625,
+                    0.5,
+                    0.625
                 ],
                 "translate": [
                     3.0,
@@ -26,17 +26,14 @@
             "enabled": true,
             "parameters": {
                 "gridSize": 1.0,
-                "railStaminaCost": 2.0,
                 "height": 1.0,
                 "horizontalPrioritize": true,
                 "initialGridX": 3,
                 "initialGridZ": 4,
-                "bridgeStaminaCost": 5.0,
                 "pulseAmplitude": 0.20000000298023224,
                 "pulseBaseScale": 0.800000011920929,
                 "pulseSpeed": 5.0,
                 "rockCursorHeightOffset": 1.0,
-                "rockStaminaCost": 20.0,
                 "rockImpactHeight": 0.7,
                 "rockThrowStartHeight": 0.5,
                 "rotationSpeed": 2.0,

@@ -76,6 +76,11 @@ namespace GameComponents
         MapChipType GetMapChip(std::size_t x, std::size_t z) const;
         bool SetMapChip(std::size_t x, std::size_t z, MapChipType type);
 
+        // 駅の正面（-Z側の隣接マス）には、常設レールと地面を用意する。
+        bool IsStationRailCell(std::size_t x, std::size_t z) const;
+        // 駅本体などの建設不可マスを避け、隣接マスへレールを接続できるか判定する。
+        bool CanConnectRail(int32_t fromX, int32_t fromZ, int32_t toX, int32_t toZ) const;
+
         // マップチップの2D配列を取得する
         const std::vector<std::vector<GameComponents::MapChipType>>& GetMapChips() const;
 

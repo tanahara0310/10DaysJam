@@ -6,6 +6,7 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Building/MapGeneratorComponent.h"
+#include "Components/Utility/BlockModelLayout.h"
 #include "Components/Utility/ModelRenderPoolComponent.h"
 #include "Camera/Camera.h"
 #include "Input/InputAction.h"
@@ -37,10 +38,6 @@ json GameComponents::RailViewComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
         { "viewDistanceX", viewDistanceX_ },
-        { "railHeight", railHeight_ },
-        { "railScale", railScale_ },
-        { "bridgeHeight", bridgeHeight_ },
-        { "bridgeScale", bridgeScale_ },
         { "jumpHeight", confirmationJumpHeight_ },
         { "jumpDuration", confirmationJumpDuration_ },
         { "staggerInterval", confirmationStaggerInterval_ },
@@ -54,10 +51,6 @@ json GameComponents::RailViewComponent::OnSerialize() const {
 void GameComponents::RailViewComponent::OnDeserialize(const json& j) {
     gridSize_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "gridSize", gridSize_));
     viewDistanceX_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "viewDistanceX", viewDistanceX_));
-    railHeight_ = JsonManager::SafeGet<float>(j, "railHeight", railHeight_);
-    railScale_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "railScale", railScale_));
-    bridgeHeight_ = JsonManager::SafeGet<float>(j, "bridgeHeight", bridgeHeight_);
-    bridgeScale_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "bridgeScale", bridgeScale_));
     confirmationJumpHeight_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "jumpHeight", confirmationJumpHeight_));
     confirmationJumpDuration_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "jumpDuration", confirmationJumpDuration_));
     confirmationStaggerInterval_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "staggerInterval", confirmationStaggerInterval_));
@@ -73,10 +66,8 @@ bool GameComponents::RailViewComponent::DrawInspector() {
     changed |= ImGui::DragFloat("グリッドサイズ", &gridSize_, 0.05f, 0.01f, 20.0f);
     int distance = static_cast<int>(viewDistanceX_);
     if (ImGui::DragInt("描画距離X", &distance, 1.0f, 1, 500)) { viewDistanceX_ = static_cast<uint32_t>(std::max(distance, 1)); changed = true; }
-    changed |= ImGui::DragFloat("レール高さ", &railHeight_, 0.05f, -20.0f, 20.0f);
-    changed |= ImGui::DragFloat("レールスケール", &railScale_, 0.01f, 0.0f, 10.0f);
-    changed |= ImGui::DragFloat("橋の高さ", &bridgeHeight_, 0.05f, -20.0f, 20.0f);
-    changed |= ImGui::DragFloat("橋のスケール", &bridgeScale_, 0.01f, 0.0f, 10.0f);
+    ImGui::TextDisabled("共通モデルスケール: %.3f", BlockModelLayout::GetScale(gridSize_));
+    ImGui::TextDisabled("レール底面の高さ: %.3f", BlockModelLayout::GetSurfaceHeight(gridSize_));
     changed |= ImGui::DragFloat("確定ジャンプ高さ", &confirmationJumpHeight_, 0.01f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat("確定ジャンプ時間", &confirmationJumpDuration_, 0.01f, 0.01f, 10.0f);
     changed |= ImGui::DragFloat("確定演出の時間差", &confirmationStaggerInterval_, 0.01f, 0.0f, 5.0f);
@@ -185,7 +176,10 @@ void GameComponents::RailViewComponent::UpdateConfirmationAnimations(float delta
                 confirmationJumpDuration_);
 
             // 待ち時間を越えてレールが跳ね始める瞬間に、一度だけSEを鳴らす。
-            if (previousTime <= 0.0f && animationTime > 0.0f && onRailBuildSE_) {
+            const auto& rail = railPath_->GetRailMap()[i];
+            const bool isStationRail = mapGenerator_ && mapGenerator_->IsStationRailCell(
+                static_cast<std::size_t>(rail.first), static_cast<std::size_t>(rail.second));
+            if (previousTime <= 0.0f && animationTime > 0.0f && onRailBuildSE_ && !isStationRail) {
                 onRailBuildSE_(confirmationSeVolume_, confirmationSoundPitches_[i]);
             }
         }
@@ -226,10 +220,6 @@ void GameComponents::RailViewComponent::DrawRailModels() {
     railPath.insert(railPath.end(), confirmedRails.begin(), confirmedRails.end());
     railPath.insert(railPath.end(), pendingRails.begin(), pendingRails.end());
 
-    if (railPath.empty()) {
-        return;
-    }
-
     int32_t minVisibleX = 0;
     int32_t maxVisibleX = (std::numeric_limits<int32_t>::max)();
     if (viewCamera_ && gridSize_ > 0.0f) {
@@ -254,11 +244,34 @@ void GameComponents::RailViewComponent::DrawRailModels() {
             static_cast<float>(direction.second));
     };
 
+    const float modelScale = BlockModelLayout::GetScale(gridSize_);
+    const Vector3 scale{ modelScale, modelScale, modelScale };
+    const float railHeight = BlockModelLayout::GetSurfaceHeight(gridSize_);
+    const float bridgeHeight = BlockModelLayout::GetBridgeHeight(gridSize_);
+
+    // 未接続の駅前レールは横向きに表示する。接続後の形状は通常経路から決める。
+    const auto& mapChips = mapGenerator_->GetMapChips();
+    const std::size_t stationRailEndX = std::min(
+        mapChips.size(), static_cast<std::size_t>(maxVisibleX) + 1);
+    for (std::size_t x = static_cast<std::size_t>(minVisibleX); x < stationRailEndX; ++x) {
+        for (std::size_t z = 0; z < mapChips[x].size(); ++z) {
+            const GridPosition stationRail{ static_cast<int32_t>(x), static_cast<int32_t>(z) };
+            if (mapGenerator_->IsStationRailCell(x, z) &&
+                std::find(railPath.begin(), railPath.end(), stationRail) == railPath.end()) {
+                railPool_->Draw(
+                    { static_cast<float>(x) * gridSize_, railHeight, static_cast<float>(z) * gridSize_ },
+                    { 0.0f, kPi * 0.5f, 0.0f }, scale);
+            }
+        }
+    }
+
     for (std::size_t i = 0; i < railPath.size(); ++i) {
         const GridPosition current = railPath[i];
         if (current.first < minVisibleX || current.first > maxVisibleX) {
             continue;
         }
+        const bool isStationRail = mapGenerator_->IsStationRailCell(
+            static_cast<std::size_t>(current.first), static_cast<std::size_t>(current.second));
 
         const bool hasPrevious = i > 0;
         const bool hasNext = i + 1 < railPath.size();
@@ -277,17 +290,14 @@ void GameComponents::RailViewComponent::DrawRailModels() {
             outgoing = incoming;
         }
 
-        const float jumpOffset = i < confirmedRails.size()
+        const float jumpOffset = !isStationRail && i < confirmedRails.size()
             ? GetConfirmationJumpOffset(i)
             : 0.0f;
         const Vector3 position = {
             static_cast<float>(current.first) * gridSize_,
-            railHeight_ + jumpOffset,
+            railHeight + jumpOffset,
             static_cast<float>(current.second) * gridSize_
         };
-
-        float scaleOffset = railScale_;
-        const Vector3 scale = { scaleOffset, scaleOffset, scaleOffset };
 
         // 水チップはそのまま描画し、地面と同じ高さへ橋モデルを追加する。
         if (current.first >= 0 && current.second >= 0 &&
@@ -297,11 +307,11 @@ void GameComponents::RailViewComponent::DrawRailModels() {
             bridgePool_->Draw(
                 {
                     static_cast<float>(current.first) * gridSize_,
-                    bridgeHeight_,
+                    bridgeHeight,
                     static_cast<float>(current.second) * gridSize_
                 },
                 { 0.0f, yawFromDirection(outgoing), 0.0f },
-                { bridgeScale_, bridgeScale_, bridgeScale_ });
+                scale);
         }
 
         // XZ平面の外積。正なら進行方向に対して左折、負なら右折。

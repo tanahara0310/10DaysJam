@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "RailBuilderComponent.h"
+#include "Components/Utility/BlockModelLayout.h"
 
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
@@ -9,6 +10,7 @@
 #include "Components/Building/RockThrowComponent.h"
 #include "Components/Camera/RockBreakShakeSettingsComponent.h"
 #include "Components/GameCore/HungerComponent.h"
+#include "Components/GameCore/GameSettingsComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "GameObjects/Effect/RockBreakDebris.h"
 #include "Input/InputAction.h"
@@ -22,6 +24,7 @@
 
 #ifdef USE_IMGUI
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/CVarPanel.h"
 #endif
 
 using namespace CoreEngine;
@@ -43,10 +46,7 @@ json GameComponents::RailBuilderComponent::OnSerialize() const {
         { "rotationSpeed", rotationSpeed_ },
         { "rockCursorHeightOffset", rockCursorHeightOffset_ },
         { "rockThrowStartHeight", rockThrowStartHeight_ },
-        { "rockImpactHeight", rockImpactHeight_ },
-        { "railStaminaCost", railStaminaCost_ },
-        { "rockStaminaCost", rockStaminaCost_ },
-        { "bridgeStaminaCost", bridgeStaminaCost_ }
+        { "rockImpactHeight", rockImpactHeight_ }
     };
 }
 
@@ -69,13 +69,6 @@ void GameComponents::RailBuilderComponent::OnDeserialize(const json& j) {
     rockThrowStartHeight_ = JsonManager::SafeGet<float>(
         j, "rockThrowStartHeight", rockThrowStartHeight_);
     rockImpactHeight_ = JsonManager::SafeGet<float>(j, "rockImpactHeight", rockImpactHeight_);
-    railStaminaCost_ = std::max(0.0f,
-        JsonManager::SafeGet<float>(j, "railStaminaCost", railStaminaCost_));
-    rockStaminaCost_ = std::max(0.0f,
-        JsonManager::SafeGet<float>(j, "rockStaminaCost",
-            JsonManager::SafeGet<float>(j, "rockHungerCost", rockStaminaCost_)));
-    bridgeStaminaCost_ = std::max(0.0f,
-        JsonManager::SafeGet<float>(j, "bridgeStaminaCost", bridgeStaminaCost_));
     gridPosX_ = initialGridPosX_;
     gridPosZ_ = initialGridPosZ_;
 }
@@ -102,12 +95,9 @@ bool GameComponents::RailBuilderComponent::DrawInspector() {
         "投石開始高さ", &rockThrowStartHeight_, 0.05f, -10.0f, 10.0f);
     changed |= ImGui::DragFloat(
         "投石着弾高さ", &rockImpactHeight_, 0.05f, -10.0f, 10.0f);
-    changed |= ImGui::DragFloat(
-        "岩破壊スタミナコスト", &rockStaminaCost_, 1.0f, 0.0f, 1000.0f);
-    changed |= ImGui::DragFloat(
-        "レール設置スタミナコスト", &railStaminaCost_, 0.5f, 0.0f, 1000.0f);
-    changed |= ImGui::DragFloat(
-        "橋建設スタミナコスト", &bridgeStaminaCost_, 0.5f, 0.0f, 1000.0f);
+    ImGui::SeparatorText("スタミナ消費量");
+    changed |= CVarUI::DrawTree("Game.Stamina.Cost");
+    UI::Hint("変更はCVars.jsonへ自動保存され、次の建設から反映されます。");
     return changed;
 }
 #endif
@@ -150,9 +140,17 @@ void GameComponents::RailBuilderComponent::Update() {
     timer_ += Time::DeltaTime();
 
     // TransformComponent のスケールと回転を更新する
+    const float modelScale = BlockModelLayout::GetScale(gridSize_);
     transform_->Get().scale = {
-        1.0f, pulseBaseScale_ + (sinf(timer_ * pulseSpeed_) * pulseAmplitude_), 1.0f };
+        modelScale,
+        modelScale * (pulseBaseScale_ + sinf(timer_ * pulseSpeed_) * pulseAmplitude_),
+        modelScale };
     transform_->Get().rotate.y = timer_ * rotationSpeed_;
+
+    // 岩のマスにはまだレールがない。着弾まで次の敷設・Undoを待ち、経路の欠落を防ぐ。
+    if (isBreakingRock_) {
+        return;
+    }
 
     // ゲームオブジェクトのオーナーからエンジンシステムを取得し、入力マネージャーを取得する
     GameObject* owner = GetOwner();
@@ -317,20 +315,26 @@ void GameComponents::RailBuilderComponent::Update() {
     const MapChipType mapChip = mapGenerator_->GetMapChip(
         static_cast<std::size_t>(nextX), static_cast<std::size_t>(nextZ));
 
-    // Voidとバナナの木は非建設マスとして扱う。
-    if (mapChip == MapChipType::Void || mapChip == MapChipType::BananaTree) {
+    // 岩への入力は破壊命令として受け付ける。レールの接続は地面になってから行う。
+    const bool isRock = mapChip == MapChipType::Resource;
+    if (!isRock && !mapGenerator_->CanConnectRail(gridPosX_, gridPosZ_, nextX, nextZ)) {
         Logger::GetInstance().Infof(
             LogCategory::Game,
-            "RailBuilder: 建設不可チップのためレールを設置できません ({}, {})",
+            "RailBuilder: このマス・方向にはレールを接続できません ({}, {})",
             nextX, nextZ);
         return;
     }
 
-    float baseCost = railStaminaCost_;
+    // 常設レールは走行経路へつなぐだけなので、敷設コスト・Undo時の返却は0。
+    const bool isStationRail = mapGenerator_->IsStationRailCell(
+        static_cast<std::size_t>(nextX), static_cast<std::size_t>(nextZ));
+    const float railCost = isStationRail
+        ? 0.0f : std::max(0.0f, GameSettings::RailStaminaCost.Get());
+    float baseCost = railCost;
     if (mapChip == MapChipType::Water) {
-        baseCost += bridgeStaminaCost_;
+        baseCost += std::max(0.0f, GameSettings::BridgeStaminaCost.Get());
     } else if (mapChip == MapChipType::Resource) {
-        baseCost += rockStaminaCost_;
+        baseCost += std::max(0.0f, GameSettings::RockStaminaCost.Get());
     }
     const float staminaCost = hunger_->CalculateActionCost(baseCost);
     if (hunger_->GetCurrentHunger() < staminaCost) {
@@ -343,14 +347,17 @@ void GameComponents::RailBuilderComponent::Update() {
     }
 
     OnBuildSE_();
-    const float refundableCost = mapChip == MapChipType::Resource
-        ? hunger_->CalculateActionCost(railStaminaCost_)
+    const float refundableCost = isRock
+        ? hunger_->CalculateActionCost(railCost)
         : staminaCost;
-    if (!railPath_->PlaceRail(nextX, nextZ, refundableCost)) {
+    // 岩のレールは破壊完了まで予約だけにし、表示・走行・Undoの経路へ入れない。
+    if (!isRock && !railPath_->PlaceRail(nextX, nextZ, refundableCost)) {
         return;
     }
     if (!hunger_->TryConsumeStamina(staminaCost)) {
-        railPath_->UndoLastRailPlacement();
+        if (!isRock) {
+            railPath_->UndoLastRailPlacement();
+        }
         NotifyStaminaInsufficient();
         return;
     }
@@ -358,11 +365,11 @@ void GameComponents::RailBuilderComponent::Update() {
     gridPosX_ = nextX;
     gridPosZ_ = nextZ;
 
-    if (mapChip == MapChipType::Resource) {
+    if (isRock) {
         const bool wasBreakingRock = isBreakingRock_;
         isBreakingRock_ = true;
         isCursorAboveRock_ = true;
-        rockBreakQueue_.push_back({ gridPosX_, gridPosZ_ });
+        rockBreakQueue_.push_back({ gridPosX_, gridPosZ_, refundableCost });
         if (!wasBreakingRock) {
             trainMovement_->SetRockBreakPaused(true);
         }
@@ -379,7 +386,7 @@ void GameComponents::RailBuilderComponent::Update() {
         return;
     }
 
-    // 投石キューが残っていても、通常マスへの追加敷設ではカーソルを通常高さにする。
+    // 通常マスへの敷設ではカーソルを通常高さにする。
     isCursorAboveRock_ = false;
     SyncTransformToGrid();
 
@@ -387,6 +394,13 @@ void GameComponents::RailBuilderComponent::Update() {
         LogCategory::Game,
         "Rail placed at ({}, {})",
         gridPosX_, gridPosZ_);
+}
+
+void GameComponents::RailBuilderComponent::LateUpdate() {
+    SyncTransformToGrid();
+    if (transform_) {
+        transform_->Get().TransferMatrix();
+    }
 }
 
 bool GameComponents::RailBuilderComponent::TryUndoLastRail() {
@@ -442,10 +456,25 @@ void GameComponents::RailBuilderComponent::CompleteRockBreak() {
 
     const RockBreakRequest completed = rockBreakQueue_.front();
     rockBreakQueue_.pop_front();
-    mapGenerator_->SetMapChip(
+    const bool rockBroken = mapGenerator_->SetMapChip(
         static_cast<std::size_t>(completed.gridX),
         static_cast<std::size_t>(completed.gridZ),
         MapChipType::Ground);
+
+    // 破壊済みの地面に初めてレールを登録する。予約時に支払った分を再消費しない。
+    if (!rockBroken || !railPath_->PlaceRail(
+            completed.gridX, completed.gridZ, completed.refundableRailCost)) {
+        hunger_->AddStamina(completed.refundableRailCost);
+        const auto& pendingRails = railPath_->GetRailUndoStack();
+        const auto previousRail = pendingRails.empty()
+            ? railPath_->GetRailMap().back() : pendingRails.back();
+        gridPosX_ = previousRail.first;
+        gridPosZ_ = previousRail.second;
+        Logger::GetInstance().Errorf(
+            LogCategory::Game,
+            "RailBuilder: 岩破壊後のレールを設置できませんでした ({}, {})",
+            completed.gridX, completed.gridZ);
+    }
 
     // 岩が砕けた瞬間にカメラを揺らす。強さは Game.CameraShake.RockBreak.* で調整する。
     RockBreakShakeSettingsComponent::PlayRockBreak();
@@ -461,10 +490,7 @@ void GameComponents::RailBuilderComponent::CompleteRockBreak() {
         "RailBuilder: 岩を破壊して地面にしました ({}, {}), 残り待機数={}",
         completed.gridX, completed.gridZ, rockBreakQueue_.size());
 
-    if (completed.gridX == gridPosX_ && completed.gridZ == gridPosZ_) {
-        isCursorAboveRock_ = false;
-        SyncTransformToGrid();
-    }
+    isCursorAboveRock_ = false;
 
     if (!rockBreakQueue_.empty()) {
         StartNextRockThrow();
@@ -484,8 +510,30 @@ void GameComponents::RailBuilderComponent::SyncTransformToGrid() {
     transform_->Get().translate.x = static_cast<float>(gridPosX_) * gridSize_;
     transform_->Get().translate.z = static_cast<float>(gridPosZ_) * gridSize_;
 
-    transform_->Get().translate.y = height_ +
-        (isCursorAboveRock_ ? rockCursorHeightOffset_ : 0.0f);
+    float cursorHeight = height_;
+    const MapChipType mapChip = mapGenerator_
+        ? mapGenerator_->GetMapChip(
+            static_cast<std::size_t>(gridPosX_), static_cast<std::size_t>(gridPosZ_))
+        : MapChipType::Ground;
+    if (mapChip == MapChipType::Station) {
+        // 駅は1ブロックより背が高いため、屋根の上にも通常の浮き幅を確保する。
+        const float stationTop = BlockModelLayout::GetSurfaceHeight(gridSize_) +
+            BlockModelLayout::kStationModelHeight * BlockModelLayout::GetScale(gridSize_);
+        const float clearance = std::max(
+            0.0f, height_ - BlockModelLayout::GetSurfaceHeight(gridSize_));
+        cursorHeight = std::max(height_ + gridSize_, stationTop + clearance);
+    }
+    if (mapChip == MapChipType::Resource || isCursorAboveRock_) {
+        cursorHeight = std::max(
+            cursorHeight, height_ + std::max(gridSize_, rockCursorHeightOffset_));
+    }
+    if (trainMovement_) {
+        // 駅と車両が同じマスにあっても加算せず、必要な高さの最大値を使う。
+        cursorHeight = std::max(cursorHeight, height_ +
+            trainMovement_->GetCursorHeightOffsetAt(
+                transform_->Get().translate.x, transform_->Get().translate.z));
+    }
+    transform_->Get().translate.y = cursorHeight;
 }
 
 void GameComponents::RailBuilderComponent::SetGridSize(float size) {

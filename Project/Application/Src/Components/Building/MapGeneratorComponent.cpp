@@ -62,6 +62,7 @@ namespace {
         if (cell == "5" || cell == "banana" || cell == "banana_tree" || cell == "bananatree") {
             return MapChipType::BananaTree;
         }
+        if (cell == "6" || cell == "grass") return MapChipType::Grass;
         ++invalidCount;
         return MapChipType::Void;
     }
@@ -278,8 +279,9 @@ void GameComponents::MapGeneratorComponent::AddProceduralMapChips(std::size_t co
             }
         }
         // 駅を建設する間隔で駅チップを配置する
-        if (mapSizeZ_ > 0 && (mapChips_.size() - 1) % stationBuildInterval_ == 0) {
-            std::size_t stationZ = rand() % mapSizeZ_; // ランダムなZ座標に駅を配置
+        if (mapSizeZ_ > 1 && (mapChips_.size() - 1) % stationBuildInterval_ == 0) {
+            // 正面の常設レールがマップ内に収まる位置に駅を配置する。
+            std::size_t stationZ = 1 + rand() % (mapSizeZ_ - 1);
             mapChips_.back()[stationZ] = MapChipType::Station;
         }
     }
@@ -354,7 +356,34 @@ GameComponents::MapChipType GameComponents::MapGeneratorComponent::GetMapChip(
     if (x >= mapChips_.size() || z >= mapSizeZ_) {
         return MapChipType::Void;
     }
+    // CSVの元データは保持し、駅の正面だけをレール用の地面として扱う。
+    // 別の駅の建物がある場合は上書きしない。
+    if (IsStationRailCell(x, z)) {
+        return MapChipType::Ground;
+    }
     return mapChips_[x][z];
+}
+
+bool GameComponents::MapGeneratorComponent::IsStationRailCell(
+    std::size_t x, std::size_t z) const {
+    return x < mapChips_.size() && mapSizeZ_ > 1 && z < mapSizeZ_ - 1 &&
+        mapChips_[x][z] != MapChipType::Station &&
+        mapChips_[x][z + 1] == MapChipType::Station;
+}
+
+bool GameComponents::MapGeneratorComponent::CanConnectRail(
+    int32_t fromX, int32_t fromZ, int32_t toX, int32_t toZ) const {
+    if (fromX < 0 || fromZ < 0 || toX < 0 || toZ < 0 ||
+        std::abs(toX - fromX) + std::abs(toZ - fromZ) != 1) {
+        return false;
+    }
+    const MapChipType destination = GetMapChip(
+        static_cast<std::size_t>(toX), static_cast<std::size_t>(toZ));
+    if (destination == MapChipType::Void || destination == MapChipType::BananaTree ||
+        destination == MapChipType::Station || destination == MapChipType::Resource) {
+        return false;
+    }
+    return true;
 }
 
 bool GameComponents::MapGeneratorComponent::SetMapChip(
