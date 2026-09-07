@@ -23,6 +23,7 @@ namespace GameComponents
 
         extern CoreEngine::CVar<float> InitialStamina;
         extern CoreEngine::CVar<float> MaximumStamina;
+        extern CoreEngine::CVar<bool> GameOverAtZeroStamina;
         extern CoreEngine::CVar<float> BananaRecovery;
         extern CoreEngine::CVar<float> AdditionalMonkeyCostRate;
         extern CoreEngine::CVar<float> RailStaminaCost;

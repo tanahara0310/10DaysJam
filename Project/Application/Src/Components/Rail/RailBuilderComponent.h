@@ -77,14 +77,13 @@ namespace GameComponents
         bool TryUndoLastRail();
         // キュー先頭の岩へ投石を開始する
         void StartNextRockThrow();
-        // 投石の着弾時に岩を地面へ変えてからレールを置き、カーソルを通常位置へ戻す
+        // 投石の着弾時に岩を地面へ変え、カーソルを通常位置へ戻す
         void CompleteRockBreak();
         void NotifyStaminaInsufficient();
 
         struct RockBreakRequest {
             int32_t gridX = 0;
             int32_t gridZ = 0;
-            float refundableRailCost = 0.0f;
         };
 
         CoreEngine::TransformComponent* transform_ = nullptr;
