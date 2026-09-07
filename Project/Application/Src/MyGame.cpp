@@ -4,6 +4,7 @@
 #include <EngineSystem/Startup/StartupSequence.h>
 #include "WinApp/WinApp.h"
 #include "Scene/SceneSaveSystem.h"
+#include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Utility/Logger/Logger.h"
 
@@ -68,6 +69,12 @@ void MyGame::CreateSceneManager()
     sceneManager_ = std::make_unique<CoreEngine::SceneManager>();
     sceneManager_->Initialize(GetEngineSystem());
     GetEngineSystem()->SetSceneManager(sceneManager_.get());
+
+    // ローディング画面をこのゲーム用（トロッコが走るもの）へ差し替える。
+    // 既定はエンジン汎用のスピナーで、ここを消せばそちらへ戻る
+    if (auto* transition = sceneManager_->GetTransition()) {
+        transition->SetLoadingScreen(CoreEngine::PostEffectNames::TrolleyLoading);
+    }
 
     // 全シーンを登録（アプリ層で実装）
     sceneManager_->RegisterScene<TitleScene::TitleScene>("TitleScene");

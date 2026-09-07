@@ -538,6 +538,9 @@
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\LoadingScreen</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.cpp">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.cpp">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\GrayScale</Filter>
     </ClCompile>
@@ -1841,6 +1844,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\LoadingScreen</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ILoadingScreenEffect.h">
+      <Filter>Engine\Src\Graphics\PostEffect\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h">
       <Filter>Engine\Src\Graphics\PostEffect\Effect\GrayScale</Filter>
@@ -3468,6 +3477,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen">
       <UniqueIdentifier>{F950BA10-90C3-493E-9215-681967104428}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading">
+      <UniqueIdentifier>{05D9058A-4B44-40BF-9440-8E3F20757549}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure">
       <UniqueIdentifier>{C50EA85E-4E02-42E4-886D-F92DE8DDDAB0}</UniqueIdentifier>
