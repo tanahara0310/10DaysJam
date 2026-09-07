@@ -10,13 +10,13 @@
                     0.0
                 ],
                 "scale": [
-                    1.0,
-                    1.0,
-                    1.0
+                    0.625,
+                    0.625,
+                    0.625
                 ],
                 "translate": [
                     3.0,
-                    0.0,
+                    0.625,
                     4.0
                 ]
             },
@@ -38,7 +38,6 @@
                 "speedIncreaseIntervalBlocks": 20,
                 "stationSlowdownDuration": 2.0,
                 "stationSlowdownMultiplier": 0.5,
-                "trainHeight": 1.0,
                 "version": 2
             },
             "type": "TrainMovement"

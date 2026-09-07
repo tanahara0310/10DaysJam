@@ -80,9 +80,9 @@
     "r.Atmosphere.SkyAmbientScale": 0.5099999904632568,
     "r.AtmosphereLights.MoonAtmosphereIntensity": 0.0013000000035390258,
     "r.AtmosphereLights.MoonDirection": [
-        -0.40319395065307617,
-        0.5758208632469177,
-        0.7112418413162231
+        -0.5078627467155457,
+        0.7253034114837646,
+        0.464769184589386
     ],
     "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
     "r.AtmosphereLights.SunDirection": [
@@ -105,26 +105,6 @@
     "r.Cloud.WindDirX": -0.01745235174894333,
     "r.Cloud.WindDirZ": 0.9998477101325989,
     "r.Cloud.WindSpeed": 100.0,
-    "r.Fog.Color": [
-        0.8500000238418579,
-        0.8999999761581421,
-        0.9800000190734863,
-        1.0
-    ],
-    "r.Fog.ColorIntensity": 1.2000000476837158,
-    "r.Fog.Density": 1.0,
-    "r.Fog.Enabled": true,
-    "r.Fog.HeightFalloff": 4.0,
-    "r.Fog.HeightRef": -0.5,
-    "r.Fog.SkyColorBlend": 0.0,
-    "r.Fog.SunScatteringExponent": 8.0,
-    "r.Fog.SunScatteringGain": 1.600000023841858,
-    "r.Fog.SunTint": [
-        1.0,
-        0.949999988079071,
-        0.8600000143051147,
-        1.0
-    ],
     "r.LensFlare.Enabled": false,
     "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
     "r.RTShadow.MaxRayDistance": 2682.326904296875,

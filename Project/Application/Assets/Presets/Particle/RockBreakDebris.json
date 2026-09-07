@@ -101,7 +101,7 @@
     },
     "collision": {
         "enabled": true,
-        "planeHeight": 0.46,
+        "planeHeight": 0.5,
         "contactOffset": 0.12,
         "bounce": 0.35,
         "friction": 3.5,

@@ -26,37 +26,7 @@
             "enabled": true,
             "parameters": {
                 "gridSize": 1.0,
-                "groundHeight": -0.5,
-                "groundScale": [
-                    0.6000000238418579,
-                    0.6000000238418579,
-                    0.6000000238418579
-                ],
-                "rockHeight": 0.699999988079071,
-                "rockScale": [
-                    0.699999988079071,
-                    0.699999988079071,
-                    0.699999988079071
-                ],
-                "bananaTreeHeight": 0.5,
-                "bananaTreeScale": [
-                    1.0,
-                    1.0,
-                    1.0
-                ],
-                "stationHeight": 0.699999988079071,
-                "stationScale": [
-                    0.5,
-                    0.5,
-                    0.5
-                ],
-                "viewDistanceX": 20,
-                "waterHeight": 0.0,
-                "waterScale": [
-                    1.0,
-                    0.30000001192092896,
-                    1.0
-                ]
+                "viewDistanceX": 20
             },
             "type": "MapView"
         }

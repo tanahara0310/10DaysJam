@@ -2,12 +2,16 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <vector>
 
 #include "MapChipData.h"
 
 namespace CoreEngine {
     class Camera;
+    class MsdfFont;
+    class Text3DObject;
 }
 
 namespace GameComponents {
@@ -28,6 +32,7 @@ namespace GameComponents
             ModelRenderPoolComponent* stationRenderPool,
             ModelRenderPoolComponent* rockRenderPool,
             ModelRenderPoolComponent* bananaTreeRenderPool,
+            ModelRenderPoolComponent* grassRenderPool,
             CoreEngine::Camera* viewCamera,
             float gridSize = 1.0f, uint32_t viewDistanceX = 30)
             : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
@@ -37,6 +42,7 @@ namespace GameComponents
             stationRenderPool_(stationRenderPool),
             rockRenderPool_(rockRenderPool),
             bananaTreeRenderPool_(bananaTreeRenderPool),
+            grassRenderPool_(grassRenderPool),
             viewCamera_(viewCamera) {}
 
         // コンポーネントを識別する名前。必須
@@ -56,6 +62,7 @@ namespace GameComponents
         void Start() override;
         // 毎フレーム呼ばれる
         void Update() override;
+        void OnDestroy() override;
 
         // ビューの中心X座標を設定する
         void SetViewCenterX(uint32_t centerX) { mapViewCenterX_ = centerX; }
@@ -63,20 +70,13 @@ namespace GameComponents
         void SetViewDistanceX(uint32_t distanceX) { viewDistanceX_ = distanceX; }
 
     private:
+        // 地形と同じ描画範囲で、5mごとの距離目盛りを表示・再利用する。
+        void UpdateDistanceMarkers(std::size_t startX, std::size_t endX);
+
         float gridSize_ = 1.0f;
 
         uint32_t mapViewCenterX_ = 0;
         uint32_t viewDistanceX_ = 30;
-        float groundHeight_ = -0.5f;
-        CoreEngine::Vector3 groundScale_ = { 0.6f, 0.6f, 0.6f };
-        float waterHeight_ = 0.0f;
-        CoreEngine::Vector3 waterScale_ = { 1.0f, 0.3f, 1.0f };
-        float stationHeight_ = 0.7f;
-        CoreEngine::Vector3 stationScale_ = { 0.5f, 0.5f, 0.5f };
-        float rockHeight_ = 0.7f;
-        CoreEngine::Vector3 rockScale_ = { 0.7f, 0.7f, 0.7f };
-        float bananaTreeHeight_ = 0.5f;
-        CoreEngine::Vector3 bananaTreeScale_ = { 1.0f, 1.0f, 1.0f };
 
         MapGeneratorComponent* mapGenerator_ = nullptr;
         ModelRenderPoolComponent* groundRenderPool_ = nullptr;
@@ -84,8 +84,12 @@ namespace GameComponents
         ModelRenderPoolComponent* stationRenderPool_ = nullptr;
         ModelRenderPoolComponent* rockRenderPool_ = nullptr;
         ModelRenderPoolComponent* bananaTreeRenderPool_ = nullptr;
+        ModelRenderPoolComponent* grassRenderPool_ = nullptr;
         // 描画範囲はゲーム視点カメラの位置から決める（構図は CameraRig が握る）
         CoreEngine::Camera* viewCamera_ = nullptr;
+
+        CoreEngine::MsdfFont* distanceMarkerFont_ = nullptr;
+        std::vector<CoreEngine::Text3DObject*> distanceMarkers_;
 
     };
 }

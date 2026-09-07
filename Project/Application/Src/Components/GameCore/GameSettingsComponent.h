@@ -5,7 +5,7 @@
 
 namespace GameComponents
 {
-    /// @brief GameScene の生成時に各コンポーネントへ渡す調整値。
+    /// @brief GameScene の生成時とゲームプレイ中に参照する調整値。
     /// @details CVarSettingsSection により CVars.json へ自動保存される。
     namespace GameSettings
     {
@@ -21,11 +21,20 @@ namespace GameComponents
         extern CoreEngine::CVar<int> BuilderStartZ;
         extern CoreEngine::CVar<float> TrainMoveSpeed;
 
+        extern CoreEngine::CVar<float> InitialStamina;
+        extern CoreEngine::CVar<float> MaximumStamina;
+        extern CoreEngine::CVar<float> BananaRecovery;
+        extern CoreEngine::CVar<float> AdditionalMonkeyCostRate;
+        extern CoreEngine::CVar<float> RailStaminaCost;
+        extern CoreEngine::CVar<float> RockStaminaCost;
+        extern CoreEngine::CVar<float> BridgeStaminaCost;
+
         extern CoreEngine::CVar<int> GroundPoolCapacity;
         extern CoreEngine::CVar<int> WaterPoolCapacity;
         extern CoreEngine::CVar<int> StationPoolCapacity;
         extern CoreEngine::CVar<int> RockPoolCapacity;
         extern CoreEngine::CVar<int> BananaTreePoolCapacity;
+        extern CoreEngine::CVar<int> GrassPoolCapacity;
         extern CoreEngine::CVar<int> BridgePoolCapacity;
         extern CoreEngine::CVar<int> RailPoolCapacity;
         extern CoreEngine::CVar<int> RailLeftPoolCapacity;

@@ -7,6 +7,7 @@
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/HungerComponent.h"
+#include "Components/Utility/BlockModelLayout.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -35,7 +36,6 @@ json GameComponents::TrainMovementComponent::OnSerialize() const {
         { "stationSlowdownDuration", stationSlowdownDuration_ },
         { "rockThrowJumpHeight", rockThrowJumpHeight_ },
         { "rockThrowJumpDuration", rockThrowJumpDuration_ },
-        { "trainHeight", trainHeight_ },
         { "requiredRailCount", requiredRailCount_ }
     };
 }
@@ -61,7 +61,6 @@ void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
         JsonManager::SafeGet<float>(j, "rockThrowJumpHeight", rockThrowJumpHeight_));
     rockThrowJumpDuration_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "rockThrowJumpDuration", rockThrowJumpDuration_));
-    trainHeight_ = JsonManager::SafeGet<float>(j, "trainHeight", trainHeight_);
     requiredRailCount_ = std::max<std::size_t>(1,
         JsonManager::SafeGet<std::size_t>(j, "requiredRailCount", requiredRailCount_));
     moveSpeed_ = std::max(initialMoveSpeed_, minMoveSpeed_);
@@ -95,7 +94,7 @@ bool GameComponents::TrainMovementComponent::DrawInspector() {
         "投石ジャンプ時間", &rockThrowJumpDuration_, 0.01f, 0.0f, 5.0f);
 
     ImGui::SeparatorText("配置");
-    changed |= ImGui::DragFloat("列車の高さ", &trainHeight_, 0.05f, -20.0f, 20.0f);
+    ImGui::TextDisabled("列車の接地高さ: %.3f", BlockModelLayout::GetRailTopHeight(gridSize_));
     int required = static_cast<int>(requiredRailCount_);
     if (ImGui::DragInt("発車に必要なレール数", &required, 1.0f, 1, 100)) {
         requiredRailCount_ = static_cast<std::size_t>(std::max(required, 1));
@@ -131,9 +130,15 @@ void GameComponents::TrainMovementComponent::Start() {
     }
 
     // 初期位置を TransformComponent に反映する
+    const float modelScale = BlockModelLayout::GetScale(gridSize_);
+    transform_->Get().scale = { modelScale, modelScale, modelScale };
     transform_->Get().translate.x = static_cast<float>(gridX_) * gridSize_;
-    transform_->Get().translate.y = trainHeight_;
+    transform_->Get().translate.y = BlockModelLayout::GetRailTopHeight(gridSize_);
     transform_->Get().translate.z = static_cast<float>(gridZ_) * gridSize_;
+    traveledCells_.clear();
+    traveledCells_.emplace_back(gridX_, gridZ_);
+    pendingStationSteps_.clear();
+    traveledBlockCount_ = 0;
 }
 
 void GameComponents::TrainMovementComponent::Update() {
@@ -143,10 +148,14 @@ void GameComponents::TrainMovementComponent::Update() {
 
     const float deltaTime = Time::DeltaTime();
     UpdateRockThrowJump(deltaTime);
+    const float modelScale = BlockModelLayout::GetScale(gridSize_);
+    transform_->Get().scale = { modelScale, modelScale, modelScale };
+    transform_->Get().translate.y =
+        BlockModelLayout::GetRailTopHeight(gridSize_) + GetRockThrowJumpOffset();
+    SyncCarriageTransforms();
 
     // 投石キューが空になるまでは移動せず、その場で投石ジャンプだけ再生する。
     if (isPausedForRockBreak_) {
-        transform_->Get().translate.y = trainHeight_ + GetRockThrowJumpOffset();
         return;
     }
 
@@ -212,10 +221,12 @@ void GameComponents::TrainMovementComponent::Update() {
 
         horizontalProgressBlocks_ = std::max(horizontalProgressBlocks_,
             static_cast<uint32_t>(std::max(0, gridX_ - initialGridX_)));
-        if (hunger_->OnTrainEnteredCell(gridX_, gridZ_)) {
+        const bool stationActivated = hunger_->OnTrainEnteredCell(gridX_, gridZ_);
+        if (stationActivated) {
             stationSlowdownRemaining_ = stationSlowdownDuration_;
             moveSpeed_ = minMoveSpeed_ * stationSlowdownMultiplier_;
         }
+        ProcessCarriageArrival(stationActivated);
 
         // 発車後に終端へ到着した時点でゲームオーバーにする。
         if (railPath_->GetUnconfirmedRailCount() == 0) {
@@ -231,7 +242,7 @@ void GameComponents::TrainMovementComponent::NotifyGameOver() {
 
     isGameOver_ = true;
     if (transform_) {
-        transform_->Get().translate.y = trainHeight_;
+        transform_->Get().translate.y = BlockModelLayout::GetRailTopHeight(gridSize_);
     }
     if (gameManager_) {
         gameManager_->RequestGameOver();
@@ -248,9 +259,28 @@ Vector3 GameComponents::TrainMovementComponent::GetWorldPosition() const {
     }
     return {
         static_cast<float>(gridX_) * gridSize_,
-        trainHeight_,
+        BlockModelLayout::GetRailTopHeight(gridSize_),
         static_cast<float>(gridZ_) * gridSize_
     };
+}
+
+float GameComponents::TrainMovementComponent::GetCursorHeightOffsetAt(
+    float worldX, float worldZ) const {
+    float heightOffset = 0.0f;
+    const auto considerVehicle = [&](const Vector3& position) {
+        // マス間の移動中も、矢印と車両の幅が重なる範囲では高く保つ。
+        if (std::abs(position.x - worldX) < gridSize_ &&
+            std::abs(position.z - worldZ) < gridSize_) {
+            const float jumpOffset = std::max(
+                0.0f, position.y - BlockModelLayout::GetRailTopHeight(gridSize_));
+            heightOffset = std::max(heightOffset, gridSize_ + jumpOffset);
+        }
+    };
+    considerVehicle(GetWorldPosition());
+    for (const auto* carriage : carriageTransforms_) {
+        considerVehicle(carriage->Get().translate);
+    }
+    return heightOffset;
 }
 
 void GameComponents::TrainMovementComponent::SetGridSize(float size) {
@@ -300,7 +330,70 @@ void GameComponents::TrainMovementComponent::SyncTransformToProgress() {
     transform_->Get().translate.z =
         startZ + (destinationZ - startZ) * movementProgress_;
 
-    transform_->Get().translate.y = trainHeight_ + GetRockThrowJumpOffset();
+    transform_->Get().translate.y =
+        BlockModelLayout::GetRailTopHeight(gridSize_) + GetRockThrowJumpOffset();
+    SyncCarriageTransforms();
+}
+
+void GameComponents::TrainMovementComponent::AddCarriage(TransformComponent* carriageTransform) {
+    if (!carriageTransform || traveledCells_.size() < carriageTransforms_.size() + 2) {
+        return;
+    }
+    carriageTransforms_.push_back(carriageTransform);
+    SyncCarriageTransforms();
+}
+
+void GameComponents::TrainMovementComponent::ProcessCarriageArrival(bool stationActivated) {
+    ++traveledBlockCount_;
+    traveledCells_.emplace_back(gridX_, gridZ_);
+    // 先頭と同じ進捗で各車両もマス中央に到着する。経路上の到着マスで回復を判定する。
+    for (std::size_t index = 0; index < carriageTransforms_.size(); ++index) {
+        const std::size_t offset = index + 1;
+        if (traveledCells_.size() <= offset) {
+            break;
+        }
+        const auto& [carriageX, carriageZ] = traveledCells_[traveledCells_.size() - 1 - offset];
+        hunger_->OnMonkeyEnteredCell(offset, carriageX, carriageZ);
+    }
+    if (stationActivated) {
+        pendingStationSteps_.push_back(traveledBlockCount_);
+    }
+
+    // 最後尾は先頭から後続車両数だけ遅れている。駅の次の中央へ着くまで待つ。
+    // 連続する駅でも、先の駅で増えた車両を含めた最後尾で毎回判定する。
+    while (!pendingStationSteps_.empty() &&
+        traveledBlockCount_ - pendingStationSteps_.front() >= carriageTransforms_.size() + 1) {
+        pendingStationSteps_.pop_front();
+        hunger_->AddMonkey();
+    }
+
+    // 次の連結用に最後尾の1マス後ろまで残し、走行距離に比例して履歴を増やさない。
+    while (traveledCells_.size() > carriageTransforms_.size() + 2) {
+        traveledCells_.pop_front();
+    }
+    SyncCarriageTransforms();
+}
+
+void GameComponents::TrainMovementComponent::SyncCarriageTransforms() {
+    const float modelScale = BlockModelLayout::GetScale(gridSize_);
+    for (std::size_t index = 0; index < carriageTransforms_.size(); ++index) {
+        const std::size_t offset = index + 1;
+        if (traveledCells_.size() <= offset) {
+            break;
+        }
+        const std::size_t cellIndex = traveledCells_.size() - 1 - offset;
+        const auto& [startX, startZ] = traveledCells_[cellIndex];
+        const auto& [endX, endZ] = traveledCells_[cellIndex + 1];
+        auto& carriage = carriageTransforms_[index]->Get();
+        carriage.scale = { modelScale, modelScale, modelScale };
+        carriage.translate = {
+            (static_cast<float>(startX) + static_cast<float>(endX - startX) * movementProgress_) * gridSize_,
+            BlockModelLayout::GetRailTopHeight(gridSize_),
+            (static_cast<float>(startZ) + static_cast<float>(endZ - startZ) * movementProgress_) * gridSize_
+        };
+        carriage.rotate.y = std::atan2(
+            static_cast<float>(endX - startX), static_cast<float>(endZ - startZ));
+    }
 }
 
 void GameComponents::TrainMovementComponent::PlayRockThrowJump() {

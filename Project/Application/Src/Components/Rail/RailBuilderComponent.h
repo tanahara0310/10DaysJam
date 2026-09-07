@@ -61,6 +61,8 @@ namespace GameComponents
         void Start() override;
         // 毎フレーム呼ばれる
         void Update() override;
+        // 全車両の移動後に、矢印が重ならない高さへ更新する。
+        void LateUpdate() override;
 
         // グリッドサイズを設定する
         void SetGridSize(float size);
@@ -75,13 +77,14 @@ namespace GameComponents
         bool TryUndoLastRail();
         // キュー先頭の岩へ投石を開始する
         void StartNextRockThrow();
-        // 投石の着弾時に岩を地面へ変え、カーソルを通常位置へ戻す
+        // 投石の着弾時に岩を地面へ変えてからレールを置き、カーソルを通常位置へ戻す
         void CompleteRockBreak();
         void NotifyStaminaInsufficient();
 
         struct RockBreakRequest {
             int32_t gridX = 0;
             int32_t gridZ = 0;
+            float refundableRailCost = 0.0f;
         };
 
         CoreEngine::TransformComponent* transform_ = nullptr;
@@ -119,9 +122,6 @@ namespace GameComponents
         float rockCursorHeightOffset_ = 1.0f;
         float rockThrowStartHeight_ = 0.5f;
         float rockImpactHeight_ = 0.7f;
-        float railStaminaCost_ = 2.0f;
-        float rockStaminaCost_ = 20.0f;
-        float bridgeStaminaCost_ = 5.0f;
         bool isBreakingRock_ = false;
         bool isCursorAboveRock_ = false;
         std::deque<RockBreakRequest> rockBreakQueue_;
