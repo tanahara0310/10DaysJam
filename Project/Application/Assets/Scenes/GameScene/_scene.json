@@ -5,6 +5,9 @@
         "WaterPoolManager",
         "StationPoolManager",
         "RockPoolManager",
+        "BananaTreePoolManager",
+        "GrassPoolManager",
+        "BridgePoolManager",
         "RailPoolManager",
         "RailLeftPoolManager",
         "RailRightPoolManager",
@@ -13,7 +16,10 @@
         "RailView",
         "RailBuilder",
         "Train",
+        "RockProjectile",
         "Monkey",
-        "MapRenderer"
+        "CameraSettings",
+        "MapRenderer",
+        "UIText_0"
     ]
 }

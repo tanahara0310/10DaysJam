@@ -28,12 +28,9 @@ json GameComponents::TrainMovementComponent::OnSerialize() const {
         { "initialMoveSpeed", initialMoveSpeed_ },
         { "initialGridX", initialGridX_ },
         { "initialGridZ", initialGridZ_ },
-        { "minMoveSpeed", minMoveSpeed_ },
-        { "speedIncreaseIntervalBlocks", speedIncreaseIntervalBlocks_ },
-        { "speedIncreaseAmount", speedIncreaseAmount_ },
+        { "minimumSpeedIncreasePerRail", minimumSpeedIncreasePerRail_ },
+        { "acceleration", acceleration_ },
         { "maximumMoveSpeed", maximumMoveSpeed_ },
-        { "stationSlowdownMultiplier", stationSlowdownMultiplier_ },
-        { "stationSlowdownDuration", stationSlowdownDuration_ },
         { "rockThrowJumpHeight", rockThrowJumpHeight_ },
         { "rockThrowJumpDuration", rockThrowJumpDuration_ },
         { "requiredRailCount", requiredRailCount_ }
@@ -45,25 +42,21 @@ void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
     initialMoveSpeed_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "initialMoveSpeed", initialMoveSpeed_));
     initialGridX_ = std::max(0, JsonManager::SafeGet<int32_t>(j, "initialGridX", initialGridX_));
     initialGridZ_ = std::max(0, JsonManager::SafeGet<int32_t>(j, "initialGridZ", initialGridZ_));
-    minMoveSpeed_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "minMoveSpeed", minMoveSpeed_));
-    speedIncreaseIntervalBlocks_ = std::max<std::size_t>(1,
-        JsonManager::SafeGet<std::size_t>(j, "speedIncreaseIntervalBlocks", speedIncreaseIntervalBlocks_));
-    speedIncreaseAmount_ = std::max(0.0f,
-        JsonManager::SafeGet<float>(j, "speedIncreaseAmount", speedIncreaseAmount_));
+    minimumSpeedIncreasePerRail_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "minimumSpeedIncreasePerRail", minimumSpeedIncreasePerRail_));
+    acceleration_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "acceleration", acceleration_));
     maximumMoveSpeed_ = std::max(initialMoveSpeed_,
         JsonManager::SafeGet<float>(j, "maximumMoveSpeed", maximumMoveSpeed_));
-    stationSlowdownMultiplier_ = std::clamp(
-        JsonManager::SafeGet<float>(j, "stationSlowdownMultiplier", stationSlowdownMultiplier_),
-        0.0f, 1.0f);
-    stationSlowdownDuration_ = std::max(0.0f,
-        JsonManager::SafeGet<float>(j, "stationSlowdownDuration", stationSlowdownDuration_));
     rockThrowJumpHeight_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "rockThrowJumpHeight", rockThrowJumpHeight_));
     rockThrowJumpDuration_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "rockThrowJumpDuration", rockThrowJumpDuration_));
     requiredRailCount_ = std::max<std::size_t>(1,
         JsonManager::SafeGet<std::size_t>(j, "requiredRailCount", requiredRailCount_));
-    moveSpeed_ = std::max(initialMoveSpeed_, minMoveSpeed_);
+    // 最低速度は敷設レール数から毎フレーム再計算するため、読込直後は基準値に戻す。
+    minMoveSpeed_ = initialMoveSpeed_;
+    moveSpeed_ = initialMoveSpeed_;
     gridX_ = initialGridX_;
     gridZ_ = initialGridZ_;
 }
@@ -74,20 +67,18 @@ bool GameComponents::TrainMovementComponent::DrawInspector() {
 
     ImGui::SeparatorText("走行");
     changed |= ImGui::DragFloat("グリッドサイズ", &gridSize_, 0.05f, 0.01f, 20.0f);
-    if (ImGui::DragFloat("初期速度", &initialMoveSpeed_, 0.01f, 0.0f, 20.0f)) {
-        moveSpeed_ = std::max(initialMoveSpeed_, minMoveSpeed_);
+    if (ImGui::DragFloat("基準最低速度（初期・駅リセット）", &initialMoveSpeed_, 0.01f, 0.0f, 20.0f)) {
+        maximumMoveSpeed_ = std::max(maximumMoveSpeed_, initialMoveSpeed_);
+        moveSpeed_ = std::max(moveSpeed_, initialMoveSpeed_);
         changed = true;
     }
-    changed |= ImGui::DragFloat("最低速度", &minMoveSpeed_, 0.01f, 0.0f, 20.0f);
-    int speedInterval = static_cast<int>(speedIncreaseIntervalBlocks_);
-    if (ImGui::DragInt("速度上昇間隔（ブロック）", &speedInterval, 1.0f, 1, 1000)) {
-        speedIncreaseIntervalBlocks_ = static_cast<std::size_t>(std::max(speedInterval, 1));
-        changed = true;
-    }
-    changed |= ImGui::DragFloat("段階ごとの速度上昇量", &speedIncreaseAmount_, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat(
+        "最低速度の増加量（レール1マス）", &minimumSpeedIncreasePerRail_, 0.001f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("加速度（速度/秒）", &acceleration_, 0.01f, 0.0f, 20.0f);
     changed |= ImGui::DragFloat("最高速度", &maximumMoveSpeed_, 0.01f, 0.01f, 100.0f);
-    changed |= ImGui::SliderFloat("駅減速倍率", &stationSlowdownMultiplier_, 0.0f, 1.0f);
-    changed |= ImGui::DragFloat("駅減速時間", &stationSlowdownDuration_, 0.05f, 0.0f, 30.0f);
+    maximumMoveSpeed_ = std::max(maximumMoveSpeed_, initialMoveSpeed_);
+    moveSpeed_ = std::min(moveSpeed_, maximumMoveSpeed_);
+    ImGui::TextDisabled("現在の最低速度: %.3f", minMoveSpeed_);
     changed |= ImGui::DragFloat(
         "投石ジャンプ高さ", &rockThrowJumpHeight_, 0.05f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat(
@@ -171,15 +162,14 @@ void GameComponents::TrainMovementComponent::Update() {
         return;
     }
 
-    const int32_t extendedBlocks = std::max(
-        0, railPath_->GetFurthestRailX() - initialGridX_);
+    const std::size_t laidRailCount = railPath_->GetLaidRailCount();
     const float dynamicMinimum = initialMoveSpeed_ +
-        static_cast<float>(extendedBlocks / static_cast<int32_t>(speedIncreaseIntervalBlocks_)) *
-        speedIncreaseAmount_;
+        static_cast<float>(laidRailCount) * minimumSpeedIncreasePerRail_;
     minMoveSpeed_ = std::min(dynamicMinimum, maximumMoveSpeed_);
-    stationSlowdownRemaining_ = std::max(0.0f, stationSlowdownRemaining_ - deltaTime);
-    moveSpeed_ = minMoveSpeed_ *
-        (stationSlowdownRemaining_ > 0.0f ? stationSlowdownMultiplier_ : 1.0f);
+    // 駅で最低速度へ戻した後、毎秒の加速度で最高速度まで徐々に加速する。
+    moveSpeed_ = std::clamp(
+        moveSpeed_ + acceleration_ * deltaTime,
+        minMoveSpeed_, maximumMoveSpeed_);
 
     // 移動量を計算する前に進行方向を確定し、曲がり角なら減速を反映する。
     if (!isMoving_ && !BeginNextSegment()) {
@@ -223,8 +213,8 @@ void GameComponents::TrainMovementComponent::Update() {
             static_cast<uint32_t>(std::max(0, gridX_ - initialGridX_)));
         const bool stationActivated = hunger_->OnTrainEnteredCell(gridX_, gridZ_);
         if (stationActivated) {
-            stationSlowdownRemaining_ = stationSlowdownDuration_;
-            moveSpeed_ = minMoveSpeed_ * stationSlowdownMultiplier_;
+            // 駅では一時減速せず、現在の最低速度を次の加速の開始速度にする。
+            moveSpeed_ = minMoveSpeed_;
         }
         ProcessCarriageArrival(stationActivated);
 

@@ -98,7 +98,7 @@ namespace GameComponents
         HungerComponent* hunger_ = nullptr;
         float gridSize_ = 5.0f;
 
-        float initialMoveSpeed_ = 0.5f;
+        float initialMoveSpeed_ = 0.5f; // 基準最低速度（初期速度・駅到着時のリセット速度）
         float moveSpeed_ = 0.5f; // 移動速度（グリッド単位/秒）
         int32_t initialGridX_ = 0;
         int32_t initialGridZ_ = 0;
@@ -122,13 +122,10 @@ namespace GameComponents
         bool isGameOver_ = false;
         bool isPausedForRockBreak_ = false;
 
-        float minMoveSpeed_ = 0.5f; // 最低移動速度
-        std::size_t speedIncreaseIntervalBlocks_ = 20;
-        float speedIncreaseAmount_ = 0.25f;
+        float minMoveSpeed_ = 0.5f; // 線路長から計算された現在の最低移動速度
+        float minimumSpeedIncreasePerRail_ = 0.05f; // レール1マスあたりの最低速度増加量
+        float acceleration_ = 0.5f; // 毎秒の加速度（速度/秒）
         float maximumMoveSpeed_ = 8.0f;
-        float stationSlowdownMultiplier_ = 0.5f;
-        float stationSlowdownDuration_ = 2.0f;
-        float stationSlowdownRemaining_ = 0.0f;
         std::size_t requiredRailCount_ = 5;
     };
 }

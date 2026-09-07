@@ -61,7 +61,9 @@ namespace GameComponents
         std::vector<std::pair<int32_t, int32_t>>& GetRailMap();
         // Z方向のマップサイズを取得する。X正方向には上限を設けない
         uint32_t GetMapSizeZ() const;
-        int32_t GetFurthestRailX() const;
+        // 初期位置を除いた、現在までに敷設されたレールの長さを取得する。
+        // 確定済みレールと未確定レールの両方を含む。
+        std::size_t GetLaidRailCount() const;
 
         // Undoスタックを取得する
         const std::vector<std::pair<int32_t, int32_t>>& GetRailUndoStack() const;

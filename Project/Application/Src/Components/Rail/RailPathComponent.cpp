@@ -175,15 +175,10 @@ uint32_t GameComponents::RailPathComponent::GetMapSizeZ() const {
     return mapSizeZ_;
 }
 
-int32_t GameComponents::RailPathComponent::GetFurthestRailX() const {
-    int32_t furthest = static_cast<int32_t>(startX_);
-    for (const auto& rail : railMap_) {
-        furthest = std::max(furthest, rail.first);
-    }
-    for (const auto& rail : railUndoStack_) {
-        furthest = std::max(furthest, rail.first);
-    }
-    return furthest;
+std::size_t GameComponents::RailPathComponent::GetLaidRailCount() const {
+    // railMap_ には列車の初期位置も含まれるため、長さとしては除外する。
+    const std::size_t railCount = railMap_.size() + railUndoStack_.size();
+    return railCount > 0 ? railCount - 1 : 0;
 }
 
 const std::vector<std::pair<int32_t, int32_t>>&

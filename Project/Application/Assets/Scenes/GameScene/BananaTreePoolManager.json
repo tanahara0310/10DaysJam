@@ -25,11 +25,12 @@
         {
             "enabled": true,
             "parameters": {
-                "gridSize": 1.0,
-                "viewDistanceX": 20
+                "allowGrowth": true,
+                "hasColorOverride": false,
+                "initialCapacity": 50
             },
-            "type": "MapView"
+            "type": "ModelRenderPool"
         }
     ],
-    "name": "MapRenderer"
+    "name": "BananaTreePoolManager"
 }
