@@ -53,6 +53,9 @@ namespace GameComponents::GameSettings
         "Game.Stamina.Maximum", 100.0f,
         "全サル共通のスタミナ上限（現在値は上限を超えない範囲に制限）",
         CoreEngine::CVarRange{ 0.01f, 10000.0f } };
+    CoreEngine::CVar<bool> GameOverAtZeroStamina{
+        "Game.Stamina.GameOverAtZero", false,
+        "スタミナが0になったときにゲームオーバーにする" };
     CoreEngine::CVar<float> BananaRecovery{
         "Game.Stamina.BananaRecovery", 20.0f,
         "サル1匹がバナナの木の隣を通ったときの共通スタミナ回復量（木1本あたり）",

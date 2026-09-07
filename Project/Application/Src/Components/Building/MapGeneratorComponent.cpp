@@ -380,7 +380,7 @@ bool GameComponents::MapGeneratorComponent::CanConnectRail(
     const MapChipType destination = GetMapChip(
         static_cast<std::size_t>(toX), static_cast<std::size_t>(toZ));
     if (destination == MapChipType::Void || destination == MapChipType::BananaTree ||
-        destination == MapChipType::Station || destination == MapChipType::Resource) {
+        destination == MapChipType::Station) {
         return false;
     }
     return true;

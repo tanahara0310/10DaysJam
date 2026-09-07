@@ -147,11 +147,6 @@ void GameComponents::RailBuilderComponent::Update() {
         modelScale };
     transform_->Get().rotate.y = timer_ * rotationSpeed_;
 
-    // 岩のマスにはまだレールがない。着弾まで次の敷設・Undoを待ち、経路の欠落を防ぐ。
-    if (isBreakingRock_) {
-        return;
-    }
-
     // ゲームオブジェクトのオーナーからエンジンシステムを取得し、入力マネージャーを取得する
     GameObject* owner = GetOwner();
     EngineSystem* engine =
@@ -315,9 +310,9 @@ void GameComponents::RailBuilderComponent::Update() {
     const MapChipType mapChip = mapGenerator_->GetMapChip(
         static_cast<std::size_t>(nextX), static_cast<std::size_t>(nextZ));
 
-    // 岩への入力は破壊命令として受け付ける。レールの接続は地面になってから行う。
+    // 駅本体・空白などの建設不可マスを除き、岩にも即時にレールを敷設する。
     const bool isRock = mapChip == MapChipType::Resource;
-    if (!isRock && !mapGenerator_->CanConnectRail(gridPosX_, gridPosZ_, nextX, nextZ)) {
+    if (!mapGenerator_->CanConnectRail(gridPosX_, gridPosZ_, nextX, nextZ)) {
         Logger::GetInstance().Infof(
             LogCategory::Game,
             "RailBuilder: このマス・方向にはレールを接続できません ({}, {})",
@@ -351,8 +346,8 @@ void GameComponents::RailBuilderComponent::Update() {
     const float refundableCost = isRock
         ? hunger_->CalculateActionCost(railCost)
         : staminaCost;
-    // 岩のレールは破壊完了まで予約だけにし、表示・走行・Undoの経路へ入れない。
-    if (!isRock && !railPath_->PlaceRail(nextX, nextZ, refundableCost)) {
+    // 岩を壊し始める時点で、通常のレールと同じく走行経路へ登録する。
+    if (!railPath_->PlaceRail(nextX, nextZ, refundableCost)) {
         // PlaceRail が失敗した場合は、先に消費したスタミナを戻す。
         hunger_->AddStamina(staminaCost);
         return;
@@ -367,7 +362,7 @@ void GameComponents::RailBuilderComponent::Update() {
         const bool wasBreakingRock = isBreakingRock_;
         isBreakingRock_ = true;
         isCursorAboveRock_ = true;
-        rockBreakQueue_.push_back({ gridPosX_, gridPosZ_, refundableCost });
+        rockBreakQueue_.push_back({ gridPosX_, gridPosZ_ });
         if (!wasBreakingRock) {
             trainMovement_->SetRockBreakPaused(true);
         }
@@ -454,25 +449,10 @@ void GameComponents::RailBuilderComponent::CompleteRockBreak() {
 
     const RockBreakRequest completed = rockBreakQueue_.front();
     rockBreakQueue_.pop_front();
-    const bool rockBroken = mapGenerator_->SetMapChip(
+    mapGenerator_->SetMapChip(
         static_cast<std::size_t>(completed.gridX),
         static_cast<std::size_t>(completed.gridZ),
         MapChipType::Ground);
-
-    // 破壊済みの地面に初めてレールを登録する。予約時に支払った分を再消費しない。
-    if (!rockBroken || !railPath_->PlaceRail(
-            completed.gridX, completed.gridZ, completed.refundableRailCost)) {
-        hunger_->AddStamina(completed.refundableRailCost);
-        const auto& pendingRails = railPath_->GetRailUndoStack();
-        const auto previousRail = pendingRails.empty()
-            ? railPath_->GetRailMap().back() : pendingRails.back();
-        gridPosX_ = previousRail.first;
-        gridPosZ_ = previousRail.second;
-        Logger::GetInstance().Errorf(
-            LogCategory::Game,
-            "RailBuilder: 岩破壊後のレールを設置できませんでした ({}, {})",
-            completed.gridX, completed.gridZ);
-    }
 
     // 岩が砕けた瞬間にカメラを揺らす。強さは Game.CameraShake.RockBreak.* で調整する。
     RockBreakShakeSettingsComponent::PlayRockBreak();

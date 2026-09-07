@@ -167,7 +167,7 @@ bool GameComponents::HungerComponent::TryConsumeStamina(float amount)
         "スタミナを消費しました (消費量={}, 現在値={})",
         amount, currentHunger_);
 
-    if (currentHunger_ <= 0.0f) {
+    if (currentHunger_ <= 0.0f && GameSettings::GameOverAtZeroStamina.Get()) {
         gameOverRequested_ = true;
         gameManager_->RequestGameOver();
     }
