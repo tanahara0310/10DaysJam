@@ -110,6 +110,18 @@
     "fov": 3.0,
     "mode": 1
   },
+  "follow": {
+    "weight": [
+      1.0,
+      0.0,
+      0.0
+    ],
+    "anchor": [
+      0.0,
+      0.8,
+      5.1
+    ]
+  },
   "lens": {
     "mode": 2,
     "distanceSource": 0,
