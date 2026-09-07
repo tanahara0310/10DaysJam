@@ -337,7 +337,9 @@ void GameComponents::RailBuilderComponent::Update() {
         baseCost += std::max(0.0f, GameSettings::RockStaminaCost.Get());
     }
     const float staminaCost = hunger_->CalculateActionCost(baseCost);
-    if (hunger_->GetCurrentHunger() < staminaCost) {
+    // スタミナの消費をレール登録より先に行う。これにより、通常レールも
+    // 岩・橋と同じく、スタミナ不足時は失敗音を鳴らして何も敷設しない。
+    if (!hunger_->TryConsumeStamina(staminaCost)) {
         Logger::GetInstance().Warnf(
             LogCategory::Game,
             "RailBuilder: スタミナ不足です (必要={}, 現在={})",
@@ -346,21 +348,17 @@ void GameComponents::RailBuilderComponent::Update() {
         return;
     }
 
-    OnBuildSE_();
     const float refundableCost = isRock
         ? hunger_->CalculateActionCost(railCost)
         : staminaCost;
     // 岩のレールは破壊完了まで予約だけにし、表示・走行・Undoの経路へ入れない。
     if (!isRock && !railPath_->PlaceRail(nextX, nextZ, refundableCost)) {
+        // PlaceRail が失敗した場合は、先に消費したスタミナを戻す。
+        hunger_->AddStamina(staminaCost);
         return;
     }
-    if (!hunger_->TryConsumeStamina(staminaCost)) {
-        if (!isRock) {
-            railPath_->UndoLastRailPlacement();
-        }
-        NotifyStaminaInsufficient();
-        return;
-    }
+
+    OnBuildSE_();
 
     gridPosX_ = nextX;
     gridPosZ_ = nextZ;
