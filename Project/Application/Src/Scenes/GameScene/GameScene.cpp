@@ -9,10 +9,9 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
 #include "SkyFogFeature.h"
+#include "SpeedGaugeFeature.h"
 #include "StageLightsFeature.h"
 #include "StaminaGaugeFeature.h"
-#include "Text/FontManager.h"
-#include "UI/UIText.h"
 #include "Utility/Logger/Logger.h"
 
 #include "Components/Utility/ModelRenderPoolComponent.h"
@@ -26,7 +25,6 @@
 #include "Components/Rail/RailViewComponent.h"
 #include "Components/Train/SpawnPopComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
-#include "Components/UI/HungerUIComponent.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/GameResultData.h"
@@ -69,6 +67,9 @@ void GameScene::GameScene::OnInitialize() {
     // スタミナをバナナの粒で見せる HUD ゲージ。
     // 位置・粒あたりのスタミナ量は「ゲーム設定」の Game.StaminaGauge.* から調整する。
     AddFeature(GameComponents::CreateStaminaGaugeFeature());
+    // トロッコの速さを km/h のオドメーターで見せる HUD。
+    // 位置・1 マスの実距離は「ゲーム設定」の Game.SpeedGauge.* から調整する。
+    AddFeature(GameComponents::CreateSpeedGaugeFeature());
 
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
@@ -275,7 +276,7 @@ void GameScene::GameScene::OnInitialize() {
     auto* rockThrow = rockProjectile->AddComponent<GameComponents::RockThrowComponent>();
 
     // 列車の描画は、列車の移動ロジックを持つコンポーネントとは別のコンポーネントで行う。
-    auto* railBuilderComponent = railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
+    railBuilder->AddComponent<GameComponents::RailBuilderComponent>(
         gridSize, initialBuilderPosX, initialBuilderPosZ,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
@@ -369,41 +370,6 @@ void GameScene::GameScene::OnInitialize() {
         [mapView](int32_t stationX, int32_t stationZ) {
             mapView->PlayStationPop(stationX, stationZ);
         });
-
-    // スタミナ・進行ブロック数・サル数を画面左上へ表示するHUD
-    auto* fontManager = engine_->GetService<CoreEngine::FontManager>();
-    if (fontManager) {
-        CoreEngine::MsdfFontDesc fontDesc;
-        fontDesc.filePath = L"Engine/Assets/font/851Gkktt_005.ttf";
-        fontDesc.systemFamilyNames = {
-            L"Yu Gothic UI", L"Meiryo", L"Segoe UI"
-        };
-        fontDesc.charsetUtf8 = "スタミナ進行ブロックサル: 0123456789";
-
-        if (auto* font = fontManager->Acquire(fontDesc)) {
-            auto* hungerText = CreateObject<CoreEngine::UIText>();
-            hungerText->Initialize(font, "スタミナ: 100", "StaminaText");
-            hungerText->SetAnchor(CoreEngine::UIAnchor::TopLeft);
-            auto hungerPosition = GameComponents::GameSettings::HudPosition.Get();
-            hungerText->SetAnchoredPosition(hungerPosition);
-            hungerText->SetPivot({ 0.0f, 0.0f });
-            hungerText->SetFontSize(GameComponents::GameSettings::HudFontSize.Get());
-            hungerText->SetColor(GameComponents::GameSettings::HudColor.Get());
-            hungerText->SetOutline(
-                GameComponents::GameSettings::HudOutlineColor.Get(),
-                GameComponents::GameSettings::HudOutlineWidth.Get());
-            hungerText->SetSortOrder(GameComponents::GameSettings::HudSortOrder.Get());
-            auto* hungerUi = hungerText->AddComponent<GameComponents::HungerUIComponent>(
-                hungerComponent,
-                train->GetComponent<GameComponents::TrainMovementComponent>());
-            railBuilderComponent->SetInsufficientFeedback(
-                [hungerUi]() { hungerUi->PlayInsufficientShake(); });
-        }
-    } else {
-        CoreEngine::Logger::GetInstance().Errorf(
-            CoreEngine::LogCategory::Game,
-            "GameScene: FontManager が取得できないためHUDを生成できません");
-    }
 }
 
 void GameScene::GameScene::OnUpdate() {

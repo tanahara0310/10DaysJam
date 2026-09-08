@@ -6,10 +6,7 @@
 #include "Components/Rail/RailBuilderComponent.h"
 #include "GameObject/GameObject.h"
 #include "Math/MathCore.h"
-#include "EngineSystem/EngineSystem.h"
-#include "Text/FontManager.h"
 #include "UI/UIImage.h"
-#include "UI/UIText.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
@@ -63,13 +60,6 @@ namespace
     constexpr std::size_t kVineCount = 6;
     /// 蔦が板からはみ出す量
     constexpr float kVineOverhang = 6.0f * kArtScale;
-
-    // ───────────────────────────────────────────────────────────────
-    // 初見向けの見出し
-    // ───────────────────────────────────────────────────────────────
-    constexpr float kLabelHoldSeconds = 4.0f;   ///< はっきり出しておく時間
-    constexpr float kLabelFadeSeconds = 1.5f;   ///< そのあと消えるまでの時間
-    constexpr float kLabelFontSize = 34.0f;
 
     /// 粒を並べられる上限。スタミナ上限を上げすぎても画面が埋まらないようにする
     constexpr std::size_t kMaxPipCount = 80;
@@ -261,28 +251,6 @@ void GameComponents::StaminaGaugeUIComponent::BuildParts()
         }
     }
 
-    // 初見向けの見出し。数秒で消えるので常設の文字は増やさない
-    if (auto* engine = owner->GetEngineSystem()) {
-        if (auto* fontManager = engine->GetService<FontManager>()) {
-            MsdfFontDesc fontDesc;
-            fontDesc.filePath = L"Engine/Assets/font/851Gkktt_005.ttf";
-            fontDesc.systemFamilyNames = { L"Yu Gothic UI", L"Meiryo", L"Segoe UI" };
-            fontDesc.charsetUtf8 = "スタミナ";
-            if (auto* font = fontManager->Acquire(fontDesc)) {
-                label_ = owner->Spawn<UIText>();
-                if (label_) {
-                    label_->Initialize(font, "スタミナ", "StaminaGaugeLabel");
-                    label_->SetSerializeEnabled(false);
-                    label_->SetAnchor(UIAnchor::TopLeft);
-                    label_->SetPivot({ 0.0f, 0.0f });
-                    label_->SetFontSize(kLabelFontSize * kArtScale);
-                    label_->SetOutline({ 0.0f, 0.0f, 0.0f, 1.0f }, 0.035f);
-                    label_->SetSortOrder(baseOrder + 6);
-                }
-            }
-        }
-    }
-
     built_ = true;
 }
 
@@ -316,7 +284,6 @@ void GameComponents::StaminaGaugeUIComponent::Update()
             for (auto* vine : vines_) {
                 if (vine) { vine->SetActive(false); }
             }
-            if (label_) { label_->SetActive(false); }
         }
         return;
     }
@@ -336,8 +303,6 @@ void GameComponents::StaminaGaugeUIComponent::Update()
     // UI は停止中でも動かしたいので Unscaled を使う
     const float deltaTime = Time::UnscaledDeltaTime();
     const float time = Time::UnscaledTimeSinceStartup();
-
-    labelTimer_ += deltaTime;
 
     UpdateTargets();
     UpdateAnimation(deltaTime);
@@ -579,24 +544,6 @@ void GameComponents::StaminaGaugeUIComponent::ApplyLayout(float time)
             MathCore::Constants::kPi + 0.35f + std::sin(time * swaySpeed * 0.7f + 1.7f) * 0.12f);
     }
 
-    // 初見向けの見出し。数秒はっきり出してから静かに消す
-    if (label_) {
-        const float fade = labelTimer_ <= kLabelHoldSeconds
-            ? 1.0f
-            : 1.0f - std::clamp(
-                (labelTimer_ - kLabelHoldSeconds) / kLabelFadeSeconds, 0.0f, 1.0f);
-        if (fade <= 0.0f) {
-            if (label_->IsActive()) {
-                label_->SetActive(false);
-            }
-        } else {
-            label_->SetFontSize(kLabelFontSize * kArtScale * scale);
-            label_->SetAnchoredPosition({
-                origin.x + capW,
-                origin.y + panelH + 6.0f * kArtScale * scale });
-            label_->SetColor({ 1.0f, 1.0f, 1.0f, fade });
-        }
-    }
 }
 
 #ifdef USE_IMGUI

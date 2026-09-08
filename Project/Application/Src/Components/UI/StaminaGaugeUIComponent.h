@@ -9,7 +9,6 @@
 namespace CoreEngine
 {
     class UIImage;
-    class UIText;
 }
 
 namespace GameComponents
@@ -78,12 +77,10 @@ namespace GameComponents
         std::vector<Pip> pips_;
         std::vector<CoreEngine::UIImage*> leaves_;
         std::vector<CoreEngine::UIImage*> vines_;   ///< 板の縁に絡ませた蔦
-        CoreEngine::UIText* label_ = nullptr;       ///< 開始直後だけ出す「スタミナ」の見出し
 
         std::size_t visiblePipCount_ = 0;
         float lowPulse_ = 0.0f;   ///< 次の 1 マスも払えないときの警告演出（0〜1）
         std::size_t previewPipCount_ = 0; ///< 次の 1 マスで食べられる粒の数
-        float labelTimer_ = 0.0f; ///< 見出しを出してからの経過秒数
         bool  built_ = false;
     };
 }
