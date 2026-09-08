@@ -19,7 +19,6 @@
         "RockProjectile",
         "Monkey",
         "CameraSettings",
-        "MapRenderer",
-        "UIText_0"
+        "MapRenderer"
     ]
 }
