@@ -2,15 +2,20 @@
 #include "ResultScene.h"
 
 #include "Audio/AudioSystem.h"
+#include "Components/GameCore/GameResultData.h"
 #include "Components/Result/ResultButtonAnimationComponent.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Scenes/GameScene/SkyFogFeature.h"
+#include "Scenes/ResultScene/ResultCameraFeature.h"
 #include "Scenes/ResultScene/ResultSceneUi.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
 #include "UI/UIText.h"
+#include "Utility/Tween/Tween.h"
+
+#include <string>
 
 using namespace CoreEngine;
 
@@ -26,6 +31,10 @@ ResultScene::ResultScene::~ResultScene() = default;
 void ResultScene::ResultScene::OnInitialize() {
     // ========== シーンの設定 ==========
     SetSceneName("ResultScene");
+    selection_ = Selection::Retry;
+    returnRequested_ = false;
+    menuEntranceStarted_ = false;
+    menuReady_ = false;
     // 結果画面専用の地形を使うため、エンジン標準の床は生成しない。
     SetDefaultGroundEnabled(false);
 
@@ -54,6 +63,9 @@ void ResultScene::ResultScene::OnInitialize() {
         resultMonkey->SetActive(true);
     }
 
+    // カメラ入力の後、ライト・影の更新より先にリザルトの構図を確定する。
+    AddFeature(GameComponents::CreateResultCameraFeature(), kEarlyFeaturePriority + 1);
+
     // ゲームシーンと同じ雲（高さフォグ）。設定は「ゲーム設定」の Game.Fog.* を共有する。
     AddFeature(GameComponents::CreateSkyFogFeature());
 
@@ -62,6 +74,9 @@ void ResultScene::ResultScene::OnInitialize() {
             kResultBgmPath,
             { .bus = AudioBus::BGM, .loop = true, .volume = 1.0f / 3.0f });
     }
+
+    resultScore_ = GameComponents::GameResultData::GetHorizontalProgressBlocks();
+    isNewHighScore_ = GameComponents::GameResultData::SubmitScore(resultScore_);
 
     const ResultSceneUi::Elements ui = ResultSceneUi::Build(
         [this](const std::string& text,
@@ -73,9 +88,85 @@ void ResultScene::ResultScene::OnInitialize() {
                 return CreateText(text, fontSize, anchor, position, color, name);
         });
 
+    scoreText_ = ui.scoreText;
+    highScoreText_ = ui.highScoreText;
+    recordUpdatedText_ = ui.recordUpdatedText;
     retryButton_ = ui.retryButton;
     titleButton_ = ui.titleButton;
     SetSelection(selection_, false);
+    StartScorePresentation();
+}
+
+void ResultScene::ResultScene::StartScorePresentation()
+{
+    if (!scoreText_ || resultScore_ == 0 || ResultSceneUi::ScoreCountUpDuration.Get() <= 0.0f) {
+        CompleteScorePresentation();
+        return;
+    }
+
+    scoreText_->SetText("スコア: 0");
+
+    Tween::To<float>(
+        0.0f,
+        static_cast<float>(resultScore_),
+        ResultSceneUi::ScoreCountUpDuration.Get(),
+        [this](const float& displayedScore) {
+            if (scoreText_) {
+                const uint32_t score = displayedScore >= static_cast<float>(resultScore_)
+                    ? resultScore_ : static_cast<uint32_t>(displayedScore);
+                scoreText_->SetText("スコア: " + std::to_string(score));
+            }
+        })
+        .SetEase(EasingUtil::Type::EaseOutCubic)
+        .SetUpdateType(TweenUpdate::Unscaled)
+        .SetLink(scoreText_)
+        .SetId("result_score_count_up")
+        .OnComplete([this] { CompleteScorePresentation(); });
+}
+
+void ResultScene::ResultScene::CompleteScorePresentation()
+{
+    if (menuEntranceStarted_ || returnRequested_) {
+        return;
+    }
+    menuEntranceStarted_ = true;
+    if (scoreText_) {
+        scoreText_->SetText("スコア: " + std::to_string(resultScore_));
+    }
+
+    ResultSceneUi::Elements elements;
+    elements.highScoreText = highScoreText_;
+    elements.recordUpdatedText = recordUpdatedText_;
+    elements.retryButton = retryButton_;
+    elements.titleButton = titleButton_;
+    ResultSceneUi::PlayMenuEntrance(elements, isNewHighScore_, [this] {
+        menuReady_ = true;
+    });
+    ShowRecordUpdated();
+}
+
+void ResultScene::ResultScene::ShowRecordUpdated()
+{
+    if (!isNewHighScore_ || !recordUpdatedText_) {
+        return;
+    }
+
+    const Vector4 startColor = recordUpdatedText_->GetColor();
+    const Vector4 endColor = ResultSceneUi::RecordUpdatedColor.Get();
+
+    Tween::To<Vector4>(
+        startColor,
+        endColor,
+        ResultSceneUi::RecordUpdatedFadeDuration.Get(),
+        [this](const Vector4& color) {
+            if (recordUpdatedText_) {
+                recordUpdatedText_->SetColor(color);
+            }
+        })
+        .SetEase(EasingUtil::Type::EaseOutCubic)
+        .SetUpdateType(TweenUpdate::Unscaled)
+        .SetLink(recordUpdatedText_)
+        .SetId("result_record_updated_fade");
 }
 
 void ResultScene::ResultScene::OnUpdate() {
@@ -87,6 +178,11 @@ void ResultScene::ResultScene::OnUpdate() {
     if (input.IsActionTriggered(InputAction::UICancel)) {
         returnRequested_ = true;
         sceneManager_->ChangeScene("TitleScene");
+        return;
+    }
+
+    // 表示前・スライド中の見えない選択肢への入力を防ぐ。
+    if (!menuReady_) {
         return;
     }
 
@@ -140,7 +236,7 @@ void ResultScene::ResultScene::SetSelection(Selection selection, bool playReacti
 
 void ResultScene::ResultScene::ConfirmSelection()
 {
-    if (returnRequested_ || !sceneManager_) {
+    if (!menuReady_ || returnRequested_ || !sceneManager_) {
         return;
     }
 
@@ -184,4 +280,12 @@ void ResultScene::ResultScene::ConfirmSelection()
     }
 
     changeScene();
+}
+
+void ResultScene::ResultScene::OnFinalize()
+{
+    // カウントアップ中にキャンセルしても、完了通知を次のシーンへ持ち越さない。
+    Tween::KillById("result_score_count_up");
+    Tween::KillById("result_record_updated_fade");
+    Tween::KillById("result_menu_slide_in");
 }

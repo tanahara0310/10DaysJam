@@ -26,7 +26,27 @@ namespace GameComponents
             return horizontalProgressBlocks_;
         }
 
+        /// @brief 現在の結果をハイスコアへ反映する。
+        /// @return 今回の結果でハイスコアを更新した場合は true。
+        /// @note ハイスコアは GameScene の開始時にもリセットせず、アプリ実行中は保持する。
+        static bool SubmitScore(uint32_t score)
+        {
+            if (score <= highScoreBlocks_) {
+                return false;
+            }
+
+            highScoreBlocks_ = score;
+            return true;
+        }
+
+        /// @brief 現在のハイスコアを取得する。
+        static uint32_t GetHighScore()
+        {
+            return highScoreBlocks_;
+        }
+
     private:
         static inline uint32_t horizontalProgressBlocks_ = 0;
+        static inline uint32_t highScoreBlocks_ = 0;
     };
 }
