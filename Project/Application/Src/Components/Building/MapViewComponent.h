@@ -30,6 +30,7 @@ namespace GameComponents
         explicit MapViewComponent(
             MapGeneratorComponent* mapGenerator,
             ModelRenderPoolComponent* groundRenderPool,
+            ModelRenderPoolComponent* groundSkirtRenderPool,
             ModelRenderPoolComponent* waterRenderPool,
             ModelRenderPoolComponent* stationRenderPool,
             ModelRenderPoolComponent* rockRenderPool,
@@ -41,6 +42,7 @@ namespace GameComponents
             : gridSize_(gridSize), viewDistanceX_(viewDistanceX),
             mapGenerator_(mapGenerator),
             groundRenderPool_(groundRenderPool),
+            groundSkirtRenderPool_(groundSkirtRenderPool),
             waterRenderPool_(waterRenderPool),
             stationRenderPool_(stationRenderPool),
             rockRenderPool_(rockRenderPool),
@@ -118,6 +120,14 @@ namespace GameComponents
 
         float gridSize_ = 1.0f;
 
+        // ===== 地面ブロックの伸ばし（スカート） =====
+        // ブロックの底面から下へ、逆さにした ground.obj を吊るして柱を伸ばす長さ[m]。
+        // 上面は動かさないので、この値を変えても他のオブジェクトの高さは変わらない。
+        // 0 にすると従来どおりの1マス角のブロックに戻る。
+        // 雲（Game.Fog.*）とセットで決める値。詳しくは BlockModelLayout.h と
+        // SkyFogFeature.cpp のコメントを見ること。
+        float groundSkirtHeight_ = 4.5f;
+
         // ===== 地面の色ムラ =====
         // 明度のふり幅（ベースカラーへの乗算）。0 で従来どおりの一色。
         float groundTintStrength_ = 0.20f;
@@ -133,6 +143,9 @@ namespace GameComponents
 
         MapGeneratorComponent* mapGenerator_ = nullptr;
         ModelRenderPoolComponent* groundRenderPool_ = nullptr;
+        // 地面ブロックの下へ吊るす柱。地面と同じ ground.obj を使うが、1マスにつき
+        // 地面とスカートの2つを出すのでプールは分ける
+        ModelRenderPoolComponent* groundSkirtRenderPool_ = nullptr;
         ModelRenderPoolComponent* waterRenderPool_ = nullptr;
         ModelRenderPoolComponent* stationRenderPool_ = nullptr;
         ModelRenderPoolComponent* rockRenderPool_ = nullptr;

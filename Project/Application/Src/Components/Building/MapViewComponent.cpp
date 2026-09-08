@@ -36,6 +36,7 @@ json GameComponents::MapViewComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
         { "viewDistanceX", viewDistanceX_ },
+        { "groundSkirtHeight", groundSkirtHeight_ },
         { "groundTintStrength", groundTintStrength_ },
         { "groundTintHueSwing", groundTintHueSwing_ },
         { "groundTintFadeStart", groundTintFadeStart_ },
@@ -51,6 +52,8 @@ json GameComponents::MapViewComponent::OnSerialize() const {
 void GameComponents::MapViewComponent::OnDeserialize(const json& j) {
     gridSize_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "gridSize", gridSize_));
     viewDistanceX_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "viewDistanceX", viewDistanceX_));
+    groundSkirtHeight_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "groundSkirtHeight", groundSkirtHeight_));
     groundTintStrength_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "groundTintStrength", groundTintStrength_));
     groundTintHueSwing_ = std::max(0.0f,
@@ -80,6 +83,16 @@ bool GameComponents::MapViewComponent::DrawInspector() {
     if (ImGui::DragInt("描画距離X", &distance, 1.0f, 1, 500)) { viewDistanceX_ = static_cast<uint32_t>(std::max(distance, 1)); changed = true; }
     ImGui::TextDisabled("共通モデルスケール: %.3f", BlockModelLayout::GetScale(gridSize_));
     ImGui::TextDisabled("接地面の高さ: %.3f", BlockModelLayout::GetSurfaceHeight(gridSize_));
+
+    ImGui::SeparatorText("地面ブロックの伸ばし");
+    changed |= ImGui::DragFloat("柱の長さ", &groundSkirtHeight_, 0.05f, 0.0f, 20.0f);
+    ImGui::TextDisabled("柱の底: %.2f m",
+        BlockModelLayout::GetGroundSkirtBottomHeight(gridSize_, groundSkirtHeight_));
+    ImGui::TextDisabled("草が出始める高さ: %.2f m",
+        BlockModelLayout::GetGroundSkirtGrassTopHeight(gridSize_, groundSkirtHeight_));
+    ImGui::TextDisabled("上面は動かないので他のオブジェクトの高さは変わらない");
+    ImGui::TextDisabled("「草が出始める高さ」より下で雲が不透明になっていないと、");
+    ImGui::TextDisabled("逆さに吊るした草の緑が見えてしまう（ゲーム設定の Game.Fog.*）");
 
     ImGui::SeparatorText("地面の色ムラ");
     changed |= ImGui::DragFloat("明度のふり幅", &groundTintStrength_, 0.005f, 0.0f, 1.0f);
@@ -252,6 +265,17 @@ void GameComponents::MapViewComponent::Update() {
     const Vector3 scale{ modelScale, modelScale, modelScale };
     const float groundHeight = BlockModelLayout::GetGroundHeight(gridSize_);
     const float surfaceHeight = BlockModelLayout::GetSurfaceHeight(gridSize_);
+
+    // 地面ブロックの下へ吊るす柱（スカート）。地面と同じ位置・同じ色のまま、
+    // 上下逆さにして底面からぶら下げる。ブロックの上面は動かさない。
+    // 逆さにするのは ground.obj の草（緑）を柱の最下部へ回すため。詳細は
+    // BlockModelLayout.h の「地面ブロックのスカート」を見ること。
+    const bool drawGroundSkirt = groundSkirtRenderPool_ && groundSkirtHeight_ > 0.0f;
+    const Vector3 groundSkirtRotate{ std::numbers::pi_v<float>, 0.0f, 0.0f };
+    const Vector3 groundSkirtScale{
+        modelScale,
+        BlockModelLayout::GetGroundSkirtYScale(gridSize_, groundSkirtHeight_),
+        modelScale };
     // 水だけは幅1・中心原点の仮モデル box.obj を、1マス幅の薄い水面にする。
     const Vector3 waterScale{ gridSize_, gridSize_ * 0.3f, gridSize_ };
 
@@ -271,8 +295,13 @@ void GameComponents::MapViewComponent::Update() {
                 const Vector3 toCamera = groundPosition - cameraFocusPosition;
                 const float cameraDistance = std::sqrt(
                     toCamera.x * toCamera.x + toCamera.y * toCamera.y + toCamera.z * toCamera.z);
-                groundRenderPool_->Draw(groundPosition, rotate, scale,
-                    CalcGroundTint(x, z, cameraDistance));
+                const Vector4 groundTint = CalcGroundTint(x, z, cameraDistance);
+                groundRenderPool_->Draw(groundPosition, rotate, scale, groundTint);
+                // 柱は1本に見せたいので、ブロックと同じ色ムラを掛ける
+                if (drawGroundSkirt) {
+                    groundSkirtRenderPool_->Draw(
+                        groundPosition, groundSkirtRotate, groundSkirtScale, groundTint);
+                }
             }
 
             // 水場チップの表示
