@@ -24,6 +24,7 @@
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/Rail/RailViewComponent.h"
+#include "Components/Train/SpawnPopComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "Components/UI/HungerUIComponent.h"
 
@@ -304,7 +305,12 @@ void GameScene::GameScene::OnInitialize() {
             }
             auto* carriageTransform = carriage->AddComponent<CoreEngine::TransformComponent>();
             carriage->AddComponent<CoreEngine::MeshRendererComponent>("trolley.obj");
-            trainMovement->AddCarriage(carriageTransform);
+            // 連結より前に付けて、最初のスケール計算から出現演出を効かせる。
+            // 子のサルは親のスケールを継ぐので、まとめて潰れる。
+            auto* carriagePop =
+                carriage->AddComponent<GameComponents::SpawnPopComponent>();
+            trainMovement->AddCarriage(
+                carriageTransform, carriagePop->GetScaleMultiplier());
 
             auto* addedMonkey = CreateObject<GameSceneObject>(
                 "Monkey_" + std::to_string(monkeyCount));
@@ -347,7 +353,7 @@ void GameScene::GameScene::OnInitialize() {
     // マップを描画するオブジェクトを追加
     auto* mapRenderer = CreateObject<GameSceneObject>("MapRenderer");
     mapRenderer->AddComponent<CoreEngine::TransformComponent>();
-    mapRenderer->AddComponent<GameComponents::MapViewComponent>(
+    auto* mapView = mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         waterPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
@@ -357,6 +363,12 @@ void GameScene::GameScene::OnInitialize() {
         grassPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         gameCamera,
         gridSize, renderWorldDistance);
+
+    // サルが増えた駅を弾ませる。描画は MapView が持つのでここで繋ぐ。
+    hungerComponent->SetStationPopCallback(
+        [mapView](int32_t stationX, int32_t stationZ) {
+            mapView->PlayStationPop(stationX, stationZ);
+        });
 
     // スタミナ・進行ブロック数・サル数を画面左上へ表示するHUD
     auto* fontManager = engine_->GetService<CoreEngine::FontManager>();

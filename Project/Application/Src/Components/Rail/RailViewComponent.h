@@ -72,9 +72,11 @@ namespace GameComponents
         void SetCenterPosition(const CoreEngine::Vector3& position);
 
     private:
-        // 新しく確定したレールを、確定順に少しずつ遅らせて跳ねさせる
-        void UpdateConfirmationAnimations(float deltaTime);
-        float GetConfirmationJumpOffset(std::size_t railIndex) const;
+        // 矢印で新しく置かれたレールを、その場で跳ねさせる
+        void UpdateRailJumpAnimations(float deltaTime);
+        float GetRailJumpOffset(std::size_t pathIndex) const;
+        // 列車が通過して確定したレールに、確定順に少しずつ遅らせてSEを鳴らす
+        void UpdateConfirmationSounds(float deltaTime);
 
         // レール経路を直線・左コーナー・右コーナーへ分類してモデルを描画する
         void DrawRailModels();
@@ -91,16 +93,18 @@ namespace GameComponents
         CoreEngine::Camera* viewCamera_ = nullptr;
         float gridSize_ = 5.0f;
         uint32_t viewDistanceX_ = 30;
-        float confirmationJumpHeight_ = 0.8f;
-        float confirmationJumpDuration_ = 0.35f;
+        float railJumpHeight_ = 0.8f;
+        float railJumpDuration_ = 0.35f;
         float confirmationStaggerInterval_ = 0.06f;
         float confirmationSeVolume_ = 0.45f;
         float confirmationSeBasePitch_ = 0.9f;
         float confirmationSePitchStep_ = 0.05f;
         float confirmationSeMaxPitch_ = 1.35f;
 
+        // 確定済み＋未確定を連結した経路の添字と対応する。置かれた瞬間から進む
+        std::vector<float> railJumpTimes_;
         // railMap のインデックスと対応する。負値は再生開始までの待ち時間
-        std::vector<float> confirmationAnimationTimes_;
+        std::vector<float> confirmationSoundTimes_;
         std::vector<float> confirmationSoundPitches_;
 
         // 引数は音量、ピッチの順

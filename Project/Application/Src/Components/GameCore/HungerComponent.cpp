@@ -67,6 +67,8 @@ bool GameComponents::HungerComponent::OnTrainEnteredCell(int32_t gridX, int32_t 
             static_cast<std::size_t>(gridZ)) &&
         activatedStations_.emplace(gridX, gridZ + 1).second) {
         stationActivated = true;
+        // 駅チップはレールの1マス奥にある。サルが増えたときに弾ませる。
+        pendingMonkeyStations_.emplace_back(gridX, gridZ + 1);
     }
 
     OnMonkeyEnteredCell(0, gridX, gridZ);
@@ -122,6 +124,14 @@ void GameComponents::HungerComponent::AddMonkey()
     ++monkeyCount_;
     if (onMonkeyAdded_) {
         onMonkeyAdded_(monkeyCount_);
+    }
+    // サルを送り出した駅を、発動した順に取り出して反応させる。
+    if (!pendingMonkeyStations_.empty()) {
+        const auto [stationX, stationZ] = pendingMonkeyStations_.front();
+        pendingMonkeyStations_.pop_front();
+        if (onStationPop_) {
+            onStationPop_(stationX, stationZ);
+        }
     }
     Logger::GetInstance().Infof(
         LogCategory::Game, "駅からトロッコを連結: サルが増えました ({}匹)", monkeyCount_);

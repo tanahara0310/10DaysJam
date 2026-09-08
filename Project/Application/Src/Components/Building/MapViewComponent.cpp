@@ -51,6 +51,8 @@ json GameComponents::MapViewComponent::OnSerialize() const {
         { "groundTintHueSwing", groundTintHueSwing_ },
         { "groundTintFadeStart", groundTintFadeStart_ },
         { "groundTintFadeRange", groundTintFadeRange_ }
+        { "stationPopDuration", stationPopDuration_ },
+        { "stationPopSquash", stationPopSquash_ }
     };
 }
 
@@ -65,6 +67,10 @@ void GameComponents::MapViewComponent::OnDeserialize(const json& j) {
         JsonManager::SafeGet<float>(j, "groundTintFadeStart", groundTintFadeStart_));
     groundTintFadeRange_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "groundTintFadeRange", groundTintFadeRange_));
+    stationPopDuration_ = std::max(0.01f,
+        JsonManager::SafeGet<float>(j, "stationPopDuration", stationPopDuration_));
+    stationPopSquash_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "stationPopSquash", stationPopSquash_), 0.0f, 1.0f);
     // 旧データのモデル別高さ・スケールは使わず、共通ブロック寸法から求める。
 }
 
@@ -83,9 +89,54 @@ bool GameComponents::MapViewComponent::DrawInspector() {
     changed |= ImGui::DragFloat("フェード開始距離", &groundTintFadeStart_, 0.5f, 0.0f, 300.0f);
     changed |= ImGui::DragFloat("フェード距離", &groundTintFadeRange_, 0.5f, 0.0f, 300.0f);
     ImGui::TextDisabled("0 にすると従来どおりの一色になる");
+    ImGui::SeparatorText("駅の出現演出");
+    changed |= ImGui::DragFloat("駅の反動時間", &stationPopDuration_, 0.01f, 0.01f, 5.0f);
+    changed |= ImGui::SliderFloat("駅の沈み込み", &stationPopSquash_, 0.0f, 1.0f);
     return changed;
 }
 #endif
+
+void GameComponents::MapViewComponent::PlayStationPop(int32_t gridX, int32_t gridZ) {
+    // 同じ駅が続けて鳴ったら、重ねずに頭から鳴らし直す。
+    for (auto& pop : stationPops_) {
+        if (pop.gridX == gridX && pop.gridZ == gridZ) {
+            pop.elapsed = 0.0f;
+            return;
+        }
+    }
+    stationPops_.push_back({ gridX, gridZ, 0.0f });
+}
+
+void GameComponents::MapViewComponent::UpdateStationPops(float deltaTime) {
+    const float safeDeltaTime = std::max(deltaTime, 0.0f);
+    for (auto& pop : stationPops_) {
+        pop.elapsed += safeDeltaTime;
+    }
+    std::erase_if(stationPops_, [this](const StationPop& pop) {
+        return pop.elapsed >= stationPopDuration_;
+    });
+}
+
+Vector3 GameComponents::MapViewComponent::GetStationPopScale(
+    std::size_t x, std::size_t z) const {
+    for (const auto& pop : stationPops_) {
+        if (pop.gridX < 0 || pop.gridZ < 0 ||
+            static_cast<std::size_t>(pop.gridX) != x ||
+            static_cast<std::size_t>(pop.gridZ) != z) {
+            continue;
+        }
+
+        // サルが飛び出した反動でいったん沈み、跳ね返って収まる。
+        // 減衰する正弦波1周期ぶんで、前半が沈み込み、後半が伸び上がりになる。
+        const float progress = std::clamp(
+            pop.elapsed / stationPopDuration_, 0.0f, 1.0f);
+        const float recoil =
+            std::sin(progress * 2.0f * std::numbers::pi_v<float>) *
+            (1.0f - progress) * stationPopSquash_;
+        return { 1.0f + recoil * 0.6f, 1.0f - recoil, 1.0f + recoil * 0.6f };
+    }
+    return { 1.0f, 1.0f, 1.0f };
+}
 
 void GameComponents::MapViewComponent::Start() {
     auto* owner = GetOwner();
@@ -119,6 +170,8 @@ void GameComponents::MapViewComponent::Update() {
     if (mapGenerator_ == nullptr || groundRenderPool_ == nullptr || viewCamera_ == nullptr) {
         return;
     }
+
+    UpdateStationPops(Time::DeltaTime());
 
     // カメラの注視位置を取得する
     const auto cameraFocusPosition = viewCamera_->GetTranslate();
@@ -168,9 +221,13 @@ void GameComponents::MapViewComponent::Update() {
                     waterScale);
             }
 
-            // 駅チップの表示
+            // 駅チップの表示。サルを送り出した直後だけ反動で沈み込む。
             if(stationRenderPool_ && chipType == MapChipType::Station) {
-                stationRenderPool_->Draw({ x * gridSize_, surfaceHeight, z * gridSize_ }, rotate, scale);
+                const Vector3 popScale = GetStationPopScale(x, z);
+                stationRenderPool_->Draw(
+                    { x * gridSize_, surfaceHeight, z * gridSize_ },
+                    rotate,
+                    { scale.x * popScale.x, scale.y * popScale.y, scale.z * popScale.z });
             }
 
             // 岩チップの表示
