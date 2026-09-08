@@ -60,6 +60,10 @@ namespace GameComponents
 
         float GetMoveSpeed() const { return moveSpeed_; }
         CoreEngine::Vector3 GetWorldPosition() const;
+        // サルの番号から、そのサルが乗っている車両の Transform を引く。
+        // 0 は先頭車両で、1 以降は連結した順。まだ連結していない番号なら nullptr。
+        // 車両の上へ何かを置く演出のための読み取り口で、値は書き換えないこと。
+        const CoreEngine::TransformComponent* GetMonkeyTransform(std::size_t monkeyIndex) const;
         // 指定位置に重なる先頭・後続車両の上へ矢印を置くための高さ補正。
         float GetCursorHeightOffsetAt(float worldX, float worldZ) const;
         uint32_t GetHorizontalProgressBlocks() const { return horizontalProgressBlocks_; }

@@ -313,6 +313,9 @@
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClCompile>
@@ -1567,6 +1570,9 @@
       <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h">

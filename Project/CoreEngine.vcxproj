@@ -287,6 +287,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
+    <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp" />
     <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp" />
@@ -828,6 +829,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.h" />
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneUi.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
+    <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h" />
     <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />

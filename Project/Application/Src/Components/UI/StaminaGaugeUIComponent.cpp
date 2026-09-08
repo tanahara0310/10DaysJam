@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 #include <string>
 
 #ifdef USE_IMGUI
@@ -71,6 +72,11 @@ namespace
     constexpr float kEatRate = 9.0f;     ///< 食べられるはやさ
     constexpr float kGrowStagger = 0.02f;///< 連続で生えるときのずらし秒数
     constexpr float kFlashDecay = 5.0f;
+    /// バナナが入ったときに、実っている粒をどこまで縮めてから伸び直させるか。
+    /// 0 まで縮めると皮テクスチャへ差し替わってしまうので、実のまま残る値にしておく
+    constexpr float kGainPopGrowFrom = 0.45f;
+    /// 一度に弾ませる粒の上限。房 2 つぶん。これ以上はゲージ全体の弾みで見せる
+    constexpr std::size_t kGainPopMaxPips = kPipsPerBunch * 2;
 
     // ───────────────────────────────────────────────────────────────
     // 調整用 CVar（CVars.json へ自動保存され、インスペクターから編集できる）
@@ -129,6 +135,24 @@ namespace
     CVar<bool> cvPreviewEnabled{
         "Game.StaminaGauge.PreviewEnabled", true,
         "次の 1 マスが通常のレールより高いとき、食べられる粒を点滅で予告する" };
+
+    // ───────────────────────────────────────────────────────────────
+    // バナナが飛んで入ってきたときの反応
+    // ───────────────────────────────────────────────────────────────
+    CVar<float> cvGainPopDuration{
+        "Game.StaminaGauge.GainPopDuration", 0.38f,
+        "収穫したバナナがゲージへ入ったときに、ゲージが弾んで収まるまでの秒数",
+        CVarRange{ 0.05f, 2.0f } };
+
+    CVar<float> cvGainPopLift{
+        "Game.StaminaGauge.GainPopLift", 6.0f,
+        "バナナが入った瞬間にゲージ全体が持ち上がる量 [px]。0 で上下に動かなくなる",
+        CVarRange{ 0.0f, 40.0f } };
+
+    CVar<float> cvGainPopStretch{
+        "Game.StaminaGauge.GainPopStretch", 0.18f,
+        "バナナが入った瞬間に粒が縦へ伸びる量。0 で伸縮なし",
+        CVarRange{ 0.0f, 1.0f } };
 
     /// 生えた／食べられた瞬間の発光量
     CVar<float> cvFlashStrength{
@@ -304,9 +328,78 @@ void GameComponents::StaminaGaugeUIComponent::Update()
     const float deltaTime = Time::UnscaledDeltaTime();
     const float time = Time::UnscaledTimeSinceStartup();
 
+    if (gainPopActive_) {
+        gainPopElapsed_ += deltaTime;
+        if (gainPopElapsed_ >= std::max(0.05f, cvGainPopDuration.Get())) {
+            gainPopActive_ = false;
+        }
+    }
+
     UpdateTargets();
     UpdateAnimation(deltaTime);
     ApplyLayout(time);
+}
+
+bool GameComponents::StaminaGaugeUIComponent::TryGetFillFrontTarget(
+    Vector2& outPosition, Vector2& outSize) const
+{
+    if (!built_ || !cvEnabled.Get() || visiblePipCount_ == 0) {
+        return false;
+    }
+    const std::size_t index = std::min(fillFrontIndex_, pips_.size() - 1);
+    const UIImage* image = pips_[index].image;
+    if (!image) {
+        return false;
+    }
+
+    // 粒の軸は上端中央（縮んだときに下から食べられて見えるように置いてある）。
+    // 飛んでくるバナナは粒の真ん中へ着けたいので、高さの半分だけ下げて返す。
+    const Vector2 anchored = image->GetAnchoredPosition();
+    outSize = image->GetSize();
+    outPosition = { anchored.x, anchored.y + outSize.y * 0.5f };
+    return true;
+}
+
+void GameComponents::StaminaGaugeUIComponent::PlayGainPop(float staminaAmount)
+{
+    if (!built_) {
+        return;
+    }
+    gainPopElapsed_ = 0.0f;
+    gainPopActive_ = true;
+
+    // 入ってきた量ぶんの粒を、生え際から左へさかのぼって弾ませる。
+    // 粒はスタミナが増えた時点で既に実っているので、ここでは伸び直させるだけ。
+    // 「バナナが入った → この粒になった」を目で追えるようにするための演出。
+    const float perPip = std::max(0.5f, cvStaminaPerPip.Get());
+    const auto count = std::clamp<std::size_t>(
+        static_cast<std::size_t>(std::lround(staminaAmount / perPip)), 1, kGainPopMaxPips);
+
+    for (std::size_t offset = 0; offset < count; ++offset) {
+        if (fillFrontIndex_ < offset) {
+            break;
+        }
+        Pip& pip = pips_[fillFrontIndex_ - offset];
+        if (!pip.image || !pip.filled) {
+            continue;
+        }
+        // grow を戻すと UpdateAnimation が GrowEase で伸び直す。行き過ぎがそのまま弾みになる
+        pip.grow = std::min(pip.grow, kGainPopGrowFrom);
+        pip.delay = static_cast<float>(offset) * kGrowStagger * 2.0f;
+        pip.flash = 1.0f;
+        pip.flashGain = true;
+    }
+}
+
+float GameComponents::StaminaGaugeUIComponent::GainPopWave() const
+{
+    if (!gainPopActive_) {
+        return 0.0f;
+    }
+    const float duration = std::max(0.05f, cvGainPopDuration.Get());
+    const float progress = std::clamp(gainPopElapsed_ / duration, 0.0f, 1.0f);
+    // 減衰する正弦波 1 周期。前半で持ち上がり、後半で沈んでから収まる
+    return std::sin(progress * 2.0f * std::numbers::pi_v<float>) * (1.0f - progress);
 }
 
 void GameComponents::StaminaGaugeUIComponent::UpdateTargets()
@@ -317,6 +410,12 @@ void GameComponents::StaminaGaugeUIComponent::UpdateTargets()
     // 切り捨て。「あと何アクションぶん残っているか」と粒の数を一致させる
     const auto filledCount = static_cast<std::size_t>(
         std::max(0.0f, std::floor(hunger_->GetCurrentHunger() / perPip)));
+
+    // 実っている一番右の粒。バナナが飛んでくる着地点になる。
+    // 1 粒も実っていないときは「次に実る粒」＝先頭を指す
+    fillFrontIndex_ = filledCount > 0
+        ? std::min(filledCount, visiblePipCount_) - 1
+        : 0;
 
     float stagger = 0.0f;
     for (std::size_t i = 0; i < pips_.size(); ++i) {
@@ -409,12 +508,20 @@ void GameComponents::StaminaGaugeUIComponent::UpdateAnimation(float deltaTime)
 
 void GameComponents::StaminaGaugeUIComponent::ApplyLayout(float time)
 {
-    const Vector2 origin = cvPosition.Get();
     const float swaySpeed = cvSwaySpeed.Get();
     const float swayAmplitude = cvSwayAmplitude.Get();
 
     // 表示倍率。1 のときテクスチャと等倍になり、ドットが一番きれいに出る
     const float scale = std::max(0.1f, cvScale.Get());
+
+    // バナナが入った反応。板ごと持ち上げるので、幅は変えずに全体が弾んで見える。
+    // 横幅を変えると粒の並びが動いて、どの粒が増えたのか読めなくなる。
+    const float gainPop = GainPopWave();
+    const float gainStretch = 1.0f + gainPop * cvGainPopStretch.Get();
+    const Vector2 basePosition = cvPosition.Get();
+    const Vector2 origin{
+        basePosition.x,
+        basePosition.y - gainPop * cvGainPopLift.Get() * scale };
     const float pipW = kPipWidth * scale;
     const float pipH = kPipHeight * scale;
     const float pitch = kPipPitch * scale;
@@ -485,9 +592,10 @@ void GameComponents::StaminaGaugeUIComponent::ApplyLayout(float time)
         const float sway = std::sin(time * swaySpeed + phase) * swayAmplitude;
         const float bob = std::sin(time * swaySpeed * 0.8f + phase * 0.6f) * swayBob;
 
-        // 実っているあいだだけ縦に伸縮させる。皮は常に原寸
+        // 実っているあいだだけ縦に伸縮させる。皮は常に原寸。
+        // バナナが入った瞬間は、実っている粒だけまとめて縦へ伸ばす
         const float height = pip.showsFruit
-            ? pipH * std::max(0.0f, GrowEase(pip.grow))
+            ? pipH * std::max(0.0f, GrowEase(pip.grow)) * gainStretch
             : pipH;
 
         pip.image->SetSize({ pipW, height });

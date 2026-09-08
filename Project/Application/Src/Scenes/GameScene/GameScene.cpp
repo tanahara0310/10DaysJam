@@ -33,6 +33,7 @@
 #include "Components/GameCore/GameResultData.h"
 #include "Components/GameCore/GameSettingsComponent.h"
 #include "Components/GameCore/HungerComponent.h"
+#include "GameObjects/Effect/BananaHarvestEffect.h"
 #include "GameObjects/Effect/RockBreakDebris.h"
 #include "GameObjects/GameSceneObject.h"
 
@@ -351,6 +352,11 @@ void GameScene::GameScene::OnInitialize() {
 
     // 岩が砕けた瞬間に散る破片。揺れと同じく RailBuilder から静的に鳴らす。
     AddFeature(GameComponents::CreateRockBreakDebrisFeature());
+
+    // サルがバナナの木を通るたびに、バナナを 1 本もぎ取って頭上へ掲げさせる演出。
+    // スタミナ・列車・マップは Feature が自分で探して繋ぐので、ここでは登録だけでよい。
+    // 見た目と時間は「ゲーム設定」の Game.BananaHarvest.* から調整する。
+    AddFeature(GameComponents::CreateBananaHarvestEffectFeature());
 
     railView->AddComponent<GameComponents::RailViewComponent>(
         gridSize,
