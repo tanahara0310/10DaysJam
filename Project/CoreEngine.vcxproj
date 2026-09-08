@@ -1226,6 +1226,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Utility\Tween\Tween.h" />
     <ClInclude Include="Engine\Src\Utility\Tween\TweenManager.h" />
     <ClInclude Include="Engine\Src\Utility\Event\EventBus.h" />
+    <ClInclude Include="Engine\Src\Utility\Random\Hash.h" />
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h" />
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Startup\IStartupTask.h" />

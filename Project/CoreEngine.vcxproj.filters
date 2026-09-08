@@ -2763,6 +2763,9 @@
     <ClInclude Include="Engine\Src\Utility\Event\EventBus.h">
       <Filter>Engine\Src\Utility\Event</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Random\Hash.h">
+      <Filter>Engine\Src\Utility\Random</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Random\RandomGenerator.h">
       <Filter>Engine\Src\Utility\Random</Filter>
     </ClInclude>
