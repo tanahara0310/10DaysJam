@@ -199,6 +199,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\HungerUIComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\UI\StaminaGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
     <ClCompile Include="Application\Src\Editor\Stage\StageCsvDocument.cpp" />
     <ClCompile Include="Application\Src\Editor\Stage\StageEditorPanel.cpp" />
@@ -206,6 +207,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp" />
@@ -362,6 +364,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve\Dissolve.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectComputeBase.cpp" />
@@ -794,6 +797,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\HungerUIComponent.h" />
+    <ClInclude Include="Application\Src\Components\UI\StaminaGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\Utility\BlockModelLayout.h" />
     <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h" />
@@ -802,6 +806,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Editor\Stage\StageProject.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h" />
@@ -919,6 +924,8 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Dissolve\Dissolve.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\FadeEffect\FadeEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen\LoadingScreenEffect.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading\TrolleyLoading.h" />
+    <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\ILoadingScreenEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\GrayScale\GrayScale.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Invert\Invert.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\Outline\Outline.h" />

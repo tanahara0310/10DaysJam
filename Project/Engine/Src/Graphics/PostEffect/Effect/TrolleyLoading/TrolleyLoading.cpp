@@ -1,0 +1,257 @@
+#include "pch.h"
+#include "TrolleyLoading.h"
+#include "Editor/ImGui/ImguiManager.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Texture/TextureManager.h"
+#include "Utility/CVar/CVar.h"
+#ifdef USE_IMGUI
+#include "Editor/ImGui/CVarPanel.h"
+#endif
+#include <cassert>
+#include <algorithm>
+#include <cmath>
+
+
+namespace CoreEngine
+{
+    namespace
+    {
+        CVar<float> cvSpeed{
+            "r.TrolleyLoading.Speed", 336.0f,
+            "レールが流れる速さ（縦 1080 基準の px/秒）",
+            CVarRange{ 40.0f, 1200.0f } };
+
+        CVar<float> cvParallax{
+            "r.TrolleyLoading.Parallax", 0.32f,
+            "奥の景色が流れる速さの比（1.0 で手前と同速）",
+            CVarRange{ 0.0f, 1.0f } };
+
+        CVar<float> cvScale{
+            "r.TrolleyLoading.Scale", 0.72f,
+            "全体の拡大率。絵の大きさも配置の距離も一括で変わる（速さの見え方も追従する）",
+            CVarRange{ 0.2f, 2.0f } };
+
+        CVar<float> cvRailY{
+            "r.TrolleyLoading.RailY", 0.87f,
+            "レール上端の位置（画面高さに対する比率）",
+            CVarRange{ 0.3f, 0.98f } };
+
+        CVar<float> cvCartX{
+            "r.TrolleyLoading.CartX", 0.30f,
+            "トロッコ左端の位置（画面幅に対する比率）",
+            CVarRange{ 0.0f, 0.8f } };
+
+        CVar<float> cvBobAmp{
+            "r.TrolleyLoading.BobAmp", 4.0f,
+            "枕木を通過するたびに跳ねる上下幅（縦 1080 基準の px）",
+            CVarRange{ 0.0f, 20.0f } };
+
+        CVar<float> cvTiltDegrees{
+            "r.TrolleyLoading.TiltDegrees", 1.6f,
+            "車体が前後に傾く角度",
+            CVarRange{ 0.0f, 10.0f } };
+
+        CVar<float> cvWheelRadius{
+            "r.TrolleyLoading.WheelRadius", 34.0f,
+            "車輪の半径（縦 1080 基準の px）。転がる速さもこれで決まる",
+            CVarRange{ 6.0f, 90.0f } };
+
+        CVar<float> cvWheelInset{
+            "r.TrolleyLoading.WheelInset", 52.0f,
+            "車体の端から車輪中心までの距離",
+            CVarRange{ 0.0f, 200.0f } };
+
+        CVar<float> cvWheelDrop{
+            "r.TrolleyLoading.WheelDrop", 16.0f,
+            "レール上端から車輪中心までの距離（大きいほど埋まる）",
+            CVarRange{ -40.0f, 80.0f } };
+
+        CVar<float> cvCartLift{
+            "r.TrolleyLoading.CartLift", 28.0f,
+            "レール上端から車体下端までの距離",
+            CVarRange{ -40.0f, 160.0f } };
+
+        CVar<float> cvStationGoal{
+            "r.TrolleyLoading.StationGoal", 340.0f,
+            "進捗 1.0 で駅が来る位置（トロッコ左端からの距離）",
+            CVarRange{ 0.0f, 1200.0f } };
+
+        CVar<float> cvStationDrop{
+            "r.TrolleyLoading.StationDrop", 8.0f,
+            "レール上端から駅の下端までの距離",
+            CVarRange{ -40.0f, 80.0f } };
+
+        CVar<float> cvSceneryDrop{
+            "r.TrolleyLoading.SceneryDrop", 4.0f,
+            "レール上端から奥の景色の下端までの距離",
+            CVarRange{ -80.0f, 80.0f } };
+
+        // 表示強度は SceneTransition が遷移のたびに切り替える実行時状態のため保存しない
+        CVar<bool> cvEnabled{
+            "r.TrolleyLoading.Enabled", false,
+            "トロッコのローディング画面を有効にする（通常は SceneTransition が自動で切り替える）",
+            CVarRange{}, CVarFlags::NoSave | CVarFlags::NoUI };
+
+        constexpr const char* kCVarPrefix = "r.TrolleyLoading";
+
+        // スプライト。.obj から正射投影で焼いたもの（縦 1080 基準の大きさ）
+        constexpr const char* kCartTexture    = "loading_cart.png";
+        constexpr const char* kRailTexture    = "loading_rail.png";
+        constexpr const char* kStationTexture = "loading_station.png";
+        constexpr const char* kSceneryTexture = "loading_scenery.png";
+
+        // 1 フレームで進める時間の上限。読み込み中はコマ落ちするので、
+        // 大きなデルタをそのまま積むとトロッコが飛ぶ。
+        // ただし絞りすぎると重いフレームで「飛ぶ」代わりに「止まって見える」。
+        // 読み込みはこの画面を出しながら走るため、多少飛んでも動き続ける方を採る
+        constexpr float kMaxDeltaSeconds = 1.0f / 10.0f;
+
+        // 経過時間の折り返し。走行距離 = speed * time が float の精度を失うほど
+        // 大きくならないようにする（この長さの読み込みは現実には起きない）
+        constexpr float kTimeWrapSeconds = 1000.0f;
+    }
+
+    void TrolleyLoading::OnCreateConstantBuffers()
+    {
+        UINT paramsSize = (sizeof(TrolleyParams) + 255) & ~255;
+        trolleyParamsCB_ = ResourceFactory::CreateBufferResource(graphicsCore_->GetDevice(), paramsSize);
+        [[maybe_unused]] HRESULT hr = trolleyParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedTrolleyParams_));
+        assert(SUCCEEDED(hr));
+
+        // スプライトを読み込む。sRGB ビューで読まれるのでシェーダー側の Load は既にリニア
+        auto& textureManager = TextureManager::GetInstance();
+        cartHandle_    = textureManager.Load(kCartTexture).gpuHandle;
+        railHandle_    = textureManager.Load(kRailTexture).gpuHandle;
+        stationHandle_ = textureManager.Load(kStationTexture).gpuHandle;
+        sceneryHandle_ = textureManager.Load(kSceneryTexture).gpuHandle;
+
+        UpdateConstantBuffer();
+    }
+
+    void TrolleyLoading::UpdateConstantBuffer()
+    {
+        if (!mappedTrolleyParams_) {
+            return;
+        }
+        mappedTrolleyParams_->speed       = cvSpeed.Get();
+        mappedTrolleyParams_->parallax    = cvParallax.Get();
+        mappedTrolleyParams_->railY       = cvRailY.Get();
+        mappedTrolleyParams_->cartX       = cvCartX.Get();
+        mappedTrolleyParams_->bobAmp      = cvBobAmp.Get();
+        mappedTrolleyParams_->tiltDegrees = cvTiltDegrees.Get();
+        mappedTrolleyParams_->wheelRadius = cvWheelRadius.Get();
+        mappedTrolleyParams_->wheelInset  = cvWheelInset.Get();
+        mappedTrolleyParams_->wheelDrop   = cvWheelDrop.Get();
+        mappedTrolleyParams_->cartLift    = cvCartLift.Get();
+        mappedTrolleyParams_->stationGoal = cvStationGoal.Get();
+        mappedTrolleyParams_->stationDrop = cvStationDrop.Get();
+        mappedTrolleyParams_->sceneryDrop = cvSceneryDrop.Get();
+        mappedTrolleyParams_->scale       = cvScale.Get();
+        // 表示強度・経過時間・進捗はシーン遷移が制御する実行時値
+        mappedTrolleyParams_->screenAlpha = screenAlpha_;
+        mappedTrolleyParams_->time        = timeAccumulator_;
+        mappedTrolleyParams_->progress    = progress_;
+    }
+
+    // デルタタイムに上限を掛けて積算する
+    void TrolleyLoading::PrepareFrame(const PostEffectFrameContext& ctx)
+    {
+        timeAccumulator_ = std::fmod(timeAccumulator_ + std::min(ctx.deltaTime, kMaxDeltaSeconds),
+                                     kTimeWrapSeconds);
+        UpdateConstantBuffer();
+    }
+
+    void TrolleyLoading::SetScreenAlpha(float alpha)
+    {
+        float next = std::clamp(alpha, 0.0f, 1.0f);
+
+        // 表示され始めた瞬間に時間を巻き戻す。遷移のたびにトロッコが同じ姿勢から
+        // 走り出すので、前回の遷移の位相を引きずらない
+        if (screenAlpha_ <= 0.0f && next > 0.0f) {
+            timeAccumulator_ = 0.0f;
+        }
+
+        screenAlpha_ = next;
+        UpdateConstantBuffer();
+    }
+
+    void TrolleyLoading::SetProgress(float progress)
+    {
+        progress_ = std::clamp(progress, 0.0f, 1.0f);
+        UpdateConstantBuffer();
+    }
+
+    void TrolleyLoading::SetGaugeAlpha(float /*alpha*/)
+    {
+        // 進捗は駅の位置で常時見えているので、別建てのゲージは持たない
+    }
+
+    void TrolleyLoading::Dispatch(
+        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+        uint32_t width,
+        uint32_t height)
+    {
+        UpdateConstantBuffer();
+        UpdateScreenSizeConstants(width, height);
+
+        auto* cmdList = graphicsCore_->GetCommandList();
+        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
+        cmdList->SetPipelineState(computePso_.Get());
+
+        int textureIdx = GetRootParamIndex("gTexture");
+        int cartIdx    = GetRootParamIndex("gCart");
+        int railIdx    = GetRootParamIndex("gRail");
+        int stationIdx = GetRootParamIndex("gStation");
+        int sceneryIdx = GetRootParamIndex("gScenery");
+        int outputIdx  = GetRootParamIndex("gOutput");
+        int paramsIdx  = GetRootParamIndex("TrolleyParams");
+        int screenIdx  = GetRootParamIndex("ScreenParams");
+
+        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
+        if (cartIdx >= 0)    cmdList->SetComputeRootDescriptorTable(cartIdx, cartHandle_);
+        if (railIdx >= 0)    cmdList->SetComputeRootDescriptorTable(railIdx, railHandle_);
+        if (stationIdx >= 0) cmdList->SetComputeRootDescriptorTable(stationIdx, stationHandle_);
+        if (sceneryIdx >= 0) cmdList->SetComputeRootDescriptorTable(sceneryIdx, sceneryHandle_);
+        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
+        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, trolleyParamsCB_->GetGPUVirtualAddress());
+        if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
+
+        uint32_t groupX = (width  + 7) / 8;
+        uint32_t groupY = (height + 7) / 8;
+        cmdList->Dispatch(groupX, groupY, 1);
+    }
+
+    void TrolleyLoading::DrawImGui()
+    {
+#ifdef USE_IMGUI
+        ImGui::PushID("TrolleyLoading");
+        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        ImGui::Text("進捗は右から近づいてくる駅までの距離で表しています");
+        UI::Separator();
+
+        // 表示強度と進捗はシーン遷移が制御する実行時状態のため、CVar ではなくここで直接編集する
+        if (UI::SliderFloat("表示強度（実行時）", screenAlpha_, 0.0f, 1.0f)) {
+            UpdateConstantBuffer();
+        }
+        if (UI::SliderFloat("進捗（実行時）", progress_, 0.0f, 1.0f)) {
+            UpdateConstantBuffer();
+        }
+
+        CVarUI::DrawTree(kCVarPrefix);
+
+        UI::Separator();
+        if (ImGui::Button("デフォルトに戻す")) {
+            CVarUI::ResetTree(kCVarPrefix);
+            timeAccumulator_ = 0.0f;
+        }
+        ImGui::PopID();
+#endif // USE_IMGUI
+    }
+
+    CVar<bool>* TrolleyLoading::GetEnabledCVar() const
+    {
+        return &cvEnabled;
+    }
+}

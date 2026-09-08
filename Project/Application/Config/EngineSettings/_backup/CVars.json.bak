@@ -1,4 +1,8 @@
 {
+    "Game.Hud.Position": [
+        32.0,
+        190.0
+    ],
     "Game.Stamina.AdditionalMonkeyCostRate": 0.20000000298023224,
     "Game.Stamina.BananaRecovery": 15.0,
     "Game.Stamina.Cost.Rail": 1.5,
@@ -95,6 +99,7 @@
         0.6157788038253784
     ],
     "r.AutoExposure.Enabled": true,
+    "r.AutoExposure.MaxEV": 7.5,
     "r.Bloom.Intensity": 0.9480000138282776,
     "r.Bloom.SoftKnee": 0.35100001096725464,
     "r.Blur.Intensity": 2.5290000438690186,
