@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <cctype>
 #include <cstdio>
 #include <filesystem>
 #include <string>
@@ -69,6 +70,91 @@ namespace GameEditors
             return position == std::string::npos ? path : path.substr(position + 1);
         }
 
+        /// @brief UTF-8文字列をWindowsでも正しくfilesystemのパスへ変換する
+        std::filesystem::path PathFromUtf8(const std::string& path)
+        {
+            const std::u8string utf8Path(path.begin(), path.end());
+            return std::filesystem::path(utf8Path);
+        }
+
+        /// @brief Windowsのパス比較用に区切り文字とASCII大文字を揃える
+        std::string NormalizePathForCompare(std::string path)
+        {
+            std::replace(path.begin(), path.end(), '\\', '/');
+            std::transform(path.begin(), path.end(), path.begin(),
+                [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+            return path;
+        }
+
+        /// @brief エリア内で未使用の最小chunk番号を探す
+        std::string NextChunkBaseName(const StageAreaDefinition& area)
+        {
+            for (std::size_t index = 1; index <= 9999; ++index) {
+                char baseName[32] = {};
+                std::snprintf(baseName, sizeof(baseName), "chunk_%02zu", index);
+                const std::string path = std::string(StageProjectIO::kAreasRoot)
+                    + "/" + area.name + "/" + baseName + ".csv";
+                std::error_code ec;
+                const bool exists = std::filesystem::exists(PathFromUtf8(path), ec);
+                if (!exists && !ec) {
+                    return baseName;
+                }
+            }
+            return "chunk_new";
+        }
+
+        /// @brief 入力欄の前後にあるASCII空白を取り除く
+        std::string TrimAsciiWhitespace(std::string value)
+        {
+            const auto first = value.find_first_not_of(" \t\r\n");
+            if (first == std::string::npos) {
+                return {};
+            }
+            const auto last = value.find_last_not_of(" \t\r\n");
+            return value.substr(first, last - first + 1);
+        }
+
+        /// @brief Windows上でCSVファイル名として使えない入力を弾く
+        bool IsValidCsvFileName(const std::string& name)
+        {
+            if (name.empty() || name == "." || name == ".."
+                || name.back() == '.' || name.back() == ' ') {
+                return false;
+            }
+            if (name.find_first_of("/\\") != std::string::npos) {
+                return false;
+            }
+            for (const unsigned char ch : name) {
+                if (ch < 0x20u || ch == '<' || ch == '>' || ch == ':'
+                    || ch == '"' || ch == '|' || ch == '?' || ch == '*') {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// @brief 拡張子を1つだけ付けたCSVファイル名を作る
+        std::string WithCsvExtension(const std::string& name)
+        {
+            constexpr std::size_t kExtensionLength = 4;
+            if (name.size() >= kExtensionLength) {
+                const auto extensionStart = name.size() - kExtensionLength;
+                bool isCsv = true;
+                for (std::size_t i = 0; i < kExtensionLength; ++i) {
+                    const char ch = static_cast<char>(std::tolower(
+                        static_cast<unsigned char>(name[extensionStart + i])));
+                    if (ch != std::string(".csv")[i]) {
+                        isCsv = false;
+                        break;
+                    }
+                }
+                if (isCsv) {
+                    return name;
+                }
+            }
+            return name + ".csv";
+        }
+
         /// @brief エディタの実体
         /// @details タブを閉じても編集中の内容を残したいので、1つだけ持ち続ける。
         StageEditorPanel& GetPanelInstance()
@@ -121,6 +207,14 @@ namespace GameEditors
             // 構成ファイルがまだ無い初回は、エリアフォルダーの中身から組み立てる。
             project_ = StageProjectIO::ScanFromDisk(StageProjectIO::kAreasRoot);
             SetStatus("構成ファイルが無いので、エリアフォルダーから作りました");
+        }
+        if (StageProjectIO::MergeCsvFilesFromDisk(project_, StageProjectIO::kAreasRoot)) {
+            if (StageProjectIO::Save(projectPath_, project_)) {
+                SetStatus("エリアフォルダー内の未登録CSVを構成へ追加しました");
+            } else {
+                SetStatus("未登録CSVを検出しましたが、ステージ構成を保存できません: "
+                    + projectPath_, true);
+            }
         }
         project_.chunkSizeX = std::max<std::size_t>(1, project_.chunkSizeX);
         project_.mapSizeZ = std::max<std::size_t>(1, project_.mapSizeZ);
@@ -183,7 +277,45 @@ namespace GameEditors
             return;
         }
         std::snprintf(saveAsBuffer_, sizeof(saveAsBuffer_), "%s", path.c_str());
-        SetStatus("保存しました: " + path);
+        const int areaIndex = FindAreaIndexForCsvPath(path);
+        if (areaIndex < 0) {
+            SetStatus("保存しました: " + path);
+            return;
+        }
+
+        auto& area = project_.areas[areaIndex];
+        const std::string normalizedPath = NormalizePathForCompare(path);
+        const bool alreadyRegistered = std::any_of(area.paths.begin(), area.paths.end(),
+            [&](const std::string& registeredPath) {
+                return NormalizePathForCompare(registeredPath) == normalizedPath;
+            });
+        if (!alreadyRegistered) {
+            area.paths.push_back(path);
+        }
+
+        selectedAreaIndex_ = areaIndex;
+        selectedBrowseIndex_ = areaIndex + 1;
+        RebuildBrowseList();
+        selectedBrowseIndex_ = std::clamp(selectedBrowseIndex_, 0,
+            static_cast<int>(browseList_.size()) - 1);
+        const auto& paths = browseList_[selectedBrowseIndex_].paths;
+        selectedCsvIndex_ = -1;
+        for (int i = 0; i < static_cast<int>(paths.size()); ++i) {
+            if (NormalizePathForCompare(paths[i]) == normalizedPath) {
+                selectedCsvIndex_ = i;
+                break;
+            }
+        }
+
+        if (!alreadyRegistered) {
+            if (!StageProjectIO::Save(projectPath_, project_)) {
+                SetStatus("CSVは保存しましたが、Area" + std::to_string(areaIndex + 1)
+                    + "への登録を保存できません", true);
+                return;
+            }
+        }
+        SetStatus("保存してArea" + std::to_string(areaIndex + 1)
+            + "へ追加しました: " + path);
     }
 
     void StageEditorPanel::NewDocument(std::size_t sizeX, std::size_t sizeZ)
@@ -192,9 +324,60 @@ namespace GameEditors
             GameComponents::MapChipType::Ground);
         newSizeX_ = static_cast<int>(document_.GetSizeX());
         newSizeZ_ = static_cast<int>(document_.GetSizeZ());
-        saveAsBuffer_[0] = '\0';
-        SetStatus("新しい区画を作りました。「名前を付けて保存」で保存先を決めてください");
+        PrepareNewChunkSuggestion();
+        SetStatus("新しい区画を作りました。名前と保存先を自動入力しました");
     }
+
+    void StageEditorPanel::PrepareNewChunkSuggestion()
+    {
+        int areaIndex = -1;
+        if (selectedBrowseIndex_ > 0
+            && selectedBrowseIndex_ - 1 < static_cast<int>(project_.areas.size())) {
+            areaIndex = selectedBrowseIndex_ - 1;
+        } else if (selectedAreaIndex_ >= 0
+            && selectedAreaIndex_ < static_cast<int>(project_.areas.size())) {
+            areaIndex = selectedAreaIndex_;
+        }
+
+        if (areaIndex < 0) {
+            std::snprintf(newCsvBuffer_, sizeof(newCsvBuffer_), "%s", "chunk_01");
+            if (document_.GetPath().empty()) {
+                saveAsBuffer_[0] = '\0';
+            }
+            return;
+        }
+
+        const auto& area = project_.areas[areaIndex];
+        const std::string baseName = NextChunkBaseName(area);
+        const std::string path = std::string(StageProjectIO::kAreasRoot)
+            + "/" + area.name + "/" + baseName + ".csv";
+        std::snprintf(newCsvBuffer_, sizeof(newCsvBuffer_), "%s", baseName.c_str());
+        if (document_.GetPath().empty()) {
+            std::snprintf(saveAsBuffer_, sizeof(saveAsBuffer_), "%s", path.c_str());
+        }
+    }
+
+    int StageEditorPanel::FindAreaIndexForCsvPath(const std::string& path) const
+    {
+        const std::string normalizedPath = NormalizePathForCompare(path);
+        for (int i = 0; i < static_cast<int>(project_.areas.size()); ++i) {
+            const auto& area = project_.areas[i];
+            const std::string prefix = NormalizePathForCompare(
+                std::string(StageProjectIO::kAreasRoot) + "/" + area.name + "/");
+            if (normalizedPath.size() <= prefix.size()
+                || normalizedPath.compare(0, prefix.size(), prefix) != 0) {
+                continue;
+            }
+            const std::string fileName = normalizedPath.substr(prefix.size());
+            if (fileName.find('/') == std::string::npos
+                && fileName.size() >= 4
+                && fileName.compare(fileName.size() - 4, 4, ".csv") == 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
 
     // ──────────────────────────────────────────────────────────
     // 実行中マップ
@@ -818,6 +1001,9 @@ namespace GameEditors
                     area.name.c_str(), area.paths.size());
                 if (ImGui::Selectable(label, i == selectedAreaIndex_)) {
                     selectedAreaIndex_ = i;
+                    selectedBrowseIndex_ = i + 1;
+                    selectedCsvIndex_ = -1;
+                    PrepareNewChunkSuggestion();
                 }
             }
             ImGui::EndListBox();
@@ -827,7 +1013,7 @@ namespace GameEditors
         UI::InputText("新しいエリア名", newAreaBuffer_, sizeof(newAreaBuffer_));
         UI::SameLine();
         if (ImGui::Button("エリアを追加")) {
-            const std::string name = newAreaBuffer_;
+            const std::string name = TrimAsciiWhitespace(newAreaBuffer_);
             if (name.empty()) {
                 SetStatus("エリア名が空です", true);
             } else if (StageProjectIO::FindArea(project_, name) != nullptr) {
@@ -837,12 +1023,17 @@ namespace GameEditors
                 std::error_code ec;
                 const std::string directory = std::string(StageProjectIO::kAreasRoot) + "/" + name;
                 std::filesystem::create_directories(
-                    std::filesystem::path(std::u8string(directory.begin(), directory.end())), ec);
-                project_.areas.push_back({ name, {} });
-                selectedAreaIndex_ = static_cast<int>(project_.areas.size()) - 1;
-                newAreaBuffer_[0] = '\0';
-                RebuildBrowseList();
-                SetStatus("エリアを追加しました: " + name);
+                    PathFromUtf8(directory), ec);
+                if (ec) {
+                    SetStatus("エリアのフォルダーを作れません: " + directory
+                        + " (" + ec.message() + ")", true);
+                } else {
+                    project_.areas.push_back({ name, {} });
+                    selectedAreaIndex_ = static_cast<int>(project_.areas.size()) - 1;
+                    newAreaBuffer_[0] = '\0';
+                    RebuildBrowseList();
+                    SetStatus("エリアを追加しました: " + name);
+                }
             }
         }
 
@@ -885,22 +1076,57 @@ namespace GameEditors
             UI::InputText("新しい区画名", newCsvBuffer_, sizeof(newCsvBuffer_));
             UI::SameLine();
             if (ImGui::Button("区画CSVを作って追加")) {
-                const std::string name = newCsvBuffer_;
+                const std::string name = TrimAsciiWhitespace(newCsvBuffer_);
                 if (name.empty()) {
                     SetStatus("区画名が空です", true);
+                } else if (!IsValidCsvFileName(name)) {
+                    SetStatus("区画名にファイル名として使えない文字が含まれています", true);
                 } else {
+                    const std::string fileName = WithCsvExtension(name);
                     const std::string path = std::string(StageProjectIO::kAreasRoot)
-                        + "/" + area.name + "/" + name + ".csv";
-                    StageCsvDocument fresh;
-                    fresh.Reset(project_.chunkSizeX, project_.mapSizeZ,
-                        GameComponents::MapChipType::Ground);
-                    if (fresh.Save(path)) {
-                        area.paths.push_back(path);
-                        newCsvBuffer_[0] = '\0';
-                        RebuildBrowseList();
-                        OpenCsv(path);
+                        + "/" + area.name + "/" + fileName;
+                    const std::filesystem::path csvPath = PathFromUtf8(path);
+                    std::error_code existsError;
+                    if (std::filesystem::exists(csvPath, existsError)) {
+                        SetStatus("同じ名前の区画CSVがあります: " + fileName, true);
+                    } else if (existsError) {
+                        SetStatus("区画CSVの保存先を確認できません: " + path
+                            + " (" + existsError.message() + ")", true);
                     } else {
-                        SetStatus("区画CSVを作れません: " + path, true);
+                        StageCsvDocument fresh;
+                        fresh.Reset(project_.chunkSizeX, project_.mapSizeZ,
+                            GameComponents::MapChipType::Ground);
+                        if (fresh.Save(path)) {
+                            area.paths.push_back(path);
+                            newCsvBuffer_[0] = '\0';
+
+                            // 別エリアを選んでいた場合でも、追加したCSVが編集タブに
+                            // 直ちに見えるよう、ブラウザーの選択先を同期する。
+                            const int browseIndex = selectedAreaIndex_ + 1;
+                            RebuildBrowseList();
+                            selectedBrowseIndex_ = std::clamp(browseIndex, 0,
+                                static_cast<int>(browseList_.size()) - 1);
+                            const auto& paths = browseList_[selectedBrowseIndex_].paths;
+                            for (int i = 0; i < static_cast<int>(paths.size()); ++i) {
+                                if (paths[i] == path) {
+                                    selectedCsvIndex_ = i;
+                                    break;
+                                }
+                            }
+                            OpenCsv(path);
+
+                            // 「作って追加」は構成表への登録までを1操作として完了させる。
+                            // これを保存しないと、次回起動時に既存のJSONから再読み込みした
+                            // とき新しいCSVが一覧から消えてしまう。
+                            if (!StageProjectIO::Save(projectPath_, project_)) {
+                                SetStatus("CSVは作成しましたが、ステージ構成を保存できません: "
+                                    + projectPath_, true);
+                            } else {
+                                SetStatus("区画CSVを追加しました: " + path);
+                            }
+                        } else {
+                            SetStatus("区画CSVを作れません: " + path, true);
+                        }
                     }
                 }
             }

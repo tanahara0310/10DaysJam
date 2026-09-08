@@ -110,8 +110,15 @@ void GameComponents::HungerComponent::OnMonkeyEnteredCell(
         return;
     }
 
+    // サルが増えるほど1匹あたりの回復量を逓減させる。
+    // これにより、補正率が0.25ならサル数が増えても回復量の総量は
+    // 線形には増えず、補正率が1なら全サルでほぼ一定になる。
+    const float correctionRate = std::clamp(
+        GameSettings::BananaRecoveryMonkeyCorrectionRate.Get(), 0.0f, 1.0f);
+    const float monkeyRecoveryCorrection = 1.0f /
+        (1.0f + static_cast<float>(monkeyCount_ - 1) * correctionRate);
     const float recovery = std::max(0.0f, GameSettings::BananaRecovery.Get()) *
-        static_cast<float>(triggeredCount);
+        static_cast<float>(triggeredCount) * monkeyRecoveryCorrection;
     AddStamina(recovery);
     Logger::GetInstance().Infof(
         LogCategory::Game,

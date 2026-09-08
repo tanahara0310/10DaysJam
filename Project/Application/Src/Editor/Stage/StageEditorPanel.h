@@ -58,6 +58,8 @@ namespace GameEditors
         void SaveCsv(const std::string& path);
         void NewDocument(std::size_t sizeX, std::size_t sizeZ);
         void ResizeDocumentToProjectSize();
+        void PrepareNewChunkSuggestion();
+        int FindAreaIndexForCsvPath(const std::string& path) const;
 
         // ── 実行中マップ ──────────────────────────────────────
         GameComponents::MapGeneratorComponent* FindMapGenerator() const;
