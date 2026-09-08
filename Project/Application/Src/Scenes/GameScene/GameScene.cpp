@@ -377,6 +377,13 @@ void GameScene::GameScene::OnInitialize() {
     // 起動は _camera.json の startupRigName 任せで、ここでは何も駆動しない。
     auto* gameCamera = cameraManager_->GetCamera(CoreEngine::CameraNames::Game);
 
+    // カーソルが画面外へ出ないよう、映っている範囲をカメラから直接見て止める。
+    // 渡さなければ制限は掛からないので、リグを止めても建設は従来どおり動く。
+    if (auto* railBuilderComponent =
+        railBuilder->GetComponent<GameComponents::RailBuilderComponent>()) {
+        railBuilderComponent->SetViewCamera(gameCamera);
+    }
+
     // 岩破壊の揺れは静的に鳴らす。ここでは調整用CVarをインスペクタへ出すために付ける。
     auto* cameraSettings = CreateObject<GameSceneObject>("CameraSettings");
     cameraSettings->AddComponent<GameComponents::RockBreakShakeSettingsComponent>();
