@@ -67,6 +67,9 @@
     <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp">
       <Filter>Application\Src\Components\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\UI\StaminaGaugeUIComponent.cpp">
       <Filter>Application\Src\Components\UI</Filter>
     </ClCompile>
@@ -1498,6 +1501,9 @@
       <Filter>Application\Src\Components\UI</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h">
       <Filter>Application\Src\Components\UI</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\UI\StaminaGaugeUIComponent.h">

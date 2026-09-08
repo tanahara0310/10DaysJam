@@ -11,6 +11,7 @@
 #include "Components/Utility/BlockModelLayout.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Tween/Tween.h"
 
 #include <algorithm>
 #include <cmath>
@@ -28,6 +29,20 @@ namespace {
     constexpr EasingUtil::Type kTurnEasing = EasingUtil::Type::EaseInOutSine;
     // 進行方向は 90 度刻みなので、一致判定はこの程度の誤差で足りる。
     constexpr float kYawEpsilon = 1e-4f;
+
+    // ゲームオーバー時にサルを最終レールの先へ飛ばす時間と距離。
+    constexpr float kGameOverLaunchRiseDuration = 0.26f;
+    constexpr float kGameOverLaunchFallDuration = 0.78f;
+    constexpr float kGameOverLaunchDistance = 8.0f;
+    constexpr float kGameOverLaunchRiseHeight = 5.5f;
+    constexpr float kGameOverLaunchEndHeight = 1.2f;
+    constexpr float kGameOverLaunchSpin = 5.5f;
+
+    // サルが飛び出す瞬間だけトロッコを傾け、すぐ元の姿勢へ戻す。
+    constexpr float kGameOverTrolleyTiltInDuration = 0.10f;
+    constexpr float kGameOverTrolleyTiltOutDuration = 0.36f;
+    constexpr float kGameOverTrolleyTiltX = 0.30f;
+    constexpr float kGameOverTrolleyTiltZ = 0.46f;
 
     // 進行方向のマス差分から Y 軸回転を求める。差分がなければ今の向きを保つ。
     float HeadingYawFromDelta(int32_t deltaX, int32_t deltaZ, float fallbackYaw) {
@@ -267,6 +282,7 @@ void GameComponents::TrainMovementComponent::NotifyGameOver() {
     if (transform_) {
         transform_->Get().translate.y = BlockModelLayout::GetRailTopHeight(gridSize_);
     }
+    PlayGameOverLaunch();
     if (gameManager_) {
         gameManager_->RequestGameOver();
     }
@@ -392,6 +408,12 @@ void GameComponents::TrainMovementComponent::AddCarriage(
     carriageTransform->Get().TransferMatrix();
 }
 
+void GameComponents::TrainMovementComponent::AddMonkey(TransformComponent* monkeyTransform) {
+    if (monkeyTransform) {
+        monkeyTransforms_.push_back(monkeyTransform);
+    }
+}
+
 void GameComponents::TrainMovementComponent::ProcessCarriageArrival(bool stationActivated) {
     ++traveledBlockCount_;
     traveledCells_.emplace_back(gridX_, gridZ_);
@@ -479,6 +501,160 @@ void GameComponents::TrainMovementComponent::SyncCarriageTransforms() {
 void GameComponents::TrainMovementComponent::PlayRockThrowJump() {
     rockThrowJumpElapsed_ = 0.0f;
     isRockThrowJumping_ = rockThrowJumpDuration_ > 0.0f && rockThrowJumpHeight_ > 0.0f;
+}
+
+void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
+    if (gameOverLaunchStarted_) {
+        return;
+    }
+    gameOverLaunchStarted_ = true;
+
+    // ゲームオーバー判定は列車移動の途中で発生するため、直前に更新された
+    // ローカル座標をワールド行列へ反映してから、サルの現在位置を取得する。
+    if (transform_) {
+        transform_->Get().TransferMatrix();
+    }
+    for (auto* carriageTransform : carriageTransforms_) {
+        if (carriageTransform) {
+            carriageTransform->Get().TransferMatrix();
+        }
+    }
+
+    // headingYaw_ は直前に走っていた最終レールの向き。まだ一度も発車して
+    // いない場合だけ、履歴の最後の2マスから向きを復元する。
+    float finalYaw = hasHeading_ ? headingYaw_ : 0.0f;
+    if (!hasHeading_ && traveledCells_.size() >= 2) {
+        const auto& [startX, startZ] = traveledCells_[traveledCells_.size() - 2];
+        const auto& [endX, endZ] = traveledCells_.back();
+        finalYaw = HeadingYawFromDelta(endX - startX, endZ - startZ, finalYaw);
+    }
+
+    const Vector3 launchDirection{
+        std::sin(finalYaw),
+        0.0f,
+        std::cos(finalYaw) };
+
+    const auto playTrolleyTilt = [](GameObject* trolley,
+        TransformComponent* trolleyTransform, std::size_t trolleyIndex) {
+            if (!trolley || !trolleyTransform) {
+                return;
+            }
+
+            const Vector3 originalRotation = trolleyTransform->Get().rotate;
+            Vector3 tiltedRotation = originalRotation;
+            tiltedRotation.x -= kGameOverTrolleyTiltX;
+            tiltedRotation.z += kGameOverTrolleyTiltZ;
+
+            TweenSequence tilt;
+            tilt
+                .Append(
+                    Tween::RotateTo(
+                        trolley,
+                        tiltedRotation,
+                        kGameOverTrolleyTiltInDuration)
+                    .SetEase(EasingUtil::Type::EaseOutQuad))
+                .Append(
+                    Tween::RotateTo(
+                        trolley,
+                        originalRotation,
+                        kGameOverTrolleyTiltOutDuration)
+                    .SetEase(EasingUtil::Type::EaseInOutSine))
+                .SetLink(trolley)
+                .SetUpdateType(TweenUpdate::Unscaled)
+                .SetId(
+                    std::string("game_over_trolley_tilt_")
+                    + std::to_string(trolleyIndex));
+        };
+
+    // サルがいないケースでは、トロッコだけが傾かないようにする。
+    if (!monkeyTransforms_.empty()) {
+        playTrolleyTilt(GetOwner(), transform_, 0);
+        for (std::size_t index = 0; index < carriageTransforms_.size(); ++index) {
+            playTrolleyTilt(
+                carriageTransforms_[index] ? carriageTransforms_[index]->GetOwner() : nullptr,
+                carriageTransforms_[index],
+                index + 1);
+        }
+    }
+
+    const auto launchMonkey = [&launchDirection](
+        TransformComponent* monkeyTransform,
+        std::size_t monkeyIndex) {
+            if (!monkeyTransform || !monkeyTransform->GetOwner()) {
+                return;
+            }
+
+            auto& monkeyWorld = monkeyTransform->Get();
+            monkeyWorld.TransferMatrix();
+
+            // 親の車両を外しても見た目が跳ねないよう、現在のワールド姿勢を
+            // サル自身のローカル値へ焼き直してから独立させる。
+            Vector3 startScale{};
+            Vector3 startRotation{};
+            Vector3 startPosition{};
+            MathCore::Matrix::DecomposeToSRT(
+                monkeyWorld.GetWorldMatrix(), startScale, startRotation, startPosition);
+            monkeyWorld.SetParent(nullptr);
+            monkeyWorld.scale = startScale;
+            monkeyWorld.rotate = startRotation;
+            monkeyWorld.translate = startPosition;
+
+            GameObject* monkey = monkeyTransform->GetOwner();
+            const float distance =
+                kGameOverLaunchDistance + static_cast<float>(monkeyIndex) * 0.35f;
+            const Vector3 apexPosition{
+                startPosition.x + launchDirection.x * distance * 0.42f,
+                startPosition.y + kGameOverLaunchRiseHeight,
+                startPosition.z + launchDirection.z * distance * 0.42f };
+            const Vector3 endPosition{
+                startPosition.x + launchDirection.x * distance,
+                startPosition.y + kGameOverLaunchEndHeight,
+                startPosition.z + launchDirection.z * distance };
+            const Vector3 midRotation{
+                startRotation.x + kGameOverLaunchSpin * 0.4f,
+                startRotation.y - kGameOverLaunchSpin * 0.3f,
+                startRotation.z + kGameOverLaunchSpin * 0.5f };
+            const Vector3 endRotation{
+                startRotation.x + kGameOverLaunchSpin,
+                startRotation.y - kGameOverLaunchSpin * 0.75f,
+                startRotation.z + kGameOverLaunchSpin * 0.9f };
+
+            TweenSequence launch;
+            launch
+                .Append(
+                    Tween::MoveTo(
+                        monkey,
+                        apexPosition,
+                        kGameOverLaunchRiseDuration)
+                    .SetEase(EasingUtil::Type::EaseOutQuad))
+                .Join(
+                    Tween::RotateTo(
+                        monkey,
+                        midRotation,
+                        kGameOverLaunchRiseDuration)
+                    .SetEase(EasingUtil::Type::EaseOutCubic))
+                .Append(
+                    Tween::MoveTo(
+                        monkey,
+                        endPosition,
+                        kGameOverLaunchFallDuration)
+                    .SetEase(EasingUtil::Type::EaseInCubic))
+                .Join(
+                    Tween::RotateTo(
+                        monkey,
+                        endRotation,
+                        kGameOverLaunchFallDuration)
+                    .SetEase(EasingUtil::Type::EaseInCubic))
+                .SetLink(monkey)
+                .SetUpdateType(TweenUpdate::Unscaled)
+                .SetId(
+                    std::string("game_over_monkey_launch_")
+                    + std::to_string(monkeyIndex));
+        };
+
+    for (std::size_t index = 0; index < monkeyTransforms_.size(); ++index) {
+        launchMonkey(monkeyTransforms_[index], index);
+    }
 }
 
 void GameComponents::TrainMovementComponent::UpdateRockThrowJump(float deltaTime) {

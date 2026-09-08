@@ -26,6 +26,7 @@
 #include "Components/Rail/RailViewComponent.h"
 #include "Components/Train/SpawnPopComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
+#include "Components/UI/GameStartPromptAnimationComponent.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/GameResultData.h"
@@ -33,6 +34,7 @@
 #include "Components/GameCore/HungerComponent.h"
 #include "GameObjects/Effect/RockBreakDebris.h"
 #include "GameObjects/GameSceneObject.h"
+#include "UI/UIText.h"
 
 #include <algorithm>
 #include <string>
@@ -55,6 +57,23 @@ void GameScene::GameScene::OnInitialize() {
     // ========== シーンの設定 ==========
     SetSceneName("GameScene");
     SetDefaultGroundEnabled(true);
+
+    // ゲーム開始時の目標距離を、右から中央へ入り、2秒滞在してから
+    // 左へ抜ける案内として表示する。
+    auto* startPrompt = CreateText(
+        "200ｍすすめ！",
+        72.0f,
+        UIAnchor::Center,
+        { 0.0f, 0.0f },
+        { 1.0f, 0.92f, 0.58f, 1.0f },
+        "GameStartDistancePrompt");
+    if (startPrompt) {
+        startPrompt->SetSerializeEnabled(false);
+        startPrompt->SetPivot({ 0.5f, 0.5f });
+        startPrompt->SetOutline({ 0.04f, 0.02f, 0.0f, 1.0f }, 0.045f);
+        startPrompt->SetSortOrder(1000);
+        startPrompt->AddComponent<GameComponents::GameStartPromptAnimationComponent>();
+    }
 
     // ========== 昼夜サイクル ==========
     // 時刻を進めて空と太陽・月を昼→夕→夜と変えるだけの Feature。
@@ -304,6 +323,7 @@ void GameScene::GameScene::OnInitialize() {
     monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
     monkeyTransform->Get().SetParent(&trainTransform->Get());
     monkeyTransform->Get().rotate.y = 3.14f;
+    trainMovement->AddMonkey(monkeyTransform);
     hungerComponent->SetMonkeyAddedCallback(
         [this, trainMovement, monkeyTransform](std::size_t monkeyCount) {
             auto* carriage = CreateObject<GameSceneObject>(
@@ -332,6 +352,7 @@ void GameScene::GameScene::OnInitialize() {
                 addedTransform->Get().translate = monkeyTransform->Get().translate;
                 addedTransform->Get().rotate = monkeyTransform->Get().rotate;
                 addedTransform->Get().scale = monkeyTransform->Get().scale;
+                trainMovement->AddMonkey(addedTransform);
             }
         });
 
