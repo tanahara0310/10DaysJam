@@ -10,6 +10,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
+#include "UI/UIImage.h"
 #include "UI/UIText.h"
 
 using namespace CoreEngine;
@@ -71,6 +72,15 @@ void ResultScene::ResultScene::OnInitialize() {
             const Vector4& color,
             const std::string& name) -> UIText* {
                 return CreateText(text, fontSize, anchor, position, color, name);
+        },
+        [this](const std::string& texturePath,
+            const std::string& name) -> UIImage* {
+                auto* image = CreateObject<UIImage>();
+                if (!image) {
+                    return nullptr;
+                }
+                image->Initialize(texturePath, name);
+                return image;
         });
 
     retryButton_ = ui.retryButton;
