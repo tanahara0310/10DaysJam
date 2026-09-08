@@ -147,6 +147,9 @@ void SceneTransition::Update(float deltaTime) {
 
     // BGM音量を適用（フェードと同期）
     ApplyBGMVolume();
+
+    // 暗転中に始まった BGM は、画面が明けるまで頭で待たせる
+    ApplyBGMStartHold();
 }
 
 void SceneTransition::StartTransition(TransitionType type, float duration) {
@@ -172,6 +175,9 @@ void SceneTransition::StartTransition(TransitionType type, float duration) {
         fadeEffect_->SetEnabled(true); // フェード開始時に有効化
         fadeEffect_->SetFadeType(FadeEffect::FadeType::BlackFade);
     }
+
+    // 次の Update を待たずに掛ける。ここから先で始まる BGM が保留の対象になる
+    ApplyBGMStartHold();
 }
 
 bool SceneTransition::IsReadyToChangeScene() const {
@@ -213,6 +219,10 @@ void SceneTransition::OnSceneChanged() {
         waitFrameCounter_ = 0;
         fadeEffect_->SetEnabled(true);
     }
+
+    // フェーズが変わった直後に反映する。ここで解除しないと、次の Update まで
+    // BGM が頭で止まったままフェードインが進んでしまう
+    ApplyBGMStartHold();
 }
 
 bool SceneTransition::IsTransitioning() const {
@@ -242,6 +252,7 @@ void SceneTransition::SkipTransition() {
     // Update() は Idle だと即 return するので、ここで自分でダッキングと露出を戻す
     ApplyExposureHold();
     ApplyBGMVolume();
+    ApplyBGMStartHold();
 }
 
 float SceneTransition::CalculateFadeAlpha() const {
@@ -377,6 +388,16 @@ void SceneTransition::ApplyExposureHold() {
     // 0 まで落ちて自動EVが上限へ張り付き、次のシーンが白飛びで現れる。
     // フェードインに入ってアルファが下がれば、そのまま新しいシーンへ順応が再開する。
     toneMapping_->SetAdaptationPaused(CalculateFadeAlpha() >= kExposureHoldAlpha);
+}
+
+void SceneTransition::ApplyBGMStartHold() {
+    if (!audioSystem_) {
+        return;
+    }
+
+    // 暗転している間（FadeOut / Loading / Changing / Hold）は、シーンが鳴らし始めた
+    // BGM を頭で止めておく。フェードインへ入った時点で解除され、そこから鳴り出す
+    audioSystem_->SetBusStartHold(AudioBus::BGM, IsBlocking());
 }
 
 void SceneTransition::ApplyBGMVolume() {
