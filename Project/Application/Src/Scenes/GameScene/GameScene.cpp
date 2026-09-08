@@ -8,6 +8,7 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
+#include "PauseMenuFeature.h"
 #include "SkyFogFeature.h"
 #include "StageLightsFeature.h"
 #include "StaminaGaugeFeature.h"
@@ -69,6 +70,9 @@ void GameScene::GameScene::OnInitialize() {
     // スタミナをバナナの粒で見せる HUD ゲージ。
     // 位置・粒あたりのスタミナ量は「ゲーム設定」の Game.StaminaGauge.* から調整する。
     AddFeature(GameComponents::CreateStaminaGaugeFeature());
+    // ツタで吊るした木の看板のポーズメニュー。ESC ／ パッドの START で開く。
+    // 見た目は「ゲーム設定」の Game.PauseMenu.* から調整する。
+    AddFeature(GameComponents::CreatePauseMenuFeature());
 
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;

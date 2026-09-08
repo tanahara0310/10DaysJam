@@ -3,6 +3,12 @@
 // 絵は Assets/Textures/loading_*.png（.obj から正射投影で焼いたボクセルのスプライト）を
 // 奥から順に重ねるだけ。車輪だけは trolley.obj に存在しないのでここで手続き的に描く。
 //
+// ■ 進捗の見せ方
+//   カメラは世界に固定してあり（railScroll = 0）、進捗ぶんだけ「トロッコが左から右へ
+//   走っていく」。駅も右外から少しだけ寄ってくるが、動く量はトロッコの 1/4 ほどなので
+//   遠景が近づく程度にしか見えない。トロッコを止めて駅だけを動かすと、駅の方が
+//   歩いて来るように見えて違和感が出る ―― この配分は崩さないこと。
+//
 // ■ 座標
 //   位置は「縦 1080 基準のピクセル」で持ち、uiScale で実解像度へ拡大する。
 //   基準解像度を変えるとレイアウトが全部ずれるので kReferenceHeight は触らないこと。
@@ -27,11 +33,11 @@ cbuffer TrolleyParams : register(b0)
     float screenAlpha;  // 表示強度 (0.0 = 非表示, 1.0 = 完全表示)
     float time;         // 経過時間（秒）
     float progress;     // 読み込みの進捗 (0.0〜1.0)
-    float speed;        // レールが流れる速さ（1080 基準の px/秒）
+    float bobSpeed;     // 跳ねる周期を決める速さ（1080 基準の px/秒）
 
-    float parallax;     // 奥の景色の速度比
+    float parallax;     // 奥の景色の速度比（railScroll に対して）
     float railY;        // レール上端（画面高さに対する比率）
-    float cartX;        // トロッコ左端（画面幅に対する比率）
+    float cartX;        // 進捗 0 のときのトロッコ左端（画面幅に対する比率）
     float bobAmp;       // 上下の揺れ幅（1080 基準の px）
 
     float tiltDegrees;  // 前後の傾き（度）
@@ -45,9 +51,9 @@ cbuffer TrolleyParams : register(b0)
     float sceneryDrop;  // レール上端から景色の下端までの距離
 
     float scale;        // 全体の拡大率。上の距離もスプライトも一括で掛かる
+    float cartGoalX;    // 進捗 1 のときのトロッコ左端（画面幅に対する比率）
+    float railScroll;   // レールと景色が流れる速さ（1080 基準の px/秒。0 で世界に固定）
     float scalePad0;    // 16 バイト境界を埋めるための詰め物（C++ 側と対で持つ）
-    float scalePad1;
-    float scalePad2;
 };
 
 cbuffer ScreenParams : register(b1)
@@ -153,21 +159,34 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
         float  uiScale = (float)screenHeight / kReferenceHeight * scale;
         float2 pix     = (float2)dispatchId.xy + 0.5f;
         float  railTop = railY * (float)screenHeight;
-        float  dist    = speed * time; // 1080 基準で進んだ距離
 
         uint railW,  railH;  gRail.GetDimensions(railW, railH);
         uint cartW,  cartH;  gCart.GetDimensions(cartW, cartH);
         uint sceneW, sceneH; gScenery.GetDimensions(sceneW, sceneH);
         uint stnW,   stnH;   gStation.GetDimensions(stnW, stnH);
 
-        // 枕木を 1 本通過するごとに 1 回跳ねる。速度を変えても周期が勝手に追従する
-        float phase = TWO_PI * dist / (float)railW;
+        // 進捗を走行量へ。両端を緩めて、発車と到着をなめらかにする
+        float travel = saturate(progress);
+        travel = travel * travel * (3.0f - 2.0f * travel);
+
+        // トロッコは進捗ぶんだけ左から右へ進む。駅は後で travel から別に置く
+        float cartStart = cartX * (float)screenWidth;
+        float cartLeft  = lerp(cartStart, cartGoalX * (float)screenWidth, travel);
+        // 実際に進んだ距離（1080 基準）。車輪はこれで転がすので滑って見えない
+        float cartDist  = (cartLeft - cartStart) / uiScale;
+
+        // 背景の流し（既定は 0 ＝ カメラを世界に固定する）
+        float scroll = railScroll * time;
+
+        // 跳ねと傾きだけは時間で回す。読み込みが詰まって進捗が止まっても、
+        // トロッコがその場で揺れ続けるので画面が固まって見えない
+        float phase = TWO_PI * bobSpeed * time / (float)railW;
         float bob   = (sin(phase) - 0.5f) * bobAmp * uiScale;
         float tilt  = sin(phase + 1.1f) * radians(tiltDegrees);
 
         // ---- 奥の景色（ゆっくり流れる） ----
         {
-            float lx = fmod(pix.x / uiScale + dist * parallax, (float)sceneW);
+            float lx = fmod(pix.x / uiScale + scroll * parallax, (float)sceneW);
             float ly = (pix.y - (railTop + sceneryDrop * uiScale)) / uiScale + (float)sceneH;
             float4 c = LoadSprite(gScenery, float2(lx, ly));
             color = lerp(color, c.rgb, c.a * screenAlpha);
@@ -175,17 +194,15 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
 
         // ---- レール（剰余で無限スクロール） ----
         {
-            float lx = fmod(pix.x / uiScale + dist, (float)railW);
+            float lx = fmod(pix.x / uiScale + scroll, (float)railW);
             float ly = (pix.y - railTop) / uiScale;
             float4 c = LoadSprite(gRail, float2(lx, ly));
             color = lerp(color, c.rgb, c.a * screenAlpha);
         }
 
-        float cartLeft = cartX * (float)screenWidth;
-
-        // ---- 駅：進捗ぶんだけ右から近づく（これが進捗ゲージそのもの） ----
+        // ---- 駅：右外から寄ってくるが、動く量はトロッコよりずっと小さい ----
         {
-            float goal   = cartLeft + stationGoal * uiScale;
+            float goal   = cartGoalX * (float)screenWidth + stationGoal * uiScale;
             float startX = (float)screenWidth + kStationEnter * uiScale;
             float sx     = lerp(startX, goal, saturate(progress));
             float2 local = float2((pix.x - sx) / uiScale,
@@ -208,7 +225,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
         {
             float cy  = railTop - wheelDrop * uiScale + bob;
             float r   = wheelRadius * uiScale;
-            float ang = dist / max(wheelRadius, 1.0f);
+            float ang = cartDist / max(wheelRadius, 1.0f);
 
             [unroll]
             for (int i = 0; i < 2; ++i)
