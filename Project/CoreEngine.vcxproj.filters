@@ -25,6 +25,9 @@
     <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp">
       <Filter>Application\Src\Components\Result</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.cpp">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
@@ -1447,6 +1450,9 @@
       <Filter>Application\Src\Components\GameCore</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.h">
       <Filter>Application\Src\Components\Result</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">

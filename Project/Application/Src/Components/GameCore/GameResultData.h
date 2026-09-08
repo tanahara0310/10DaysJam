@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 namespace GameComponents
@@ -12,6 +13,7 @@ namespace GameComponents
         static void Reset()
         {
             horizontalProgressBlocks_ = 0;
+            monkeyCount_ = 1;
         }
 
         static void SetHorizontalProgressBlocks(uint32_t blocks)
@@ -26,7 +28,27 @@ namespace GameComponents
             return horizontalProgressBlocks_;
         }
 
+        /// @brief X正方向の最大進行距離をメートルで取得する。
+        /// @details ゲームルール上、1マスを1mとして換算する。
+        static uint32_t GetHorizontalProgressMeters()
+        {
+            constexpr uint32_t kMetersPerBlock = 1;
+            return horizontalProgressBlocks_ * kMetersPerBlock;
+        }
+
+        static void SetMonkeyCount(std::size_t count)
+        {
+            monkeyCount_ = count > 0 ? count : 1;
+        }
+
+        /// @brief 直前のゲームシーン終了時点のサル数を取得する。
+        static std::size_t GetMonkeyCount()
+        {
+            return monkeyCount_;
+        }
+
     private:
         static inline uint32_t horizontalProgressBlocks_ = 0;
+        static inline std::size_t monkeyCount_ = 1;
     };
 }
