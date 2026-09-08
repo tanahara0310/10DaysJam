@@ -20,6 +20,7 @@
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Building/MapViewComponent.h"
 #include "Components/Building/RockThrowComponent.h"
+#include "Components/Building/WaterWaveViewComponent.h"
 #include "Components/Camera/RockBreakShakeSettingsComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
@@ -182,13 +183,7 @@ void GameScene::GameScene::OnInitialize() {
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "ground.obj",
         ToUInt(GameComponents::GameSettings::GroundPoolCapacity.Get(), 1), false);
-    // 水場のオブジェクトプールを生成
-    auto* waterPoolManager = CreateObject<GameSceneObject>("WaterPoolManager");
-    waterPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    waterPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "box.obj",
-        ToUInt(GameComponents::GameSettings::WaterPoolCapacity.Get(), 1), true,
-        CoreEngine::Vector4{ 0.0f, 0.35f, 0.65f, 1.0f });
+    // 水場は WaterWaveViewComponent が板を並べて波打たせる（この下の方で生成する）。
     // 駅のオブジェクトプールを生成
     auto* stationPoolManager = CreateObject<GameSceneObject>("StationPoolManager");
     stationPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -370,7 +365,8 @@ void GameScene::GameScene::OnInitialize() {
     auto* mapView = mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        waterPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        // 水は WaterWaveViewComponent が描くので、ここでは渡さない（二重描画になる）
+        nullptr,
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         hardRockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
@@ -378,6 +374,16 @@ void GameScene::GameScene::OnInitialize() {
         grassPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         gameCamera,
         gridSize, renderWorldDistance);
+
+    // 水マスを描画するオブジェクトを追加。
+    // 地面と同じ「マスごとに1枚」だが、頂点シェーダーで波打たせるためプールではなく専用。
+    auto* waterRenderer = CreateObject<GameSceneObject>("WaterWaveRenderer");
+    waterRenderer->AddComponent<CoreEngine::TransformComponent>();
+    waterRenderer->AddComponent<GameComponents::WaterWaveViewComponent>(
+        mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
+        gameCamera,
+        gridSize, renderWorldDistance,
+        ToUInt(GameComponents::GameSettings::WaterPoolCapacity.Get(), 1));
 
     // サルが増えた駅を弾ませる。描画は MapView が持つのでここで繋ぐ。
     hungerComponent->SetStationPopCallback(
