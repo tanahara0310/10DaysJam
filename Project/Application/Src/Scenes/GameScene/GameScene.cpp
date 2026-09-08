@@ -59,7 +59,9 @@ void GameScene::GameScene::OnInitialize() {
 
     // ========== シーンの設定 ==========
     SetSceneName("GameScene");
-    SetDefaultGroundEnabled(true);
+    // 既定床（y = 0 の無限板）は生成しない。ステージのブロックより下は
+    // SkyFogFeature の雲で埋めるので、板を出すと雲も水場の滝も板に隠れてしまう。
+    SetDefaultGroundEnabled(false);
 
     // ゲーム開始時の目標距離を、右から中央へ入り、2秒滞在してから
     // 左へ抜ける案内として表示する。
@@ -206,6 +208,14 @@ void GameScene::GameScene::OnInitialize() {
     auto* groundPoolManager = CreateObject<GameSceneObject>("GroundPoolManager");
     groundPoolManager->AddComponent<CoreEngine::TransformComponent>();
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "ground.obj",
+        ToUInt(GameComponents::GameSettings::GroundPoolCapacity.Get(), 1), false);
+    // 床の下へ吊るす柱（スカート）のオブジェクトプールを生成。
+    // 同じ ground.obj を使うが、1マスにつき床とスカートの2つを同時に出すので
+    // プールは分ける。必要数は床と同じなので容量も同じ CVar から取る。
+    auto* groundSkirtPoolManager = CreateObject<GameSceneObject>("GroundSkirtPoolManager");
+    groundSkirtPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    groundSkirtPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "ground.obj",
         ToUInt(GameComponents::GameSettings::GroundPoolCapacity.Get(), 1), false);
     // 水場は WaterWaveViewComponent が板を並べて波打たせる（この下の方で生成する）。
@@ -367,6 +377,13 @@ void GameScene::GameScene::OnInitialize() {
     // 起動は _camera.json の startupRigName 任せで、ここでは何も駆動しない。
     auto* gameCamera = cameraManager_->GetCamera(CoreEngine::CameraNames::Game);
 
+    // カーソルが画面外へ出ないよう、映っている範囲をカメラから直接見て止める。
+    // 渡さなければ制限は掛からないので、リグを止めても建設は従来どおり動く。
+    if (auto* railBuilderComponent =
+        railBuilder->GetComponent<GameComponents::RailBuilderComponent>()) {
+        railBuilderComponent->SetViewCamera(gameCamera);
+    }
+
     // 岩破壊の揺れは静的に鳴らす。ここでは調整用CVarをインスペクタへ出すために付ける。
     auto* cameraSettings = CreateObject<GameSceneObject>("CameraSettings");
     cameraSettings->AddComponent<GameComponents::RockBreakShakeSettingsComponent>();
@@ -397,6 +414,7 @@ void GameScene::GameScene::OnInitialize() {
     auto* mapView = mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        groundSkirtPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         // 水は WaterWaveViewComponent が描くので、ここでは渡さない（二重描画になる）
         nullptr,
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),

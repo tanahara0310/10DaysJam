@@ -30,12 +30,23 @@ using namespace CoreEngine;
 namespace {
     constexpr std::size_t kDistanceMarkerIntervalMeters = 5;
     constexpr float kDistanceMarkerFontSize = 0.45f;
+
+    // banana_tree.obj の実寸（モデル空間）。原点は根元で Y=0〜1.6、根元の幹は半径 0.2。
+    // 風揺れで葉先がどれだけ振れて根元がどれだけ浮くかを、インスペクタへ出すのに使う。
+    constexpr float kBananaTreeModelHeight = 1.6f;
+    constexpr float kBananaTreeModelBaseRadius = 0.2f;
+
+    // ゲームカメラ（Presets/CameraRigs/GameCamera.json の offset [0, 20, -18]、FOV45度）
+    // で 1080p のときの、ワールド 1m あたりの画面ピクセル数の概算。
+    // 揺れが画面上で何 px になるかをインスペクタへ出すためだけの目安。
+    constexpr float kGameCameraPixelsPerMeter = 49.0f;
 }
 
 json GameComponents::MapViewComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
         { "viewDistanceX", viewDistanceX_ },
+        { "groundSkirtHeight", groundSkirtHeight_ },
         { "groundTintStrength", groundTintStrength_ },
         { "groundTintHueSwing", groundTintHueSwing_ },
         { "groundTintFadeStart", groundTintFadeStart_ },
@@ -44,13 +55,25 @@ json GameComponents::MapViewComponent::OnSerialize() const {
         { "stationPopSquash", stationPopSquash_ },
         { "bananaTreeShakeDuration", bananaTreeShakeDuration_ },
         { "bananaTreeShakeLean", bananaTreeShakeLean_ },
-        { "bananaTreeShakeSquash", bananaTreeShakeSquash_ }
+        { "bananaTreeShakeSquash", bananaTreeShakeSquash_ },
+        { "bananaTreeSwayAngle", bananaTreeSwayAngle_ },
+        { "bananaTreeSwaySpeed", bananaTreeSwaySpeed_ },
+        { "bananaTreeSwaySubSpeed", bananaTreeSwaySubSpeed_ },
+        { "bananaTreeSwaySubRate", bananaTreeSwaySubRate_ },
+        { "bananaTreeSwayLean", bananaTreeSwayLean_ },
+        { "bananaTreeSwayYaw", bananaTreeSwayYaw_ },
+        { "bananaTreeSwayBreath", bananaTreeSwayBreath_ },
+        { "bananaTreeWindDirX", bananaTreeWindDirX_ },
+        { "bananaTreeWindDirZ", bananaTreeWindDirZ_ },
+        { "bananaTreeSinkDepth", bananaTreeSinkDepth_ }
     };
 }
 
 void GameComponents::MapViewComponent::OnDeserialize(const json& j) {
     gridSize_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "gridSize", gridSize_));
     viewDistanceX_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "viewDistanceX", viewDistanceX_));
+    groundSkirtHeight_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "groundSkirtHeight", groundSkirtHeight_));
     groundTintStrength_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "groundTintStrength", groundTintStrength_));
     groundTintHueSwing_ = std::max(0.0f,
@@ -69,6 +92,24 @@ void GameComponents::MapViewComponent::OnDeserialize(const json& j) {
         JsonManager::SafeGet<float>(j, "bananaTreeShakeLean", bananaTreeShakeLean_), 0.0f, 1.5f);
     bananaTreeShakeSquash_ = std::clamp(
         JsonManager::SafeGet<float>(j, "bananaTreeShakeSquash", bananaTreeShakeSquash_), 0.0f, 1.0f);
+    bananaTreeSwayAngle_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "bananaTreeSwayAngle", bananaTreeSwayAngle_), 0.0f, 0.5f);
+    bananaTreeSwaySpeed_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "bananaTreeSwaySpeed", bananaTreeSwaySpeed_));
+    bananaTreeSwaySubSpeed_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "bananaTreeSwaySubSpeed", bananaTreeSwaySubSpeed_));
+    bananaTreeSwaySubRate_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "bananaTreeSwaySubRate", bananaTreeSwaySubRate_), 0.0f, 1.0f);
+    bananaTreeSwayLean_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "bananaTreeSwayLean", bananaTreeSwayLean_), 0.0f, 0.5f);
+    bananaTreeSwayYaw_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "bananaTreeSwayYaw", bananaTreeSwayYaw_), 0.0f, 1.5f);
+    bananaTreeSwayBreath_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "bananaTreeSwayBreath", bananaTreeSwayBreath_), 0.0f, 0.5f);
+    bananaTreeWindDirX_ = JsonManager::SafeGet<float>(j, "bananaTreeWindDirX", bananaTreeWindDirX_);
+    bananaTreeWindDirZ_ = JsonManager::SafeGet<float>(j, "bananaTreeWindDirZ", bananaTreeWindDirZ_);
+    bananaTreeSinkDepth_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "bananaTreeSinkDepth", bananaTreeSinkDepth_), 0.0f, 0.5f);
     // 旧データのモデル別高さ・スケールは使わず、共通ブロック寸法から求める。
 }
 
@@ -80,6 +121,16 @@ bool GameComponents::MapViewComponent::DrawInspector() {
     if (ImGui::DragInt("描画距離X", &distance, 1.0f, 1, 500)) { viewDistanceX_ = static_cast<uint32_t>(std::max(distance, 1)); changed = true; }
     ImGui::TextDisabled("共通モデルスケール: %.3f", BlockModelLayout::GetScale(gridSize_));
     ImGui::TextDisabled("接地面の高さ: %.3f", BlockModelLayout::GetSurfaceHeight(gridSize_));
+
+    ImGui::SeparatorText("地面ブロックの伸ばし");
+    changed |= ImGui::DragFloat("柱の長さ", &groundSkirtHeight_, 0.05f, 0.0f, 20.0f);
+    ImGui::TextDisabled("柱の底: %.2f m",
+        BlockModelLayout::GetGroundSkirtBottomHeight(gridSize_, groundSkirtHeight_));
+    ImGui::TextDisabled("草が出始める高さ: %.2f m",
+        BlockModelLayout::GetGroundSkirtGrassTopHeight(gridSize_, groundSkirtHeight_));
+    ImGui::TextDisabled("上面は動かないので他のオブジェクトの高さは変わらない");
+    ImGui::TextDisabled("「草が出始める高さ」より下で雲が不透明になっていないと、");
+    ImGui::TextDisabled("逆さに吊るした草の緑が見えてしまう（ゲーム設定の Game.Fog.*）");
 
     ImGui::SeparatorText("地面の色ムラ");
     changed |= ImGui::DragFloat("明度のふり幅", &groundTintStrength_, 0.005f, 0.0f, 1.0f);
@@ -95,6 +146,36 @@ bool GameComponents::MapViewComponent::DrawInspector() {
     changed |= ImGui::SliderFloat("しなりの角度", &bananaTreeShakeLean_, 0.0f, 1.5f);
     changed |= ImGui::SliderFloat("しなりの縮み", &bananaTreeShakeSquash_, 0.0f, 1.0f);
     ImGui::TextDisabled("サルが取った向きへ倒れて、1.5往復しながら収まる");
+
+    ImGui::SeparatorText("バナナの木の風揺れ");
+    changed |= ImGui::SliderFloat("傾きの角度", &bananaTreeSwayAngle_, 0.0f, 0.3f);
+    changed |= ImGui::SliderFloat("ねじれの角度", &bananaTreeSwayYaw_, 0.0f, 0.6f);
+    changed |= ImGui::SliderFloat("葉の開閉", &bananaTreeSwayBreath_, 0.0f, 0.2f);
+    changed |= ImGui::DragFloat("揺れの速さ", &bananaTreeSwaySpeed_, 0.01f, 0.0f, 5.0f);
+    changed |= ImGui::DragFloat("2本目の速さ", &bananaTreeSwaySubSpeed_, 0.01f, 0.0f, 5.0f);
+    changed |= ImGui::SliderFloat("2本目の割合", &bananaTreeSwaySubRate_, 0.0f, 1.0f);
+    changed |= ImGui::SliderFloat("風下への傾き", &bananaTreeSwayLean_, 0.0f, 0.2f);
+    changed |= ImGui::DragFloat("風向X", &bananaTreeWindDirX_, 0.01f, -1.0f, 1.0f);
+    changed |= ImGui::DragFloat("風向Z", &bananaTreeWindDirZ_, 0.01f, -1.0f, 1.0f);
+    changed |= ImGui::DragFloat("地面へ埋める深さ", &bananaTreeSinkDepth_, 0.005f, 0.0f, 0.5f);
+    {
+        // 角度を上げると葉先の振れと一緒に根元の浮きも増える。数字で並べておかないと
+        // 「埋める深さ」が足りているかを目で確かめるしかない。
+        const float treeScaleForUI = BlockModelLayout::GetScale(gridSize_);
+        const float maxAngle = bananaTreeSwayAngle_ + bananaTreeSwayLean_;
+        ImGui::TextDisabled("最大 %.1f 度 / 葉先の振れ %.1f cm / 根元の浮き %.1f mm",
+            maxAngle * 180.0f / std::numbers::pi_v<float>,
+            maxAngle * kBananaTreeModelHeight * treeScaleForUI * 100.0f,
+            maxAngle * kBananaTreeModelBaseRadius * treeScaleForUI * 1000.0f);
+        ImGui::TextDisabled("埋める深さ %.1f mm。根元の浮きより大きければ隙間は出ない",
+            bananaTreeSinkDepth_ * gridSize_ * 1000.0f);
+        // 見下ろしカメラだと数 px しか動かないことに気づきにくいので、
+        // 画面上で何 px 動くところまで出す。カメラの既定値から求めた概算。
+        ImGui::TextDisabled("見下ろしカメラ（27m・FOV45・1080p）で葉先が約 %.0f px 振れる",
+            maxAngle * kBananaTreeModelHeight * treeScaleForUI * kGameCameraPixelsPerMeter);
+        ImGui::TextDisabled("ねじれと葉の開閉は根元を浮かせないので大きく取れる");
+    }
+    ImGui::TextDisabled("揺れはマスごとに位相がずれる。速さを 0 にすると止まる");
     return changed;
 }
 #endif
@@ -164,6 +245,76 @@ void GameComponents::MapViewComponent::ApplyBananaTreeShake(
         scale.z *= 1.0f + squash * 0.5f;
         return;
     }
+}
+
+void GameComponents::MapViewComponent::ApplyBananaTreeSway(
+    std::size_t x, std::size_t z, Vector3& rotate, Vector3& scale) const {
+    if (bananaTreeSwayAngle_ <= 0.0f && bananaTreeSwayLean_ <= 0.0f &&
+        bananaTreeSwayYaw_ <= 0.0f && bananaTreeSwayBreath_ <= 0.0f) {
+        return;
+    }
+
+    // 位相はマス座標から作る。全部が同位相で揺れると、木ではなく地面ごと揺れて見える。
+    // プールの要素番号を種にするのは不可で、描画範囲が 1 マスずれた瞬間に担当要素が
+    // ずれて位相が飛ぶ（ModelRenderPoolComponent の entryByPosition_ と同じ罠）。
+    // Hash::Cell01 は同じマスなら何フレーム後でも同じ値なので、担当が入れ替わっても
+    // 揺れは途切れずに続く。
+    const float cellPhase = Hash::Cell01(
+        static_cast<std::int32_t>(x), static_cast<std::int32_t>(z))
+        * 2.0f * std::numbers::pi_v<float>;
+
+    // ポーズ中は木も止めたいので、timeScale を適用した累積時間を使う。
+    const float time = Time::TimeSinceStartup();
+    constexpr float tau = 2.0f * std::numbers::pi_v<float>;
+
+    // 正弦1本だとメトロノームに見えるので、割り切れない周期をもう1本重ねて山をばらす。
+    // 2本目の位相へ掛ける係数に意味は無く、1本目と山が揃わなければ何でもよい。
+    // 返す値は -1..1。傾き・ねじれ・葉の開閉が同じ拍で動くと機械仕掛けに見えるので、
+    // それぞれ位相をずらした波を引いて別々の拍にする。
+    const auto swayWave = [&](float phaseOffset) {
+        const float wave =
+            std::sin(time * bananaTreeSwaySpeed_ * tau + cellPhase + phaseOffset) +
+            std::sin(time * bananaTreeSwaySubSpeed_ * tau + cellPhase * 1.7f + phaseOffset)
+                * bananaTreeSwaySubRate_;
+        // 2本足したぶん山が伸びるので、-1..1 に収まるよう割り戻す。
+        return wave / (1.0f + bananaTreeSwaySubRate_);
+    };
+
+    constexpr float pi = std::numbers::pi_v<float>;
+
+    // ===== 傾き =====
+    // 風向が決まらないと倒す先が無いので、長さ 0 なら傾けない。
+    const float windLength = std::sqrt(
+        bananaTreeWindDirX_ * bananaTreeWindDirX_ +
+        bananaTreeWindDirZ_ * bananaTreeWindDirZ_);
+    if (windLength > 1e-4f) {
+        const float windX = bananaTreeWindDirX_ / windLength;
+        const float windZ = bananaTreeWindDirZ_ / windLength;
+
+        // 揺れの中心を風下へ倒しておく。まっすぐ立った木が左右へ振れるより、
+        // 風に押されたまま揺れているほうが常夏の島に見える。
+        const float lean =
+            swayWave(0.0f) * bananaTreeSwayAngle_ + bananaTreeSwayLean_;
+
+        // 倒す向きの作り方は ApplyBananaTreeShake と同じ。
+        // 左手系では X 軸回転が +Y を +Z へ、Z 軸回転が +Y を -X へ倒す。
+        rotate.x += windZ * lean;
+        rotate.z += -windX * lean;
+    }
+
+    // ===== ねじれ =====
+    // 見下ろしカメラでは傾きの変位が読み取りにくいので、幹を軸に回して
+    // シルエットそのものを動かす。banana_tree.obj の葉は前後左右へ非対称に
+    // 茂っているので、回すと真上から見ても輪郭が変わる。
+    rotate.y += swayWave(pi * 0.5f) * bananaTreeSwayYaw_;
+
+    // ===== 葉の開閉 =====
+    // 横へ広げたぶん少し縦を縮める。体積保存の式どおり（縦を横の2乗ぶん縮める）だと
+    // 潰れて見えるので、見た目優先で弱く連動させている。
+    const float breath = swayWave(pi * 1.25f) * bananaTreeSwayBreath_;
+    scale.x *= 1.0f + breath;
+    scale.z *= 1.0f + breath;
+    scale.y *= 1.0f - breath;
 }
 
 void GameComponents::MapViewComponent::UpdateStationPops(float deltaTime) {
@@ -252,6 +403,17 @@ void GameComponents::MapViewComponent::Update() {
     const Vector3 scale{ modelScale, modelScale, modelScale };
     const float groundHeight = BlockModelLayout::GetGroundHeight(gridSize_);
     const float surfaceHeight = BlockModelLayout::GetSurfaceHeight(gridSize_);
+
+    // 地面ブロックの下へ吊るす柱（スカート）。地面と同じ位置・同じ色のまま、
+    // 上下逆さにして底面からぶら下げる。ブロックの上面は動かさない。
+    // 逆さにするのは ground.obj の草（緑）を柱の最下部へ回すため。詳細は
+    // BlockModelLayout.h の「地面ブロックのスカート」を見ること。
+    const bool drawGroundSkirt = groundSkirtRenderPool_ && groundSkirtHeight_ > 0.0f;
+    const Vector3 groundSkirtRotate{ std::numbers::pi_v<float>, 0.0f, 0.0f };
+    const Vector3 groundSkirtScale{
+        modelScale,
+        BlockModelLayout::GetGroundSkirtYScale(gridSize_, groundSkirtHeight_),
+        modelScale };
     // 水だけは幅1・中心原点の仮モデル box.obj を、1マス幅の薄い水面にする。
     const Vector3 waterScale{ gridSize_, gridSize_ * 0.3f, gridSize_ };
 
@@ -271,8 +433,13 @@ void GameComponents::MapViewComponent::Update() {
                 const Vector3 toCamera = groundPosition - cameraFocusPosition;
                 const float cameraDistance = std::sqrt(
                     toCamera.x * toCamera.x + toCamera.y * toCamera.y + toCamera.z * toCamera.z);
-                groundRenderPool_->Draw(groundPosition, rotate, scale,
-                    CalcGroundTint(x, z, cameraDistance));
+                const Vector4 groundTint = CalcGroundTint(x, z, cameraDistance);
+                groundRenderPool_->Draw(groundPosition, rotate, scale, groundTint);
+                // 柱は1本に見せたいので、ブロックと同じ色ムラを掛ける
+                if (drawGroundSkirt) {
+                    groundSkirtRenderPool_->Draw(
+                        groundPosition, groundSkirtRotate, groundSkirtScale, groundTint);
+                }
             }
 
             // 水場チップの表示
@@ -303,13 +470,20 @@ void GameComponents::MapViewComponent::Update() {
                     { x * gridSize_, surfaceHeight, z * gridSize_ }, rotate, scale);
             }
 
-            // バナナの木チップの表示。収穫された直後だけサル側へしなる。
+            // バナナの木チップの表示。常に風で揺れ、収穫された直後だけサル側へしなる。
+            // 風揺れは常時・小さく、しなりは一瞬・大きい。足し合わせても
+            // 「取られた」瞬間が埋もれないよう、風揺れの角度はしなりの 1/5 に抑えてある。
             if (bananaTreeRenderPool_ && chipType == MapChipType::BananaTree) {
                 Vector3 treeRotate = rotate;
                 Vector3 treeScale = scale;
+                ApplyBananaTreeSway(x, z, treeRotate, treeScale);
                 ApplyBananaTreeShake(x, z, treeRotate, treeScale);
+                // 傾けると根元の底面のフチが持ち上がって地面との間に隙間が出るので、
+                // その分だけ沈めて底面をブロックの中へ隠す。
                 bananaTreeRenderPool_->Draw(
-                    { x * gridSize_, surfaceHeight, z * gridSize_ },
+                    { x * gridSize_,
+                      surfaceHeight - bananaTreeSinkDepth_ * gridSize_,
+                      z * gridSize_ },
                     treeRotate,
                     treeScale);
             }

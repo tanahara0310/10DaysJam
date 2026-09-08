@@ -13,6 +13,7 @@
 #include "Components/GameCore/GameSettingsComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "GameObjects/Effect/RockBreakDebris.h"
+#include "Camera/Camera.h"
 #include "Input/InputAction.h"
 #include "Input/InputManager.h"
 #include "Utility/FrameRate/Time.h"
@@ -46,7 +47,8 @@ json GameComponents::RailBuilderComponent::OnSerialize() const {
         { "rotationSpeed", rotationSpeed_ },
         { "rockCursorHeightOffset", rockCursorHeightOffset_ },
         { "rockThrowStartHeight", rockThrowStartHeight_ },
-        { "rockImpactHeight", rockImpactHeight_ }
+        { "rockImpactHeight", rockImpactHeight_ },
+        { "cursorEdgeRadiusRatio", cursorEdgeRadiusRatio_ }
     };
 }
 
@@ -69,6 +71,8 @@ void GameComponents::RailBuilderComponent::OnDeserialize(const json& j) {
     rockThrowStartHeight_ = JsonManager::SafeGet<float>(
         j, "rockThrowStartHeight", rockThrowStartHeight_);
     rockImpactHeight_ = JsonManager::SafeGet<float>(j, "rockImpactHeight", rockImpactHeight_);
+    cursorEdgeRadiusRatio_ = std::max(0.0f, JsonManager::SafeGet<float>(
+        j, "cursorEdgeRadiusRatio", cursorEdgeRadiusRatio_));
     gridPosX_ = initialGridPosX_;
     gridPosZ_ = initialGridPosZ_;
 }
@@ -95,6 +99,10 @@ bool GameComponents::RailBuilderComponent::DrawInspector() {
         "投石開始高さ", &rockThrowStartHeight_, 0.05f, -10.0f, 10.0f);
     changed |= ImGui::DragFloat(
         "投石着弾高さ", &rockImpactHeight_, 0.05f, -10.0f, 10.0f);
+    changed |= ImGui::DragFloat(
+        "画面端のカーソル半径", &cursorEdgeRadiusRatio_, 0.01f, 0.0f, 3.0f);
+    UI::Hint("画面端で止める位置。1マスに対する矢印の半径の割合で、"
+        "0.5 で矢印が端にちょうど触れます。0 だと半分はみ出します。");
     ImGui::SeparatorText("スタミナ消費量");
     changed |= CVarUI::DrawTree("Game.Stamina.Cost");
     UI::Hint("変更はCVars.jsonへ自動保存され、次の建設から反映されます。");
@@ -306,6 +314,20 @@ void GameComponents::RailBuilderComponent::Update() {
         }
     }
 
+    // 画面に映らないマスへは進ませない。生成が先に走ってしまわないよう、
+    // マップを延ばす CreateToX より前に断ること。
+    if (!IsCellInsideScreen(nextX, nextZ)) {
+        if (!isScreenLimited_) {
+            isScreenLimited_ = true;
+            Logger::GetInstance().Infof(
+                LogCategory::Game,
+                "RailBuilder: 画面外になるため移動を中止しました ({}, {})",
+                nextX, nextZ);
+        }
+        return;
+    }
+    isScreenLimited_ = false;
+
     mapGenerator_->CreateToX(static_cast<std::size_t>(nextX) + 1);
     const MapChipType mapChip = mapGenerator_->GetMapChip(
         static_cast<std::size_t>(nextX), static_cast<std::size_t>(nextZ));
@@ -514,12 +536,87 @@ void GameComponents::RailBuilderComponent::SyncTransformToGrid() {
     transform_->Get().translate.y = cursorHeight;
 }
 
+// ===== 画面外への移動を止める =====
+// ゲーム視点のカメラは列車とカーソルの中点を写す（Presets/CameraRigs/GamePlay.json）。
+// カーソルが先へ行くほど中点も先へ動くので、置いていかれた列車は画面の左へ押し出される。
+// 止めるのは操作しているカーソルだけで、列車は遅れて写らなくなっても構わない。
+//
+// 判定にはリグが決めた「今のカメラ」をそのまま使う。構図を変えれば止まる位置も追従する。
+// 減衰でカメラが遅れている間は止まる位置も手前になり、カメラが追いつくにつれてまた
+// 進めるようになる。長押しでカメラを置き去りにして画面外へ抜けられないのはこのため。
+// カメラが追いつく向きはカーソルを画面の内側へ戻す向きなので、いったん通した移動が
+// 後から画面外になることはない。
+bool GameComponents::RailBuilderComponent::IsInsideScreen(
+    const Vector3& worldPosition) const {
+    // カメラが分からないときは制限しない。判定できないことを理由に遊べなくしない。
+    if (!viewCamera_) {
+        return true;
+    }
+
+    // MathCore::Coordinate::WorldToNormalizedScreen は画面の実サイズを要求するうえ、
+    // カメラの後ろの点を画面内へ折り返してしまう。ここは NDC が要るだけなので、
+    // エディタの CameraIconOverlay と同じく w を見ながら自分で割る。
+    const Matrix4x4 viewProjection =
+        viewCamera_->GetViewMatrix() * viewCamera_->GetProjectionMatrix();
+    const auto toClip = [&viewProjection](const Vector3& position) {
+        return MathCore::CoordinateTransform::TransformCoord(
+            Vector4{ position.x, position.y, position.z, 1.0f }, viewProjection);
+    };
+
+    const Vector4 clip = toClip(worldPosition);
+    // w <= 0 はカメラの後ろ。割ると符号が反転して、背後の点が画面内に見えてしまう。
+    if (clip.w <= 1.0e-5f) {
+        return false;
+    }
+    const float ndcX = clip.x / clip.w;
+    const float ndcY = clip.y / clip.w;
+
+    // カーソルの画面上の半径を、その場のカメラで測る。同じ大きさでも遠ければ小さく
+    // 写るので、割合を決め打ちにせず、カメラの右・上へ半径ぶん動かした点を射影して
+    // 画面上でどれだけ離れるかを見る。カメラが引けば止まる位置も自動で端へ寄る。
+    const float radius = gridSize_ * std::max(0.0f, cursorEdgeRadiusRatio_);
+    float halfX = 0.0f;
+    float halfY = 0.0f;
+    if (radius > 0.0f) {
+        const Vector4 rightClip = toClip(worldPosition + viewCamera_->GetRight() * radius);
+        if (rightClip.w > 1.0e-5f) {
+            halfX = std::abs(rightClip.x / rightClip.w - ndcX);
+        }
+        const Vector4 upClip = toClip(worldPosition + viewCamera_->GetUp() * radius);
+        if (upClip.w > 1.0e-5f) {
+            halfY = std::abs(upClip.y / upClip.w - ndcY);
+        }
+    }
+
+    // 射影行列のアスペクト比は基準解像度に固定されている（Camera::ResolveAspectRatio）。
+    // NDC の ±1 がそのままレターボックス後の表示領域の端になるので、
+    // 端に外形が触れるところがそのまま限界になる。
+    return std::abs(ndcX) + halfX <= 1.0f && std::abs(ndcY) + halfY <= 1.0f;
+}
+
+bool GameComponents::RailBuilderComponent::IsCellInsideScreen(
+    int32_t gridX, int32_t gridZ) const {
+    if (!transform_) {
+        return true;
+    }
+
+    // 高さは今のカーソルと同じとみなす（隣のマスで大きくは変わらない）。
+    return IsInsideScreen({
+        static_cast<float>(gridX) * gridSize_,
+        transform_->Get().translate.y,
+        static_cast<float>(gridZ) * gridSize_ });
+}
+
 void GameComponents::RailBuilderComponent::SetGridSize(float size) {
     gridSize_ = size;  
 }
 
 void GameComponents::RailBuilderComponent::SetHorizontalPrioritize(bool prioritize) {
     HorizontalPrioritize = prioritize;
+}
+
+void GameComponents::RailBuilderComponent::SetViewCamera(Camera* camera) {
+    viewCamera_ = camera;
 }
 
 float GameComponents::RailBuilderComponent::GetNextPlacementCost() const {

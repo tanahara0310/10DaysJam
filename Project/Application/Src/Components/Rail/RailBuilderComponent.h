@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "Math/Vector/Vector3.h"
 
 #include <cstdint>
 #include <deque>
@@ -8,6 +9,7 @@
 
 namespace CoreEngine
 {
+    class Camera;
     class TransformComponent;
 }
 
@@ -68,6 +70,9 @@ namespace GameComponents
         void SetGridSize(float size);
         // 水平方向優先かどうかを設定する
         void SetHorizontalPrioritize(bool prioritize);
+        // 画面外への移動を止めるために覗くカメラ（ゲーム視点）を渡す。
+        // 渡さなければ制限は掛からず、従来どおりどこまでも先へ進める。
+        void SetViewCamera(CoreEngine::Camera* camera);
         void SetInsufficientFeedback(std::function<void()> onStaminaInsufficient);
 
         /// @brief 進行方向へ 1 マス敷いた場合のスタミナ消費量を返す（スタミナゲージの予告表示用）
@@ -79,6 +84,11 @@ namespace GameComponents
     private:
         // 論理グリッド座標を Transform のワールド座標へ反映する
         void SyncTransformToGrid();
+        /// @brief そのワールド座標が、余白のぶん内側まで画面に映っているか
+        /// @details カメラを渡されていなければ常に true（制限しない）。
+        bool IsInsideScreen(const CoreEngine::Vector3& worldPosition) const;
+        /// @brief そのマスへカーソルを動かしても画面に映ったままか
+        bool IsCellInsideScreen(int32_t gridX, int32_t gridZ) const;
         // 最後に置いたレールを撤去して、消費したレールを回収する
         bool TryUndoLastRail();
         // キュー先頭の岩へ投石を開始する
@@ -98,6 +108,8 @@ namespace GameComponents
         GameComponents::TrainMovementComponent* trainMovement_ = nullptr;
         GameComponents::HungerComponent* hunger_ = nullptr;
         GameComponents::RockThrowComponent* rockThrow_ = nullptr;
+        // 画面外への移動を止める判定に使うゲーム視点カメラ（非所有）
+        CoreEngine::Camera* viewCamera_ = nullptr;
 
         // 左・後ろ方向へ移動したときの符号なし整数アンダーフローを避ける
         int32_t initialGridPosX_ = 0;
@@ -127,8 +139,20 @@ namespace GameComponents
         float rockCursorHeightOffset_ = 1.0f;
         float rockThrowStartHeight_ = 0.5f;
         float rockImpactHeight_ = 0.7f;
+
+        // ===== 画面端で止める位置 =====
+        // 判定するのはマスの中心なので、カーソルの見た目の大きさぶんだけ内側で止める。
+        // 1マス（gridSize）に対する半径の割合で、0.5 なら矢印の外形が画面の端に
+        // ちょうど触れる位置まで進める。0 にすると中心が端に来るまで進めるので、
+        // 矢印は半分はみ出す。大きくすると手前で止まる。
+        //
+        // 画面上での大きさはカメラとの距離で変わるので、割合ではなくその場で測る
+        // （IsInsideScreen を見ること）。カメラが引けば止まる位置も自動で端へ寄る。
+        float cursorEdgeRadiusRatio_ = 0.5f;
         bool isBreakingRock_ = false;
         bool isCursorAboveRock_ = false;
+        // 画面端で止めた直後かどうか。長押し中にログを流し続けないための印
+        bool isScreenLimited_ = false;
         std::deque<RockBreakRequest> rockBreakQueue_;
 
         std::function<void()> OnBuildSE_ = nullptr;
