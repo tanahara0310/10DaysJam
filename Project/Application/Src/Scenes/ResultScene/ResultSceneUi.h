@@ -31,6 +31,8 @@ namespace ResultSceneUi
     struct Elements
     {
         CoreEngine::UIImage* background = nullptr;
+        CoreEngine::UIImage* cinematicTopBar = nullptr;
+        CoreEngine::UIImage* cinematicBottomBar = nullptr;
         CoreEngine::UIText* retryButton = nullptr;
         CoreEngine::UIText* titleButton = nullptr;
     };
@@ -45,6 +47,8 @@ namespace ResultSceneUi
     extern CoreEngine::CVar<float> BackgroundPadding;
     extern CoreEngine::CVar<float> BackgroundOpacity;
     extern CoreEngine::CVar<int> BackgroundSortOrder;
+    extern CoreEngine::CVar<float> CinematicBarHeight;
+    extern CoreEngine::CVar<int> CinematicBarSortOrder;
     extern CoreEngine::CVar<float> ButtonFontSize;
     extern CoreEngine::CVar<CoreEngine::Vector2> ButtonPosition;
     extern CoreEngine::CVar<float> ButtonSpacing;

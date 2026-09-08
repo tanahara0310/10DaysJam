@@ -5,6 +5,7 @@
 #include "Components/GameCore/GameResultData.h"
 #include "UI/UIImage.h"
 #include "UI/UIText.h"
+#include "WinApp/WinApp.h"
 
 #include <algorithm>
 #include <limits>
@@ -38,11 +39,11 @@ namespace ResultSceneUi
 
     CVar<float> ScoreFontSize{
         "Result.UI.ScoreFontSize", 52.0f,
-        "進行ブロック数のフォントサイズ", CVarRange{ 16.0f, 160.0f } };
+        "進行距離のフォントサイズ", CVarRange{ 16.0f, 160.0f } };
 
     CVar<Vector2> ScorePosition{
         "Result.UI.ScorePosition", { 0.0f, -40.0f },
-        "進行ブロック数の位置", CVarRange{ -2000.0f, 2000.0f } };
+        "進行距離の位置", CVarRange{ -2000.0f, 2000.0f } };
 
     CVar<float> BackgroundPadding{
         "Result.UI.BackgroundPadding",
@@ -60,6 +61,18 @@ namespace ResultSceneUi
         "Result.UI.BackgroundSortOrder",
         900,
         "リザルトUI背面の黒背景の描画順",
+        CVarRange{ 0.0f, 5000.0f } };
+
+    CVar<float> CinematicBarHeight{
+        "Result.UI.CinematicBarHeight",
+        96.0f,
+        "リザルト画面上下のシネマティック黒帯の高さ（ピクセル）",
+        CVarRange{ 0.0f, 400.0f } };
+
+    CVar<int> CinematicBarSortOrder{
+        "Result.UI.CinematicBarSortOrder",
+        1200,
+        "リザルト画面上下のシネマティック黒帯の描画順",
         CVarRange{ 0.0f, 5000.0f } };
 
     CVar<float> ButtonFontSize{
@@ -115,9 +128,10 @@ namespace ResultSceneUi
             resultTitle->SetSortOrder(TitleSortOrder.Get());
         }
 
+        const auto distanceMeters =
+            GameComponents::GameResultData::GetHorizontalProgressMeters();
         UIText* scoreText = createText(
-            "進んだ距離: " + std::to_string(
-                GameComponents::GameResultData::GetHorizontalProgressBlocks()) + " ブロック",
+            "進んだ距離: " + std::to_string(distanceMeters) + " m",
             ScoreFontSize.Get(), UIAnchor::Center, ScorePosition.Get(),
             TitleColor.Get(), "ResultScore");
         if (scoreText) {
@@ -212,6 +226,46 @@ namespace ResultSceneUi
                 elements.background->SetColor({ 0.0f, 0.0f, 0.0f, BackgroundOpacity.Get() });
                 elements.background->SetSortOrder(BackgroundSortOrder.Get());
             }
+        }
+
+        if (createImage) {
+            constexpr const char* kWhiteTexture =
+                "Engine/Assets/Textures/Debug/white1x1.png";
+            constexpr float kReferenceCanvasWidth =
+                static_cast<float>(CoreEngine::WinApp::kReferenceWidth);
+
+            const auto createCinematicBar = [
+                &createImage,
+                kWhiteTexture,
+                kReferenceCanvasWidth](
+                CoreEngine::UIAnchor anchor,
+                const CoreEngine::Vector2& pivot,
+                const char* name) -> UIImage* {
+                    auto* bar = createImage(kWhiteTexture, name);
+                    if (!bar) {
+                        return nullptr;
+                    }
+
+                    bar->SetSerializeEnabled(false);
+                    bar->SetAnchor(anchor);
+                    bar->SetAnchoredPosition({ 0.0f, 0.0f });
+                    bar->SetPivot(pivot);
+                    bar->SetSize({
+                        kReferenceCanvasWidth,
+                        CinematicBarHeight.Get() });
+                    bar->SetColor({ 0.0f, 0.0f, 0.0f, 1.0f });
+                    bar->SetSortOrder(CinematicBarSortOrder.Get());
+                    return bar;
+                };
+
+            elements.cinematicTopBar = createCinematicBar(
+                UIAnchor::TopCenter,
+                { 0.5f, 0.0f },
+                "ResultCinematicTopBar");
+            elements.cinematicBottomBar = createCinematicBar(
+                UIAnchor::BottomCenter,
+                { 0.5f, 1.0f },
+                "ResultCinematicBottomBar");
         }
 
         return elements;

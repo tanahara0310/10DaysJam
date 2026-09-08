@@ -288,7 +288,8 @@ void GameScene::GameScene::OnInitialize() {
 
     gameManagerComponent->SetGameplayComponents(
         train->GetComponent<GameComponents::TrainMovementComponent>(),
-        railBuilder->GetComponent<GameComponents::RailBuilderComponent>());
+        railBuilder->GetComponent<GameComponents::RailBuilderComponent>(),
+        hungerComponent);
 
     // 列車に乗るサル
     auto* monkey = CreateObject<GameSceneObject>("Monkey");

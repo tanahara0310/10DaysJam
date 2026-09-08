@@ -10,6 +10,7 @@ namespace GameComponents
 {
     class TrainMovementComponent;
     class RailBuilderComponent;
+    class HungerComponent;
 
     // ゲームの進行を管理するコンポーネント
     class GameManagerComponent final
@@ -41,7 +42,10 @@ namespace GameComponents
         void RequestGameClear(float changeDelayTime = -1.0f);
 
         // GameScene の構築時に接続する。描画・カメラ更新は終了演出中も止めない。
-        void SetGameplayComponents(TrainMovementComponent* train, RailBuilderComponent* builder);
+        void SetGameplayComponents(
+            TrainMovementComponent* train,
+            RailBuilderComponent* builder,
+            HungerComponent* hunger = nullptr);
 
         Phase GetPhase() const { return phase_; }
         bool IsGameOver() const { return isGameOver_; }
@@ -57,6 +61,7 @@ namespace GameComponents
         CoreEngine::SceneManager* sceneManager_ = nullptr;
         TrainMovementComponent* train_ = nullptr;
         RailBuilderComponent* builder_ = nullptr;
+        HungerComponent* hunger_ = nullptr;
         Phase phase_ = Phase::Playing;
         bool isGameClear_ = false;
         bool isGameOver_ = false;
