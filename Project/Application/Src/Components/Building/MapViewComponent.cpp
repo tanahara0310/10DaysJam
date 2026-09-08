@@ -29,12 +29,28 @@ using namespace CoreEngine;
 namespace {
     constexpr std::size_t kDistanceMarkerIntervalMeters = 5;
     constexpr float kDistanceMarkerFontSize = 0.45f;
+
+    // マス座標から 0..1 の安定した乱数を作る。
+    // 毎フレーム同じ値でないと、プールの要素が別のマスへ移った瞬間に色がちらつく。
+    float CellRandom01(std::size_t x, std::size_t z) {
+        std::uint32_t hash = static_cast<std::uint32_t>(x) * 73856093u ^
+            static_cast<std::uint32_t>(z) * 19349663u;
+        hash ^= hash >> 13;
+        hash *= 0x85EBCA6Bu;
+        hash ^= hash >> 16;
+        return static_cast<float>(hash & 0x00FFFFFFu) /
+            static_cast<float>(0x01000000u);
+    }
 }
 
 json GameComponents::MapViewComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
         { "viewDistanceX", viewDistanceX_ },
+        { "groundTintStrength", groundTintStrength_ },
+        { "groundTintHueSwing", groundTintHueSwing_ },
+        { "groundTintFadeStart", groundTintFadeStart_ },
+        { "groundTintFadeRange", groundTintFadeRange_ }
         { "stationPopDuration", stationPopDuration_ },
         { "stationPopSquash", stationPopSquash_ }
     };
@@ -43,6 +59,14 @@ json GameComponents::MapViewComponent::OnSerialize() const {
 void GameComponents::MapViewComponent::OnDeserialize(const json& j) {
     gridSize_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "gridSize", gridSize_));
     viewDistanceX_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "viewDistanceX", viewDistanceX_));
+    groundTintStrength_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "groundTintStrength", groundTintStrength_));
+    groundTintHueSwing_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "groundTintHueSwing", groundTintHueSwing_));
+    groundTintFadeStart_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "groundTintFadeStart", groundTintFadeStart_));
+    groundTintFadeRange_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "groundTintFadeRange", groundTintFadeRange_));
     stationPopDuration_ = std::max(0.01f,
         JsonManager::SafeGet<float>(j, "stationPopDuration", stationPopDuration_));
     stationPopSquash_ = std::clamp(
@@ -58,6 +82,13 @@ bool GameComponents::MapViewComponent::DrawInspector() {
     if (ImGui::DragInt("描画距離X", &distance, 1.0f, 1, 500)) { viewDistanceX_ = static_cast<uint32_t>(std::max(distance, 1)); changed = true; }
     ImGui::TextDisabled("共通モデルスケール: %.3f", BlockModelLayout::GetScale(gridSize_));
     ImGui::TextDisabled("接地面の高さ: %.3f", BlockModelLayout::GetSurfaceHeight(gridSize_));
+
+    ImGui::SeparatorText("地面の色ムラ");
+    changed |= ImGui::DragFloat("明度のふり幅", &groundTintStrength_, 0.005f, 0.0f, 1.0f);
+    changed |= ImGui::DragFloat("色味のふり幅", &groundTintHueSwing_, 0.005f, 0.0f, 1.0f);
+    changed |= ImGui::DragFloat("フェード開始距離", &groundTintFadeStart_, 0.5f, 0.0f, 300.0f);
+    changed |= ImGui::DragFloat("フェード距離", &groundTintFadeRange_, 0.5f, 0.0f, 300.0f);
+    ImGui::TextDisabled("0 にすると従来どおりの一色になる");
     ImGui::SeparatorText("駅の出現演出");
     changed |= ImGui::DragFloat("駅の反動時間", &stationPopDuration_, 0.01f, 0.01f, 5.0f);
     changed |= ImGui::SliderFloat("駅の沈み込み", &stationPopSquash_, 0.0f, 1.0f);
@@ -173,8 +204,13 @@ void GameComponents::MapViewComponent::Update() {
             const auto chipType = mapGenerator_->GetMapChip(x, z);
             // チップの種類に応じて描画する
             if (chipType != MapChipType::Void && chipType != MapChipType::Water) {
-                // グラウンドチップの表示
-                groundRenderPool_->Draw({ x * gridSize_, groundHeight, z * gridSize_ }, rotate, scale);
+                // グラウンドチップの表示。マスごとに色をわずかに散らしてマス目を読めるようにする。
+                const Vector3 groundPosition{ x * gridSize_, groundHeight, z * gridSize_ };
+                const Vector3 toCamera = groundPosition - cameraFocusPosition;
+                const float cameraDistance = std::sqrt(
+                    toCamera.x * toCamera.x + toCamera.y * toCamera.y + toCamera.z * toCamera.z);
+                groundRenderPool_->Draw(groundPosition, rotate, scale,
+                    CalcGroundTint(x, z, cameraDistance));
             }
 
             // 水場チップの表示
@@ -216,6 +252,26 @@ void GameComponents::MapViewComponent::Update() {
             }
         }
     }
+}
+
+CoreEngine::Vector4 GameComponents::MapViewComponent::CalcGroundTint(
+    std::size_t x, std::size_t z, float cameraDistance) const {
+    // 遠いマスは画面上で数ピクセルまで縮むので、ムラを残すとカメラが動くたびにちらつく。
+    // 距離でコントラストを 0 まで落とし、地平線側は元の一色へ戻す。
+    float fade = 1.0f;
+    if (groundTintFadeRange_ > 0.0f) {
+        fade = std::clamp(
+            1.0f - (cameraDistance - groundTintFadeStart_) / groundTintFadeRange_,
+            0.0f, 1.0f);
+    }
+
+    // -1..1 のマス固有の値。これ1つで明度と色味の両方を振る。
+    const float amount = (CellRandom01(x, z) * 2.0f - 1.0f) * fade;
+    const float luminance = 1.0f + groundTintStrength_ * amount;
+    // 明度だけだと白黒のムラに見えるので、青チャンネルだけ逆位相に振って
+    // 「明るいマスは色が薄い / 暗いマスは色が濃い」という芝のムラらしさを出す。
+    const float blue = luminance * (1.0f + groundTintHueSwing_ * amount);
+    return { luminance, luminance, blue, 1.0f };
 }
 
 void GameComponents::MapViewComponent::UpdateDistanceMarkers(

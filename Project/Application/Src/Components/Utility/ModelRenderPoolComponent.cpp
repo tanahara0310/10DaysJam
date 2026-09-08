@@ -137,7 +137,8 @@ void GameComponents::ModelRenderPoolComponent::OnDestroy() {
 bool GameComponents::ModelRenderPoolComponent::Draw(
     const Vector3& position,
     const Vector3& rotation,
-    const Vector3& scale) {
+    const Vector3& scale,
+    const std::optional<Vector4>& color) {
     const std::uint64_t frame = Time::FrameCount();
     BeginFrameIfNeeded(frame);
 
@@ -167,6 +168,8 @@ bool GameComponents::ModelRenderPoolComponent::Draw(
         }
         return false;
     }
+
+    ApplyEntryColor(*entry, color);
 
     auto& transform = entry->transform->Get();
     transform.translate = position;
@@ -208,15 +211,46 @@ GameComponents::ModelRenderPoolComponent::CreateEntry() {
 
     TransformComponent* transform = object->AddComponent<TransformComponent>();
     object->AddComponent<MeshRendererComponent>(modelPath_);
+    MaterialComponent* material = nullptr;
     if (color_) {
-        auto* material = object->AddComponent<MaterialComponent>();
+        material = object->AddComponent<MaterialComponent>();
         material->SetColor(*color_);
         material->SetPBR(0.0f, 0.15f);
     }
     object->SetActive(false);
 
-    entries_.push_back({ object, transform });
+    entries_.push_back({ object, transform, material, color_ });
     return &entries_.back();
+}
+
+void GameComponents::ModelRenderPoolComponent::ApplyEntryColor(
+    Entry& entry, const std::optional<Vector4>& color) {
+    // Draw() が色を指定しないときは、プール共通の色（未設定なら白）へ戻す。
+    // 要素は別のマスへ再割り当てされるので、前のマスの色を残さない。
+    const std::optional<Vector4> desired = color ? color : color_;
+    if (!desired && !entry.appliedColor) {
+        // 一度も色を付けていない要素は、モデル本来のマテリアルのまま触らない。
+        return;
+    }
+    const Vector4 next = desired.value_or(Vector4{ 1.0f, 1.0f, 1.0f, 1.0f });
+    if (entry.appliedColor && entry.appliedColor->x == next.x &&
+        entry.appliedColor->y == next.y && entry.appliedColor->z == next.z &&
+        entry.appliedColor->w == next.w) {
+        return;
+    }
+
+    if (!entry.material && entry.object) {
+        entry.material = entry.object->GetComponent<MaterialComponent>();
+        if (!entry.material) {
+            // 色だけ差し替える。PBR ファクターはモデルの持ち物なので触らない。
+            entry.material = entry.object->AddComponent<MaterialComponent>();
+        }
+    }
+    if (!entry.material) {
+        return;
+    }
+    entry.material->SetColor(next);
+    entry.appliedColor = next;
 }
 
 void GameComponents::ModelRenderPoolComponent::BeginFrameIfNeeded(std::uint64_t frame) {
@@ -283,11 +317,15 @@ void GameComponents::ModelRenderPoolComponent::ApplyColorToEntries() {
     for (Entry& entry : entries_) {
         if (!entry.object) continue;
         if (auto* existingMaterial = entry.object->GetComponent<MaterialComponent>()) {
-            existingMaterial->SetColor(color_.value_or(Vector4{ 1.0f, 1.0f, 1.0f, 1.0f }));
+            entry.material = existingMaterial;
+            entry.appliedColor = color_.value_or(Vector4{ 1.0f, 1.0f, 1.0f, 1.0f });
+            existingMaterial->SetColor(*entry.appliedColor);
         } else if (color_) {
             auto* newMaterial = entry.object->AddComponent<MaterialComponent>();
             newMaterial->SetColor(*color_);
             newMaterial->SetPBR(0.0f, 0.15f);
+            entry.material = newMaterial;
+            entry.appliedColor = color_;
         }
     }
 }

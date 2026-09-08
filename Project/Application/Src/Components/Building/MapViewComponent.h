@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "Math/Vector/Vector4.h"
 #include "Math/Vector/Vector3.h"
 
 #include <cstddef>
@@ -88,7 +89,22 @@ namespace GameComponents
         // 指定マスの駅に掛ける拡縮を求める。演出していなければ等倍
         CoreEngine::Vector3 GetStationPopScale(std::size_t x, std::size_t z) const;
 
+        // マスごとの色ムラを求める。地面が一色だとマス目が読めないので、
+        // ベースカラーへ掛ける係数をマス単位でわずかに散らす。
+        CoreEngine::Vector4 CalcGroundTint(
+            std::size_t x, std::size_t z, float cameraDistance) const;
+
         float gridSize_ = 1.0f;
+
+        // ===== 地面の色ムラ =====
+        // 明度のふり幅（ベースカラーへの乗算）。0 で従来どおりの一色。
+        float groundTintStrength_ = 0.20f;
+        // 明るいマスは青寄り、暗いマスは黄寄りへずらす量。明度だけだと白黒のムラに見える。
+        float groundTintHueSwing_ = 0.12f;
+        // この距離[m]を超えたらムラを弱め始める。
+        float groundTintFadeStart_ = 16.0f;
+        // フェード開始からムラが 0 になるまでの距離[m]。遠景のちらつき対策。
+        float groundTintFadeRange_ = 22.0f;
 
         uint32_t mapViewCenterX_ = 0;
         uint32_t viewDistanceX_ = 30;
