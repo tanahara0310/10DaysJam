@@ -153,6 +153,8 @@ void GameScene::GameScene::OnInitialize() {
             "Application/Assets/Maps/Areas/Area1/chunk_01.csv",
             "Application/Assets/Maps/Areas/Area1/chunk_02.csv",
             "Application/Assets/Maps/Areas/Area1/chunk_03.csv",
+            "Application/Assets/Maps/Areas/Area1/chunk_04.csv",
+            "Application/Assets/Maps/Areas/Area1/chunk_05.csv",
         } },
         { "Area2", {
             "Application/Assets/Maps/Areas/Area2/chunk_01.csv",

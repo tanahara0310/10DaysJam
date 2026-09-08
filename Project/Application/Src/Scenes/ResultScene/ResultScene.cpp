@@ -7,6 +7,8 @@
 #include "Components/GameCore/GameResultData.h"
 #include "Components/Result/ResultMonkeyShakeComponent.h"
 #include "Components/Result/ResultButtonAnimationComponent.h"
+#include "Components/Utility/BlockModelLayout.h"
+#include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Scenes/GameScene/SkyFogFeature.h"
@@ -46,10 +48,32 @@ CVar<float> ResultCameraOrbitSpeed{
     "リザルトカメラの周回速度（ラジアン/秒）",
     CVarRange{ -2.0f, 2.0f } };
 
+CVar<int> ResultRockCount{
+    "Result.Decoration.RockCount",
+    8,
+    "リザルト画面に配置する石の数",
+    CVarRange{ 0.0f, 64.0f } };
+
+CVar<int> ResultBananaTreeCount{
+    "Result.Decoration.BananaTreeCount",
+    5,
+    "リザルト画面に配置するバナナの木の数",
+    CVarRange{ 0.0f, 32.0f } };
+
 constexpr float kResultMonkeyY = 7.8f;
+constexpr float kResultDecorationY = kResultMonkeyY;
+constexpr float kResultGroundGridSize = 1.0f;
+constexpr float kResultGroundTileScale =
+    GameComponents::BlockModelLayout::GetScale(kResultGroundGridSize);
+constexpr float kResultGroundTileY =
+    kResultMonkeyY
+    - GameComponents::BlockModelLayout::kModelBlockSize * kResultGroundTileScale;
 constexpr float kResultMonkeyMinCenterDistance = 1.9f;
 constexpr float kResultMonkeyLayoutEdgePadding = 0.9f;
+constexpr float kResultDecorationMinCenterDistance = 2.1f;
+constexpr float kResultDecorationLayoutMargin = 3.0f;
 constexpr int kResultMonkeyRandomPlacementAttempts = 512;
+constexpr int kResultDecorationRandomPlacementAttempts = 512;
 
 float GetResultMonkeyLayoutRadius(std::size_t monkeyCount)
 {
@@ -58,6 +82,11 @@ float GetResultMonkeyLayoutRadius(std::size_t monkeyCount)
     const float autoExpandedRadius = kResultMonkeyLayoutEdgePadding
         + kResultMonkeyMinCenterDistance * 0.75f * std::sqrt(count);
     return std::max(configuredRadius, autoExpandedRadius);
+}
+
+float GetResultSceneLayoutRadius(std::size_t monkeyCount)
+{
+    return GetResultMonkeyLayoutRadius(monkeyCount) + kResultDecorationLayoutMargin;
 }
 }
 
@@ -69,20 +98,6 @@ void ResultScene::ResultScene::OnInitialize() {
     // 結果画面専用の地形を使うため、エンジン標準の床は生成しない。
     SetDefaultGroundEnabled(false);
 
-    // 参照ガイドの「CreateObject + MeshRendererComponent」パターンで、
-    // 結果画面専用のモデルをコードから構築する。
-    auto* resultGround = CreateObject("Result_ground");
-    if (resultGround) {
-        resultGround->SetSerializeEnabled(true);
-        auto* transform = resultGround->AddComponent<TransformComponent>();
-        if (transform) {
-            transform->Translate() = { 0.0f, -5.0f, 0.0f };
-            transform->Scale() = { 100.0f, 1.0f, 100.0f };
-        }
-        resultGround->AddComponent<MeshRendererComponent>("result_ground.obj");
-        resultGround->SetActive(true);
-    }
-
     const std::size_t monkeyCount = std::max<std::size_t>(
         1,
         GameComponents::GameResultData::GetMonkeyCount());
@@ -90,6 +105,57 @@ void ResultScene::ResultScene::OnInitialize() {
         0x9E3779B9u
         ^ static_cast<std::uint32_t>(monkeyCount) * 0x85EBCA6Bu
         ^ GameComponents::GameResultData::GetHorizontalProgressBlocks();
+
+    // ゲームシーンと同じ ground.obj を1マスずつ敷き、タイルごとに
+    // マテリアル色を少し変えて、マップチップのような床にする。
+    const auto createResultGroundTile = [this](
+        int gridX,
+        int gridZ,
+        const Vector4& tint) {
+            auto* tile = CreateObject(
+                "Result_ground_tile_" + std::to_string(gridX)
+                + "_" + std::to_string(gridZ));
+            if (!tile) {
+                return;
+            }
+
+            tile->SetSerializeEnabled(true);
+            auto* transform = tile->AddComponent<TransformComponent>();
+            if (transform) {
+                transform->Translate() = {
+                    static_cast<float>(gridX) * kResultGroundGridSize,
+                    kResultGroundTileY,
+                    static_cast<float>(gridZ) * kResultGroundGridSize };
+                transform->Scale() = {
+                    kResultGroundTileScale,
+                    kResultGroundTileScale,
+                    kResultGroundTileScale };
+            }
+            tile->AddComponent<MeshRendererComponent>("ground.obj");
+            if (auto* material = tile->AddComponent<MaterialComponent>()) {
+                material->SetColor(tint);
+            }
+            tile->SetActive(true);
+        };
+
+    const float sceneRadius = GetResultSceneLayoutRadius(monkeyCount);
+    const int groundTileRadius = std::max(
+        1,
+        static_cast<int>(std::ceil(sceneRadius)) + 1);
+    std::mt19937 groundRandom(seed ^ 0xD1B54A32u);
+    std::uniform_real_distribution<float> groundVariation(-1.0f, 1.0f);
+    for (int gridX = -groundTileRadius; gridX <= groundTileRadius; ++gridX) {
+        for (int gridZ = -groundTileRadius; gridZ <= groundTileRadius; ++gridZ) {
+            const float amount = groundVariation(groundRandom);
+            const float luminance = 1.0f + 0.20f * amount;
+            const float blue = luminance * (1.0f + 0.12f * amount);
+            createResultGroundTile(
+                gridX,
+                gridZ,
+                { luminance, luminance, blue, 1.0f });
+        }
+    }
+
     std::mt19937 placementRandom(seed);
     std::uniform_real_distribution<float> yRotationDistribution(
         0.0f,
@@ -116,6 +182,56 @@ void ResultScene::ResultScene::OnInitialize() {
             monkey->SetActive(true);
         };
 
+    const auto createResultDecoration = [this](
+        const std::string& name,
+        const char* modelPath,
+        const Vector3& position,
+        float yRotation) {
+            auto* decoration = CreateObject(name);
+            if (!decoration) {
+                return;
+            }
+
+            decoration->SetSerializeEnabled(true);
+            auto* transform = decoration->AddComponent<TransformComponent>();
+            if (transform) {
+                transform->Translate() = position;
+                transform->Rotate() = { 0.0f, yRotation, 0.0f };
+            }
+            decoration->AddComponent<MeshRendererComponent>(modelPath);
+            decoration->SetActive(true);
+        };
+
+    std::vector<Vector3> occupiedPositions;
+    const std::size_t decorationCount = static_cast<std::size_t>(
+        std::max(0, ResultRockCount.Get())
+        + std::max(0, ResultBananaTreeCount.Get()));
+    occupiedPositions.reserve(monkeyCount + decorationCount);
+    // 中央のサルも配置判定に含める（Yは使わず、XZの距離だけを判定する）。
+    occupiedPositions.push_back({ 0.0f, 0.0f, 0.0f });
+
+    const auto isPositionAvailable = [
+        &occupiedPositions](
+        const Vector3& candidate,
+        float minCenterDistanceSquared,
+        float placementRadiusSquared) {
+            const float distanceFromCenterSquared =
+                candidate.x * candidate.x + candidate.z * candidate.z;
+            if (distanceFromCenterSquared > placementRadiusSquared) {
+                return false;
+            }
+
+            for (const Vector3& placed : occupiedPositions) {
+                const float deltaX = candidate.x - placed.x;
+                const float deltaZ = candidate.z - placed.z;
+                const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
+                if (distanceSquared < minCenterDistanceSquared) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
     createResultMonkey(
         "Result_monkey",
         { 0.0f, kResultMonkeyY, 0.0f },
@@ -139,28 +255,6 @@ void ResultScene::ResultScene::OnInitialize() {
             0.0f,
             2.0f * std::numbers::pi_v<float>);
 
-        std::vector<Vector3> placedPositions;
-        placedPositions.reserve(monkeyCount);
-
-        const auto isPositionAvailable = [&](const Vector3& candidate) {
-            const float distanceFromCenterSquared =
-                candidate.x * candidate.x + candidate.z * candidate.z;
-            if (distanceFromCenterSquared < minCenterDistanceSquared
-                || distanceFromCenterSquared > placementRadiusSquared) {
-                return false;
-            }
-
-            for (const Vector3& placed : placedPositions) {
-                const float deltaX = candidate.x - placed.x;
-                const float deltaZ = candidate.z - placed.z;
-                const float distanceSquared = deltaX * deltaX + deltaZ * deltaZ;
-                if (distanceSquared < minCenterDistanceSquared) {
-                    return false;
-                }
-            }
-            return true;
-        };
-
         for (std::size_t index = 1; index < monkeyCount; ++index) {
             Vector3 selectedPosition{};
             bool positionFound = false;
@@ -172,7 +266,10 @@ void ResultScene::ResultScene::OnInitialize() {
                     positionDistribution(placementRandom),
                     0.0f,
                     positionDistribution(placementRandom) };
-                if (isPositionAvailable(candidate)) {
+                if (isPositionAvailable(
+                    candidate,
+                    minCenterDistanceSquared,
+                    placementRadiusSquared)) {
                     selectedPosition = candidate;
                     positionFound = true;
                 }
@@ -204,7 +301,10 @@ void ResultScene::ResultScene::OnInitialize() {
                         std::cos(angle) * candidateRadius,
                         0.0f,
                         std::sin(angle) * candidateRadius };
-                    if (isPositionAvailable(candidate)) {
+                    if (isPositionAvailable(
+                        candidate,
+                        minCenterDistanceSquared,
+                        placementRadiusSquared)) {
                         selectedPosition = candidate;
                         positionFound = true;
                     }
@@ -215,7 +315,7 @@ void ResultScene::ResultScene::OnInitialize() {
                 break;
             }
 
-            placedPositions.push_back(selectedPosition);
+            occupiedPositions.push_back(selectedPosition);
             createResultMonkey(
                 "Result_monkey_" + std::to_string(index + 1),
                 {
@@ -227,6 +327,115 @@ void ResultScene::ResultScene::OnInitialize() {
                 yRotationDistribution(placementRandom));
         }
     }
+
+    const auto placeDecorations = [
+        &createResultDecoration,
+        &isPositionAvailable,
+        &occupiedPositions,
+        &placementRandom,
+        &yRotationDistribution,
+        monkeyCount](
+        const char* modelPath,
+        const char* namePrefix,
+        std::size_t count) {
+            if (count == 0) {
+                return;
+            }
+
+            const float layoutRadius = GetResultSceneLayoutRadius(monkeyCount);
+            const float placementRadius = std::max(
+                0.0f,
+                layoutRadius - kResultMonkeyLayoutEdgePadding);
+            const float placementRadiusSquared = placementRadius * placementRadius;
+            const float minCenterDistanceSquared =
+                kResultDecorationMinCenterDistance * kResultDecorationMinCenterDistance;
+            std::uniform_real_distribution<float> positionDistribution(
+                -placementRadius,
+                placementRadius);
+            std::uniform_real_distribution<float> angleDistribution(
+                0.0f,
+                2.0f * std::numbers::pi_v<float>);
+
+            for (std::size_t index = 0; index < count; ++index) {
+                Vector3 selectedPosition{};
+                bool positionFound = false;
+
+                for (int attempt = 0;
+                    attempt < kResultDecorationRandomPlacementAttempts && !positionFound;
+                    ++attempt) {
+                    const Vector3 candidate{
+                        positionDistribution(placementRandom),
+                        0.0f,
+                        positionDistribution(placementRandom) };
+                    if (isPositionAvailable(
+                        candidate,
+                        minCenterDistanceSquared,
+                        placementRadiusSquared)) {
+                        selectedPosition = candidate;
+                        positionFound = true;
+                    }
+                }
+
+                if (!positionFound) {
+                    const float goldenAngle =
+                        std::numbers::pi_v<float> * (3.0f - std::sqrt(5.0f));
+                    const std::size_t fallbackAttempts = std::max<std::size_t>(
+                        512,
+                        count * 256);
+                    const float radiusSpan = std::max(
+                        0.0f,
+                        placementRadius - kResultDecorationMinCenterDistance);
+                    const float randomPhase = angleDistribution(placementRandom);
+
+                    for (std::size_t attempt = 0;
+                        attempt < fallbackAttempts && !positionFound;
+                        ++attempt) {
+                        const float normalizedAttempt = static_cast<float>(attempt + 1)
+                            / static_cast<float>(fallbackAttempts);
+                        const float candidateRadius =
+                            kResultDecorationMinCenterDistance
+                            + radiusSpan * std::sqrt(normalizedAttempt);
+                        const float angle = randomPhase
+                            + static_cast<float>(attempt) * goldenAngle;
+                        const Vector3 candidate{
+                            std::cos(angle) * candidateRadius,
+                            0.0f,
+                            std::sin(angle) * candidateRadius };
+                        if (isPositionAvailable(
+                            candidate,
+                            minCenterDistanceSquared,
+                            placementRadiusSquared)) {
+                            selectedPosition = candidate;
+                            positionFound = true;
+                        }
+                    }
+                }
+
+                if (!positionFound) {
+                    break;
+                }
+
+                occupiedPositions.push_back(selectedPosition);
+                createResultDecoration(
+                    std::string(namePrefix) + std::to_string(index + 1),
+                    modelPath,
+                    {
+                        selectedPosition.x,
+                        kResultDecorationY,
+                        selectedPosition.z
+                    },
+                    yRotationDistribution(placementRandom));
+            }
+        };
+
+    placeDecorations(
+        "rock.obj",
+        "Result_rock_",
+        static_cast<std::size_t>(std::max(0, ResultRockCount.Get())));
+    placeDecorations(
+        "banana_tree.obj",
+        "Result_banana_tree_",
+        static_cast<std::size_t>(std::max(0, ResultBananaTreeCount.Get())));
 
     // ゲームシーンと同じ雲（高さフォグ）。設定は「ゲーム設定」の Game.Fog.* を共有する。
     AddFeature(GameComponents::CreateSkyFogFeature());
@@ -311,7 +520,7 @@ void ResultScene::ResultScene::UpdateResultCamera()
     const std::size_t monkeyCount = std::max<std::size_t>(
         1,
         GameComponents::GameResultData::GetMonkeyCount());
-    const float radius = GetResultMonkeyLayoutRadius(monkeyCount);
+    const float radius = GetResultSceneLayoutRadius(monkeyCount);
     const float cameraDistance = std::max(18.0f, radius + 14.0f);
     resultCameraOrbitAngle_ += ResultCameraOrbitSpeed.Get()
         * std::max(0.0f, Time::UnscaledDeltaTime());
