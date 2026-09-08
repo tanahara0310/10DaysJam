@@ -64,8 +64,8 @@ void GameComponents::HungerUIComponent::RefreshText()
     displayedHunger_ = static_cast<int>(std::ceil(hunger_->GetCurrentHunger()));
     displayedProgress_ = train_->GetHorizontalProgressBlocks();
     displayedMonkeyCount_ = hunger_->GetMonkeyCount();
+    // スタミナはバナナゲージ（StaminaGaugeUIComponent）側で表示するので、ここには出さない
     text_->SetText(
-        "スタミナ: " + std::to_string(displayedHunger_) +
-        "\n進行: " + std::to_string(displayedProgress_) + "ブロック" +
+        "進行: " + std::to_string(displayedProgress_) + "ブロック" +
         "\nサル: " + std::to_string(displayedMonkeyCount_));
 }
