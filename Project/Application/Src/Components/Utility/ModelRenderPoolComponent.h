@@ -16,6 +16,7 @@
 namespace CoreEngine
 {
     class GameObject;
+    class MaterialComponent;
     class TransformComponent;
 }
 
@@ -56,11 +57,15 @@ namespace GameComponents
         void OnDestroy() override;
 
         /// @brief このフレームにモデルを1つ表示する。
+        /// @param color この1回だけのベースカラー。省略するとプール共通の色（未設定なら白）に戻す。
         /// @return 描画用オブジェクトを割り当てられた場合 true。
+        /// @note 色はモデルのベースカラーへ乗算される。プールの要素は毎フレーム別のマスへ
+        ///       割り当てられうるので、マスごとに色を変えたい場合は毎回渡すこと。
         bool Draw(
             const CoreEngine::Vector3& position,
             const CoreEngine::Vector3& rotation = { 0.0f, 0.0f, 0.0f },
-            const CoreEngine::Vector3& scale = { 1.0f, 1.0f, 1.0f });
+            const CoreEngine::Vector3& scale = { 1.0f, 1.0f, 1.0f },
+            const std::optional<CoreEngine::Vector4>& color = std::nullopt);
 
         std::size_t GetCapacity() const { return entries_.size(); }
         std::size_t GetActiveCount() const;
@@ -72,11 +77,17 @@ namespace GameComponents
         struct Entry {
             CoreEngine::GameObject* object = nullptr;
             CoreEngine::TransformComponent* transform = nullptr;
+            CoreEngine::MaterialComponent* material = nullptr;
+            /// @brief 今この要素へ入っている色。同じ値の再設定を省くために持つ。
+            std::optional<CoreEngine::Vector4> appliedColor;
             std::uint64_t lastSubmittedFrame =
                 (std::numeric_limits<std::uint64_t>::max)();
         };
 
         Entry* CreateEntry();
+
+        /// @brief 要素へ色を反映する（変化が無ければ何もしない）
+        void ApplyEntryColor(Entry& entry, const std::optional<CoreEngine::Vector4>& color);
 
         /// @brief フレームが変わっていたら割り当て状態を繰り越す
         void BeginFrameIfNeeded(std::uint64_t frame);
