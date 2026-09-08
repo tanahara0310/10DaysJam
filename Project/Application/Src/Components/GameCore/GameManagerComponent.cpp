@@ -98,6 +98,11 @@ void GameComponents::GameManagerComponent::BeginEnding(bool isClear, float chang
     GameResultData::SetMonkeyCount(hunger_ ? hunger_->GetMonkeyCount() : 1);
 
     if (train_) {
+        // 移動コンポーネントを止める前に、ゲームオーバー時だけ
+        // 列車に乗っているサルだけの発射演出を開始する。
+        if (!isClear) {
+            train_->PlayGameOverLaunch();
+        }
         train_->SetEnabled(false);
     }
     if (builder_) {

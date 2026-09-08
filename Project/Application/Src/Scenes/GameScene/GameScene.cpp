@@ -319,6 +319,7 @@ void GameScene::GameScene::OnInitialize() {
     monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
     monkeyTransform->Get().SetParent(&trainTransform->Get());
     monkeyTransform->Get().rotate.y = 3.14f;
+    trainMovement->AddMonkey(monkeyTransform);
     hungerComponent->SetMonkeyAddedCallback(
         [this, trainMovement, monkeyTransform](std::size_t monkeyCount) {
             auto* carriage = CreateObject<GameSceneObject>(
@@ -347,6 +348,7 @@ void GameScene::GameScene::OnInitialize() {
                 addedTransform->Get().translate = monkeyTransform->Get().translate;
                 addedTransform->Get().rotate = monkeyTransform->Get().rotate;
                 addedTransform->Get().scale = monkeyTransform->Get().scale;
+                trainMovement->AddMonkey(addedTransform);
             }
         });
 

@@ -75,10 +75,14 @@ namespace GameComponents
         // 参照先はこの列車より長く生きること。
         void AddCarriage(CoreEngine::TransformComponent* carriageTransform,
             const CoreEngine::Vector3* scaleMultiplier = nullptr);
+        // ゲームオーバー時に車両から切り離して飛ばすサルを登録する。
+        void AddMonkey(CoreEngine::TransformComponent* monkeyTransform);
         // 岩破壊の投石中だけ列車の移動を停止・再開する
         void SetRockBreakPaused(bool paused) { isPausedForRockBreak_ = paused; }
         // 投石開始時に、その場でのジャンプを再生する
         void PlayRockThrowJump();
+        // ゲームオーバー時に、列車に乗っているサルだけを最終レール方向へ飛ばす
+        void PlayGameOverLaunch();
 
     private:
         // 終端検知を一か所に集め、終了処理は GameManager に委譲する。
@@ -124,6 +128,7 @@ namespace GameComponents
         std::vector<CoreEngine::TransformComponent*> carriageTransforms_;
         // carriageTransforms_ と同じ添字。null なら等倍で描く
         std::vector<const CoreEngine::Vector3*> carriageScaleMultipliers_;
+        std::vector<CoreEngine::TransformComponent*> monkeyTransforms_;
         std::deque<std::pair<int32_t, int32_t>> traveledCells_;
         std::deque<std::size_t> pendingStationSteps_;
         std::size_t traveledBlockCount_ = 0;
@@ -134,6 +139,7 @@ namespace GameComponents
         bool isMoving_ = false;
         bool hasHeading_ = false; // 発車直後の1マス目は直前の向きがないため補間しない
         bool isRockThrowJumping_ = false;
+        bool gameOverLaunchStarted_ = false;
         bool hasStarted_ = false;
         bool isGameOver_ = false;
         bool isPausedForRockBreak_ = false;
