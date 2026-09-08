@@ -38,8 +38,8 @@ json GameComponents::RailViewComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
         { "viewDistanceX", viewDistanceX_ },
-        { "jumpHeight", confirmationJumpHeight_ },
-        { "jumpDuration", confirmationJumpDuration_ },
+        { "jumpHeight", railJumpHeight_ },
+        { "jumpDuration", railJumpDuration_ },
         { "staggerInterval", confirmationStaggerInterval_ },
         { "seVolume", confirmationSeVolume_ },
         { "seBasePitch", confirmationSeBasePitch_ },
@@ -51,8 +51,8 @@ json GameComponents::RailViewComponent::OnSerialize() const {
 void GameComponents::RailViewComponent::OnDeserialize(const json& j) {
     gridSize_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "gridSize", gridSize_));
     viewDistanceX_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "viewDistanceX", viewDistanceX_));
-    confirmationJumpHeight_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "jumpHeight", confirmationJumpHeight_));
-    confirmationJumpDuration_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "jumpDuration", confirmationJumpDuration_));
+    railJumpHeight_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "jumpHeight", railJumpHeight_));
+    railJumpDuration_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "jumpDuration", railJumpDuration_));
     confirmationStaggerInterval_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "staggerInterval", confirmationStaggerInterval_));
     confirmationSeVolume_ = std::clamp(JsonManager::SafeGet<float>(j, "seVolume", confirmationSeVolume_), 0.0f, 1.0f);
     confirmationSeBasePitch_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "seBasePitch", confirmationSeBasePitch_));
@@ -68,9 +68,9 @@ bool GameComponents::RailViewComponent::DrawInspector() {
     if (ImGui::DragInt("描画距離X", &distance, 1.0f, 1, 500)) { viewDistanceX_ = static_cast<uint32_t>(std::max(distance, 1)); changed = true; }
     ImGui::TextDisabled("共通モデルスケール: %.3f", BlockModelLayout::GetScale(gridSize_));
     ImGui::TextDisabled("レール底面の高さ: %.3f", BlockModelLayout::GetSurfaceHeight(gridSize_));
-    changed |= ImGui::DragFloat("確定ジャンプ高さ", &confirmationJumpHeight_, 0.01f, 0.0f, 10.0f);
-    changed |= ImGui::DragFloat("確定ジャンプ時間", &confirmationJumpDuration_, 0.01f, 0.01f, 10.0f);
-    changed |= ImGui::DragFloat("確定演出の時間差", &confirmationStaggerInterval_, 0.01f, 0.0f, 5.0f);
+    changed |= ImGui::DragFloat("設置ジャンプ高さ", &railJumpHeight_, 0.01f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat("設置ジャンプ時間", &railJumpDuration_, 0.01f, 0.01f, 10.0f);
+    changed |= ImGui::DragFloat("確定SEの時間差", &confirmationStaggerInterval_, 0.01f, 0.0f, 5.0f);
     changed |= ImGui::SliderFloat("確定SE音量", &confirmationSeVolume_, 0.0f, 1.0f);
     changed |= ImGui::DragFloat("確定SE基準ピッチ", &confirmationSeBasePitch_, 0.01f, 0.01f, 4.0f);
     changed |= ImGui::DragFloat("確定SEピッチ増分", &confirmationSePitchStep_, 0.01f, 0.0f, 4.0f);
@@ -82,11 +82,14 @@ bool GameComponents::RailViewComponent::DrawInspector() {
 void GameComponents::RailViewComponent::Start() {
     transform_ = Sibling<TransformComponent>();
 
-    // ゲーム開始時から存在する始点レールは確定演出の対象にしない。
+    // ゲーム開始時から存在する始点レールは演出の対象にしない。
     if (railPath_) {
-        confirmationAnimationTimes_.assign(
+        railJumpTimes_.assign(
+            railPath_->GetRailMap().size() + railPath_->GetRailUndoStack().size(),
+            railJumpDuration_);
+        confirmationSoundTimes_.assign(
             railPath_->GetRailMap().size(),
-            confirmationJumpDuration_);
+            railJumpDuration_);
         confirmationSoundPitches_.assign(
             railPath_->GetRailMap().size(),
             confirmationSeBasePitch_);
@@ -103,7 +106,8 @@ void GameComponents::RailViewComponent::Update() {
         return;
     }
 
-    UpdateConfirmationAnimations(Time::DeltaTime());
+    UpdateRailJumpAnimations(Time::DeltaTime());
+    UpdateConfirmationSounds(Time::DeltaTime());
     DrawRailModels();
     
     // LineManager のインスタンスを取得する
@@ -145,21 +149,53 @@ void GameComponents::RailViewComponent::Update() {
     }
 }
 
-void GameComponents::RailViewComponent::UpdateConfirmationAnimations(float deltaTime) {
+void GameComponents::RailViewComponent::UpdateRailJumpAnimations(float deltaTime) {
+    // 確定済みと未確定を連結した経路。レールは置かれた順に並び、列車が通って
+    // 確定しても添字は変わらないため、設置した瞬間の演出をそのまま持ち越せる。
+    // 増えた分は 0 から動き出し、Undo で減った分は末尾ごと捨てる。
+    railJumpTimes_.resize(
+        railPath_->GetRailMap().size() + railPath_->GetRailUndoStack().size(),
+        0.0f);
+
+    const float safeDeltaTime = std::max(deltaTime, 0.0f);
+    for (float& animationTime : railJumpTimes_) {
+        animationTime = std::min(animationTime + safeDeltaTime, railJumpDuration_);
+    }
+}
+
+float GameComponents::RailViewComponent::GetRailJumpOffset(
+    std::size_t pathIndex) const {
+    if (pathIndex >= railJumpTimes_.size()) {
+        return 0.0f;
+    }
+
+    const float animationTime = railJumpTimes_[pathIndex];
+    if (animationTime >= railJumpDuration_) {
+        return 0.0f;
+    }
+
+    const float progress = std::clamp(
+        animationTime / railJumpDuration_,
+        0.0f,
+        1.0f);
+    return std::sin(progress * kPi) * railJumpHeight_;
+}
+
+void GameComponents::RailViewComponent::UpdateConfirmationSounds(float deltaTime) {
     const std::size_t confirmedCount = railPath_->GetRailMap().size();
 
     // 将来確定済みレールを巻き戻す処理が追加されても、添字を範囲内に保つ。
-    if (confirmationAnimationTimes_.size() > confirmedCount) {
-        confirmationAnimationTimes_.resize(confirmedCount);
+    if (confirmationSoundTimes_.size() > confirmedCount) {
+        confirmationSoundTimes_.resize(confirmedCount);
         confirmationSoundPitches_.resize(confirmedCount);
     }
 
     // 同じフレームに複数本確定した場合（駅到達時）は、順番に再生する。
-    const std::size_t firstNewIndex = confirmationAnimationTimes_.size();
+    const std::size_t firstNewIndex = confirmationSoundTimes_.size();
     for (std::size_t i = firstNewIndex; i < confirmedCount; ++i) {
         const float delay = confirmationStaggerInterval_ *
             static_cast<float>(i - firstNewIndex);
-        confirmationAnimationTimes_.push_back(-delay);
+        confirmationSoundTimes_.push_back(-delay);
         confirmationSoundPitches_.push_back(std::min(
             confirmationSeBasePitch_ +
                 confirmationSePitchStep_ * static_cast<float>(i - firstNewIndex),
@@ -167,15 +203,15 @@ void GameComponents::RailViewComponent::UpdateConfirmationAnimations(float delta
     }
 
     const float safeDeltaTime = std::max(deltaTime, 0.0f);
-    for (std::size_t i = 0; i < confirmationAnimationTimes_.size(); ++i) {
-        float& animationTime = confirmationAnimationTimes_[i];
-        if (animationTime < confirmationJumpDuration_) {
+    for (std::size_t i = 0; i < confirmationSoundTimes_.size(); ++i) {
+        float& animationTime = confirmationSoundTimes_[i];
+        if (animationTime < railJumpDuration_) {
             const float previousTime = animationTime;
             animationTime = std::min(
                 animationTime + safeDeltaTime,
-                confirmationJumpDuration_);
+                railJumpDuration_);
 
-            // 待ち時間を越えてレールが跳ね始める瞬間に、一度だけSEを鳴らす。
+            // 待ち時間を越えてレールが確定した瞬間に、一度だけSEを鳴らす。
             const auto& rail = railPath_->GetRailMap()[i];
             const bool isStationRail = mapGenerator_ && mapGenerator_->IsStationRailCell(
                 static_cast<std::size_t>(rail.first), static_cast<std::size_t>(rail.second));
@@ -184,24 +220,6 @@ void GameComponents::RailViewComponent::UpdateConfirmationAnimations(float delta
             }
         }
     }
-}
-
-float GameComponents::RailViewComponent::GetConfirmationJumpOffset(
-    std::size_t railIndex) const {
-    if (railIndex >= confirmationAnimationTimes_.size()) {
-        return 0.0f;
-    }
-
-    const float animationTime = confirmationAnimationTimes_[railIndex];
-    if (animationTime < 0.0f || animationTime >= confirmationJumpDuration_) {
-        return 0.0f;
-    }
-
-    const float progress = std::clamp(
-        animationTime / confirmationJumpDuration_,
-        0.0f,
-        1.0f);
-    return std::sin(progress * kPi) * confirmationJumpHeight_;
 }
 
 void GameComponents::RailViewComponent::DrawRailModels() {
@@ -290,8 +308,8 @@ void GameComponents::RailViewComponent::DrawRailModels() {
             outgoing = incoming;
         }
 
-        const float jumpOffset = !isStationRail && i < confirmedRails.size()
-            ? GetConfirmationJumpOffset(i)
+        const float jumpOffset = !isStationRail
+            ? GetRailJumpOffset(i)
             : 0.0f;
         const Vector3 position = {
             static_cast<float>(current.first) * gridSize_,
