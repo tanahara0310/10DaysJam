@@ -60,6 +60,10 @@ namespace GameComponents::GameSettings
         "Game.Stamina.BananaRecovery", 20.0f,
         "サル1匹がバナナの木の隣を通ったときの共通スタミナ回復量（木1本あたり）",
         CoreEngine::CVarRange{ 0.0f, 10000.0f } };
+    CoreEngine::CVar<float> BananaRecoveryMonkeyCorrectionRate{
+        "Game.Stamina.BananaRecoveryMonkeyCorrectionRate", 0.25f,
+        "サルが増えるほどバナナ回復量を抑える補正率（0なら補正なし、1なら全サルで合計が一定）",
+        CoreEngine::CVarRange{ 0.0f, 1.0f } };
     CoreEngine::CVar<float> AdditionalMonkeyCostRate{
         "Game.Stamina.AdditionalMonkeyCostRate", 0.25f,
         "サル1匹追加ごとの消費倍率の加算量（0.25なら1匹増えるごとに25%増加）",

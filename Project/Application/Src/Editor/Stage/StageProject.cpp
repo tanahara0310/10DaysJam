@@ -7,6 +7,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <sstream>
 
@@ -16,12 +17,37 @@ namespace GameEditors
 {
     namespace
     {
+        /// @brief UTF-8文字列をWindowsでも正しくfilesystemのパスへ変換する
+        std::filesystem::path PathFromUtf8(const std::string& path)
+        {
+            const std::u8string utf8Path(path.begin(), path.end());
+            return std::filesystem::path(utf8Path);
+        }
+
         /// @brief パス区切りを "/" に揃える
         /// @details CSVのパスはコードへ貼る文字列にもなるので、Windowsの "\" は残さない。
         std::string ToPortablePath(const std::filesystem::path& path)
         {
             const std::u8string text = path.generic_u8string();
             return std::string(text.begin(), text.end());
+        }
+
+        /// @brief Windowsのパス比較用に区切り文字とASCII大文字を揃える
+        std::string NormalizePathForCompare(std::string path)
+        {
+            std::replace(path.begin(), path.end(), '\\', '/');
+            std::transform(path.begin(), path.end(), path.begin(),
+                [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+            return path;
+        }
+
+        bool HasPath(const StageAreaDefinition& area, const std::string& candidate)
+        {
+            const std::string normalizedCandidate = NormalizePathForCompare(candidate);
+            return std::any_of(area.paths.begin(), area.paths.end(),
+                [&](const std::string& path) {
+                    return NormalizePathForCompare(path) == normalizedCandidate;
+                });
         }
     }
 
@@ -144,6 +170,45 @@ namespace GameEditors
             project.initialAreaName = project.areas.front().name;
         }
         return project;
+    }
+
+    bool StageProjectIO::MergeCsvFilesFromDisk(
+        StageProject& project, const std::string& areasRoot)
+    {
+        bool changed = false;
+        const std::filesystem::path root = PathFromUtf8(areasRoot);
+
+        for (auto& area : project.areas) {
+            const std::filesystem::path areaDir = root / PathFromUtf8(area.name);
+            std::vector<std::filesystem::path> csvFiles;
+            std::error_code iteratorError;
+            for (const auto& entry : std::filesystem::directory_iterator(areaDir, iteratorError)) {
+                std::error_code fileError;
+                if (!entry.is_regular_file(fileError) || fileError) {
+                    continue;
+                }
+                std::string extension = entry.path().extension().string();
+                std::transform(extension.begin(), extension.end(), extension.begin(),
+                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                if (extension == ".csv") {
+                    csvFiles.push_back(entry.path());
+                }
+            }
+            if (iteratorError) {
+                continue;
+            }
+
+            std::sort(csvFiles.begin(), csvFiles.end());
+            for (const auto& csvFile : csvFiles) {
+                const std::string path = ToPortablePath(csvFile);
+                if (!HasPath(area, path)) {
+                    area.paths.push_back(path);
+                    changed = true;
+                }
+            }
+        }
+
+        return changed;
     }
 
     std::string StageProjectIO::BuildGameSceneSnippet(const StageProject& project)

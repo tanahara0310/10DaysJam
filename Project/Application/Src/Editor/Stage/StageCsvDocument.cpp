@@ -20,6 +20,13 @@ namespace GameEditors
 {
     namespace
     {
+        /// @brief UTF-8文字列をWindowsでも正しくfilesystemのパスへ変換する
+        std::filesystem::path PathFromUtf8(const std::string& path)
+        {
+            const std::u8string utf8Path(path.begin(), path.end());
+            return std::filesystem::path(utf8Path);
+        }
+
         /// @brief CSVの1行をセルへ割る
         /// @note 読み方は MapGeneratorComponent::LoadCsv と同じにしてある。
         ///       エディタで見えている絵とゲームが読む地形がずれると意味がないので、
@@ -89,7 +96,10 @@ namespace GameEditors
 
     bool StageCsvDocument::Load(const std::string& path)
     {
-        const std::filesystem::path csvPath(std::u8string(path.begin(), path.end()));
+        // エディタのパスはUTF-8で保持している。Windowsではstd::stringを
+        // そのままpathへ渡すと、日本語を含むファイル名が既定コードページで
+        // 解釈されるため、char8_tの文字列へ変換してから渡す。
+        const std::filesystem::path csvPath = PathFromUtf8(path);
         std::ifstream input(csvPath, std::ios::binary);
         if (!input) {
             Logger::GetInstance().Warnf(LogCategory::Game,
@@ -138,10 +148,17 @@ namespace GameEditors
 
     bool StageCsvDocument::Save(const std::string& path)
     {
-        const std::filesystem::path csvPath(std::u8string(path.begin(), path.end()));
+        // Loadと同じく、UTF-8のパスをfilesystemへ正しく渡す。
+        const std::filesystem::path csvPath = PathFromUtf8(path);
         std::error_code ec;
         if (csvPath.has_parent_path()) {
             std::filesystem::create_directories(csvPath.parent_path(), ec);
+            if (ec) {
+                Logger::GetInstance().Errorf(LogCategory::Game,
+                    "StageEditor: CSVの保存先フォルダーを作れません: {} ({})",
+                    path, ec.message());
+                return false;
+            }
         }
 
         std::ostringstream out;

@@ -6,8 +6,11 @@
     "Game.Rail.BuilderStartX": 1,
     "Game.Rail.TrainMoveSpeed": 2.0,
     "Game.Stamina.BananaRecovery": 15.0,
-    "Game.Stamina.Cost.Rail": 1.7000000476837158,
-    "Game.Stamina.Cost.Rock": 8.0,
+    "Game.Stamina.Cost.Bridge": 4.0,
+    "Game.Stamina.Cost.Rail": 0.800000011920929,
+    "Game.Stamina.Cost.Rock": 10.0,
+    "Game.Stamina.Initial": 150.0,
+    "Game.Stamina.Maximum": 150.0,
     "Result.Animation.ConfirmDuration": 0.2290000021457672,
     "Result.Animation.ConfirmScale": 1.4500000476837158,
     "Result.Animation.ReactionDuration": 0.15600000321865082,
@@ -81,7 +84,7 @@
         1.0,
         0.0
     ],
-    "Title.UI.HintFontSize": 40.21799850463867,
+    "Title.UI.HintFontSize": 53.417999267578125,
     "Title.UI.HintPosition": [
         0.0,
         285.7139892578125
@@ -95,12 +98,11 @@
     ],
     "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
     "r.AtmosphereLights.SunDirection": [
-        0.5735764503479004,
-        -0.8191520571708679,
-        -6.839830923865975e-09
+        -0.6597630381584167,
+        -0.43073102831840515,
+        0.6157788038253784
     ],
     "r.AutoExposure.Enabled": true,
-    "r.AutoExposure.MaxEV": 7.5,
     "r.Bloom.Intensity": 0.9480000138282776,
     "r.Bloom.SoftKnee": 0.35100001096725464,
     "r.Blur.Intensity": 2.5290000438690186,
