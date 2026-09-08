@@ -113,6 +113,13 @@ namespace GameComponents
         void ApplyBananaTreeShake(std::size_t x, std::size_t z,
             CoreEngine::Vector3& rotate, CoreEngine::Vector3& scale) const;
 
+        // バナナの木を風で常時ゆらす。渡された回転へ傾きを足すだけなので、
+        // 収穫のしなり（ApplyBananaTreeShake）とは加算でそのまま重なる。
+        // 木は1メッシュなので、モデル原点＝根元を支点にまっすぐ倒れる。
+        // 回転の変位は支点からの距離に比例するため、根元は動かず葉先だけが振れる。
+        void ApplyBananaTreeSway(std::size_t x, std::size_t z,
+            CoreEngine::Vector3& rotate, CoreEngine::Vector3& scale) const;
+
         // マスごとの色ムラを求める。地面が一色だとマス目が読めないので、
         // ベースカラーへ掛ける係数をマス単位でわずかに散らす。
         CoreEngine::Vector4 CalcGroundTint(
@@ -167,6 +174,39 @@ namespace GameComponents
         float bananaTreeShakeDuration_ = 0.55f; // しなって戻り切るまでの時間（秒）
         float bananaTreeShakeLean_ = 0.17f;     // 取られた向きへ倒れる角度（ラジアン）
         float bananaTreeShakeSquash_ = 0.12f;   // しなりに合わせて縦へ縮む量
+
+        // ===== バナナの木の風揺れ（常時） =====
+        // 止まったままの木は死んで見えるので、ゆっくり傾け続けて風の中に立たせる。
+        // 位相はマス座標から作るので木ごとにばらけ、プールの要素が別のマスへ
+        // 移っても揺れは飛ばない（理由は ApplyBananaTreeSway のコメント）。
+        // 角度を上げると根元の底面のフチが地面から浮くので、
+        // bananaTreeSinkDepth_ とセットで決めること。
+        //
+        // ゲームカメラは offset [0, 20, -18] の見下ろし（水平から約48度・距離27m）で、
+        // FOV45度・1080p なら画面上は約 49px/m。葉先が 10cm 振れて 5px 動く計算になる。
+        // 上から見るぶん傾きは効きにくいので、真上からでも形が変わって見える
+        // ヨー（Y回転）と葉の開閉を足して、傾きに頼りきらないようにしている。
+        float bananaTreeSwayAngle_ = 0.07f;     // 傾きの振幅（ラジアン。0.07 ≒ 4度）
+        float bananaTreeSwaySpeed_ = 0.6f;      // 主となる揺れの速さ（Hz）
+        float bananaTreeSwaySubSpeed_ = 0.27f;  // 重ねる2本目の速さ（Hz）
+        float bananaTreeSwaySubRate_ = 0.45f;   // 2本目の振幅の割合
+        float bananaTreeSwayLean_ = 0.03f;      // 風下へ倒しておく角度（ラジアン）
+        // 幹をねじる角度（ラジアン）。葉の茂りが前後左右で非対称なので、回すと
+        // 真上から見てもシルエットが動く。傾きと違って根元が全く浮かないため、
+        // 埋める深さを気にせず大きく取れる。見下ろし視点ではこれが一番効く。
+        float bananaTreeSwayYaw_ = 0.18f;
+        // 葉の開閉。横へ広げたぶん少し縦を縮める（厳密な体積保存ではなく、
+        // 見た目重視の弱い連動）。見下ろしだと葉の面積の変化として読める。
+        float bananaTreeSwayBreath_ = 0.045f;
+        // 風向。既定は雲（r.Cloud.WindDirX / WindDirZ）と同じ +X。
+        // 雲の風向を変えたらここも合わせると、雲と木が同じ風で動いて見える。
+        float bananaTreeWindDirX_ = 1.0f;
+        float bananaTreeWindDirZ_ = 0.0f;
+        // 木を地面へ沈める深さ[m]（1マス=1m のとき）。傾けると底面のフチが持ち上がって
+        // 地面との間に隙間が出るので、その分だけ埋めて隠す。
+        // 既定値での浮きは 13mm ほどなので、2.5cm あれば足りる。
+        // ヨーと葉の開閉は根元を浮かせないので、ここに効くのは傾きの角度だけ。
+        float bananaTreeSinkDepth_ = 0.025f;
 
     };
 }
