@@ -522,6 +522,36 @@ void GameComponents::RailBuilderComponent::SetHorizontalPrioritize(bool prioriti
     HorizontalPrioritize = prioritize;
 }
 
+float GameComponents::RailBuilderComponent::GetNextPlacementCost() const {
+    if (!mapGenerator_ || !hunger_) {
+        return 0.0f;
+    }
+
+    // 入力が来るまで進む向きは決まらないので、優先方向の 1 マス先を見せる。
+    // 未生成のマスは GetMapChip が Void を返し、通常の地面と同じ扱いになる。
+    const int32_t nextX = gridPosX_ + (HorizontalPrioritize ? 1 : 0);
+    const int32_t nextZ = gridPosZ_ + (HorizontalPrioritize ? 0 : 1);
+    if (nextX < 0 || nextZ < 0) {
+        return 0.0f;
+    }
+
+    const auto x = static_cast<std::size_t>(nextX);
+    const auto z = static_cast<std::size_t>(nextZ);
+
+    const float railCost = mapGenerator_->IsStationRailCell(x, z)
+        ? 0.0f : std::max(0.0f, GameSettings::RailStaminaCost.Get());
+    float baseCost = railCost;
+
+    const MapChipType mapChip = mapGenerator_->GetMapChip(x, z);
+    if (mapChip == MapChipType::Water) {
+        baseCost += std::max(0.0f, GameSettings::BridgeStaminaCost.Get());
+    } else if (mapChip == MapChipType::Resource) {
+        baseCost += std::max(0.0f, GameSettings::RockStaminaCost.Get());
+    }
+
+    return hunger_->CalculateActionCost(baseCost);
+}
+
 void GameComponents::RailBuilderComponent::SetInsufficientFeedback(
     std::function<void()> onStaminaInsufficient) {
     OnStaminaInsufficient_ = std::move(onStaminaInsufficient);

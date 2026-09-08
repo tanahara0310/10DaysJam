@@ -70,6 +70,12 @@ namespace GameComponents
         void SetHorizontalPrioritize(bool prioritize);
         void SetInsufficientFeedback(std::function<void()> onStaminaInsufficient);
 
+        /// @brief 進行方向へ 1 マス敷いた場合のスタミナ消費量を返す（スタミナゲージの予告表示用）
+        /// @details 向きは入力が来るまで決まらないため、優先方向（HorizontalPrioritize）の
+        ///          1 マス先を見る。橋や岩のマスでは通常のレールより高い値になる。
+        /// @return 消費量。参照先が未設定の場合は 0
+        float GetNextPlacementCost() const;
+
     private:
         // 論理グリッド座標を Transform のワールド座標へ反映する
         void SyncTransformToGrid();

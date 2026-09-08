@@ -199,6 +199,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\HungerUIComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\UI\StaminaGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Utility\ModelRenderPoolComponent.cpp" />
     <ClCompile Include="Application\Src\Editor\Stage\StageCsvDocument.cpp" />
     <ClCompile Include="Application\Src\Editor\Stage\StageEditorPanel.cpp" />
@@ -206,6 +207,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp" />
@@ -795,6 +797,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\HungerUIComponent.h" />
+    <ClInclude Include="Application\Src\Components\UI\StaminaGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\Utility\BlockModelLayout.h" />
     <ClInclude Include="Application\Src\Components\Utility\ModelRenderPoolComponent.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageChipPalette.h" />
@@ -803,6 +806,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Editor\Stage\StageProject.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h" />

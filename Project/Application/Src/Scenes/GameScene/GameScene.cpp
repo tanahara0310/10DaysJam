@@ -10,6 +10,7 @@
 #include "Scene/Feature/TimeOfDayFeature.h"
 #include "SkyFogFeature.h"
 #include "StageLightsFeature.h"
+#include "StaminaGaugeFeature.h"
 #include "Text/FontManager.h"
 #include "UI/UIText.h"
 #include "Utility/Logger/Logger.h"
@@ -64,6 +65,9 @@ void GameScene::GameScene::OnInitialize() {
     // ステージのブロックより下を埋める雲（高さフォグ）。
     // 濃さ・色・高さは「ゲーム設定」の Game.Fog.* から調整する。
     AddFeature(GameComponents::CreateSkyFogFeature());
+    // スタミナをバナナの粒で見せる HUD ゲージ。
+    // 位置・粒あたりのスタミナ量は「ゲーム設定」の Game.StaminaGauge.* から調整する。
+    AddFeature(GameComponents::CreateStaminaGaugeFeature());
 
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
