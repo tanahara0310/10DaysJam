@@ -8,6 +8,7 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
+#include "PauseMenuFeature.h"
 #include "SkyFogFeature.h"
 #include "SpeedGaugeFeature.h"
 #include "StageLightsFeature.h"
@@ -67,6 +68,9 @@ void GameScene::GameScene::OnInitialize() {
     // スタミナをバナナの粒で見せる HUD ゲージ。
     // 位置・粒あたりのスタミナ量は「ゲーム設定」の Game.StaminaGauge.* から調整する。
     AddFeature(GameComponents::CreateStaminaGaugeFeature());
+    // ツタで吊るした木の看板のポーズメニュー。ESC ／ パッドの START で開く。
+    // 見た目は「ゲーム設定」の Game.PauseMenu.* から調整する。
+    AddFeature(GameComponents::CreatePauseMenuFeature());
     // トロッコの速さを km/h のオドメーターで見せる HUD。
     // 位置・1 マスの実距離は「ゲーム設定」の Game.SpeedGauge.* から調整する。
     AddFeature(GameComponents::CreateSpeedGaugeFeature());

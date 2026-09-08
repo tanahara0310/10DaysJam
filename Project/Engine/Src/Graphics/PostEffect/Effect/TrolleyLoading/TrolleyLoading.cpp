@@ -17,14 +17,19 @@ namespace CoreEngine
 {
     namespace
     {
-        CVar<float> cvSpeed{
-            "r.TrolleyLoading.Speed", 336.0f,
-            "レールが流れる速さ（縦 1080 基準の px/秒）",
+        CVar<float> cvBobSpeed{
+            "r.TrolleyLoading.BobSpeed", 336.0f,
+            "トロッコが跳ねる速さ（縦 1080 基準の px/秒。枕木 1 本ぶんで 1 回跳ねる換算）",
             CVarRange{ 40.0f, 1200.0f } };
+
+        CVar<float> cvRailScroll{
+            "r.TrolleyLoading.RailScroll", 0.0f,
+            "レールと奥の景色が流れる速さ（0 でカメラを世界に固定し、トロッコだけが走る）",
+            CVarRange{ 0.0f, 1200.0f } };
 
         CVar<float> cvParallax{
             "r.TrolleyLoading.Parallax", 0.32f,
-            "奥の景色が流れる速さの比（1.0 で手前と同速）",
+            "奥の景色が流れる速さの比（1.0 で手前と同速）。RailScroll が 0 なら効かない",
             CVarRange{ 0.0f, 1.0f } };
 
         CVar<float> cvScale{
@@ -38,9 +43,14 @@ namespace CoreEngine
             CVarRange{ 0.3f, 0.98f } };
 
         CVar<float> cvCartX{
-            "r.TrolleyLoading.CartX", 0.30f,
-            "トロッコ左端の位置（画面幅に対する比率）",
-            CVarRange{ 0.0f, 0.8f } };
+            "r.TrolleyLoading.CartX", -0.14f,
+            "進捗 0 のときのトロッコ左端（画面幅に対する比率。負で画面外から発車する）",
+            CVarRange{ -0.6f, 0.8f } };
+
+        CVar<float> cvCartGoalX{
+            "r.TrolleyLoading.CartGoalX", 0.73f,
+            "進捗 1 のときのトロッコ左端（画面幅に対する比率）",
+            CVarRange{ 0.0f, 1.2f } };
 
         CVar<float> cvBobAmp{
             "r.TrolleyLoading.BobAmp", 4.0f,
@@ -73,8 +83,8 @@ namespace CoreEngine
             CVarRange{ -40.0f, 160.0f } };
 
         CVar<float> cvStationGoal{
-            "r.TrolleyLoading.StationGoal", 340.0f,
-            "進捗 1.0 で駅が来る位置（トロッコ左端からの距離）",
+            "r.TrolleyLoading.StationGoal", 260.0f,
+            "進捗 1.0 で駅が来る位置（到着したトロッコの左端からの距離）",
             CVarRange{ 0.0f, 1200.0f } };
 
         CVar<float> cvStationDrop{
@@ -110,6 +120,11 @@ namespace CoreEngine
         // 経過時間の折り返し。走行距離 = speed * time が float の精度を失うほど
         // 大きくならないようにする（この長さの読み込みは現実には起きない）
         constexpr float kTimeWrapSeconds = 1000.0f;
+
+        // 進捗の追従の速さ（1/秒）。大きいほど生の進捗にすぐ追いつく。
+        // 速すぎると読み込みのステップがそのまま段差になり、遅すぎると
+        // 読み込みが終わってもトロッコが駅へ着かないまま画面が明けてしまう
+        constexpr float kProgressFollowRate = 6.0f;
     }
 
     void TrolleyLoading::OnCreateConstantBuffers()
@@ -134,10 +149,12 @@ namespace CoreEngine
         if (!mappedTrolleyParams_) {
             return;
         }
-        mappedTrolleyParams_->speed       = cvSpeed.Get();
+        mappedTrolleyParams_->bobSpeed    = cvBobSpeed.Get();
+        mappedTrolleyParams_->railScroll  = cvRailScroll.Get();
         mappedTrolleyParams_->parallax    = cvParallax.Get();
         mappedTrolleyParams_->railY       = cvRailY.Get();
         mappedTrolleyParams_->cartX       = cvCartX.Get();
+        mappedTrolleyParams_->cartGoalX   = cvCartGoalX.Get();
         mappedTrolleyParams_->bobAmp      = cvBobAmp.Get();
         mappedTrolleyParams_->tiltDegrees = cvTiltDegrees.Get();
         mappedTrolleyParams_->wheelRadius = cvWheelRadius.Get();
@@ -154,11 +171,17 @@ namespace CoreEngine
         mappedTrolleyParams_->progress    = progress_;
     }
 
-    // デルタタイムに上限を掛けて積算する
+    // デルタタイムに上限を掛けて積算し、進捗を目標へ追従させる
     void TrolleyLoading::PrepareFrame(const PostEffectFrameContext& ctx)
     {
-        timeAccumulator_ = std::fmod(timeAccumulator_ + std::min(ctx.deltaTime, kMaxDeltaSeconds),
-                                     kTimeWrapSeconds);
+        const float deltaTime = std::min(ctx.deltaTime, kMaxDeltaSeconds);
+        timeAccumulator_ = std::fmod(timeAccumulator_ + deltaTime, kTimeWrapSeconds);
+
+        // シーン構築は 1 フレーム 1 ステップなので、生の進捗は段階的に飛ぶ。
+        // そのまま位置にすると、トロッコがワープしたように見える
+        const float follow = 1.0f - std::exp(-kProgressFollowRate * deltaTime);
+        progress_ += (progressTarget_ - progress_) * follow;
+
         UpdateConstantBuffer();
     }
 
@@ -170,6 +193,9 @@ namespace CoreEngine
         // 走り出すので、前回の遷移の位相を引きずらない
         if (screenAlpha_ <= 0.0f && next > 0.0f) {
             timeAccumulator_ = 0.0f;
+            // 位置も戻す。前の遷移の到着地点から走り出すと、いきなり駅の前に居る
+            progress_       = 0.0f;
+            progressTarget_ = 0.0f;
         }
 
         screenAlpha_ = next;
@@ -178,8 +204,8 @@ namespace CoreEngine
 
     void TrolleyLoading::SetProgress(float progress)
     {
-        progress_ = std::clamp(progress, 0.0f, 1.0f);
-        UpdateConstantBuffer();
+        // 目標を置くだけ。実際に画面へ出す進捗は PrepareFrame がなめらかに寄せる
+        progressTarget_ = std::clamp(progress, 0.0f, 1.0f);
     }
 
     void TrolleyLoading::SetGaugeAlpha(float /*alpha*/)
@@ -228,14 +254,15 @@ namespace CoreEngine
 #ifdef USE_IMGUI
         ImGui::PushID("TrolleyLoading");
         ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        ImGui::Text("進捗は右から近づいてくる駅までの距離で表しています");
+        ImGui::Text("進捗はトロッコが駅へ近づく距離で表しています");
         UI::Separator();
 
         // 表示強度と進捗はシーン遷移が制御する実行時状態のため、CVar ではなくここで直接編集する
         if (UI::SliderFloat("表示強度（実行時）", screenAlpha_, 0.0f, 1.0f)) {
             UpdateConstantBuffer();
         }
-        if (UI::SliderFloat("進捗（実行時）", progress_, 0.0f, 1.0f)) {
+        if (UI::SliderFloat("進捗（実行時）", progressTarget_, 0.0f, 1.0f)) {
+            progress_ = progressTarget_;
             UpdateConstantBuffer();
         }
 
