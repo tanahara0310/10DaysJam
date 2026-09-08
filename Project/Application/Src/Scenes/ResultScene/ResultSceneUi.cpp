@@ -131,7 +131,7 @@ namespace ResultSceneUi
         const auto distanceMeters =
             GameComponents::GameResultData::GetHorizontalProgressMeters();
         UIText* scoreText = createText(
-            "進んだ距離: " + std::to_string(distanceMeters) + " m",
+            "すすんだキョリ: " + std::to_string(distanceMeters) + " m",
             ScoreFontSize.Get(), UIAnchor::Center, ScorePosition.Get(),
             TitleColor.Get(), "ResultScore");
         if (scoreText) {
