@@ -26,6 +26,12 @@
             "enabled": true,
             "parameters": {
                 "gridSize": 1.0,
+                "groundTintFadeRange": 22.0,
+                "groundTintFadeStart": 16.0,
+                "groundTintHueSwing": 0.11999999731779099,
+                "groundTintStrength": 0.20000000298023224,
+                "stationPopDuration": 0.44999998807907104,
+                "stationPopSquash": 0.2199999988079071,
                 "viewDistanceX": 20
             },
             "type": "MapView"

@@ -15,11 +15,11 @@
     ],
     "fieldAutoFit": true,
     "fieldSize": {
-        "x": 503.8515625,
-        "y": 58.5234375
+        "x": 606.6666259765625,
+        "y": 56.0
     },
-    "font": "Default",
-    "fontSize": 44.0,
+    "font": "x8y12pxDenkiChip.ttf",
+    "fontSize": 56.0,
     "lineSpacing": 1.0,
     "objectType": "UIText",
     "outlineColor": [

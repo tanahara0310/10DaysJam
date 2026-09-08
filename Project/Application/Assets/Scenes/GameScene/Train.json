@@ -16,7 +16,7 @@
                 ],
                 "translate": [
                     1.0,
-                    0.625,
+                    0.8320284485816956,
                     4.0
                 ]
             },
@@ -25,16 +25,17 @@
         {
             "enabled": true,
             "parameters": {
-                "acceleration": 0.10999999940395355,
+                "acceleration": 0.14000000059604645,
                 "gridSize": 1.0,
                 "initialGridX": 1,
                 "initialGridZ": 4,
                 "initialMoveSpeed": 1.5,
                 "maximumMoveSpeed": 32.0,
-                "minimumSpeedIncreasePerRail": 0.02500000037252903,
+                "minimumSpeedIncreasePerRail": 0.00800000037997961,
                 "requiredRailCount": 5,
                 "rockThrowJumpDuration": 0.3499999940395355,
-                "rockThrowJumpHeight": 0.6000000238418579
+                "rockThrowJumpHeight": 0.6000000238418579,
+                "turnBlendRatio": 0.3499999940395355
             },
             "type": "TrainMovement"
         },

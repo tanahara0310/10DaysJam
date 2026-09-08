@@ -52,6 +52,12 @@ namespace GameEditors
         ///          フォルダー名がエリア名、その直下の .csv が区画になる。
         StageProject ScanFromDisk(const std::string& areasRoot);
 
+        /// @brief 既存の構成へ、エリアフォルダー内の未登録CSVを追加する
+        /// @return 1件以上追加された場合 true
+        /// @details 構成JSONを先に作った後で、エクスプローラーや旧版エディタから
+        ///          追加されたCSVも、次回読み込み時に一覧へ取り込めるようにする。
+        bool MergeCsvFilesFromDisk(StageProject& project, const std::string& areasRoot);
+
         /// @brief GameScene::OnInitialize へ貼り付けられる形の設定コードを作る
         /// @details ゲーム本体は構成JSONを読まないので、反映したいときはこれを貼る。
         std::string BuildGameSceneSnippet(const StageProject& project);

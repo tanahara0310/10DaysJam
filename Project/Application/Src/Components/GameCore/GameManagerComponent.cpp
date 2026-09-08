@@ -2,6 +2,7 @@
 #include "GameManagerComponent.h"
 
 #include "Components/GameCore/GameResultData.h"
+#include "Components/GameCore/HungerComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "Camera/Rig/CameraRig.h"
@@ -56,9 +57,12 @@ void GameComponents::GameManagerComponent::Start() {
 }
 
 void GameComponents::GameManagerComponent::SetGameplayComponents(
-    TrainMovementComponent* train, RailBuilderComponent* builder) {
+    TrainMovementComponent* train,
+    RailBuilderComponent* builder,
+    HungerComponent* hunger) {
     train_ = train;
     builder_ = builder;
+    hunger_ = hunger;
 }
 
 void GameComponents::GameManagerComponent::LateUpdate() {
@@ -91,6 +95,7 @@ void GameComponents::GameManagerComponent::BeginEnding(bool isClear, float chang
     // GameScene のオブジェクトが破棄される前に、リザルト用の共有データへ確定する。
     GameResultData::SetHorizontalProgressBlocks(
         train_ ? train_->GetHorizontalProgressBlocks() : 0);
+    GameResultData::SetMonkeyCount(hunger_ ? hunger_->GetMonkeyCount() : 1);
 
     if (train_) {
         train_->SetEnabled(false);
