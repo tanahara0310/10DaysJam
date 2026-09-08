@@ -14,6 +14,7 @@
 #include "Text/FontManager.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Random/Hash.h"
 
 #include <algorithm>
 #include <cmath>
@@ -29,18 +30,6 @@ using namespace CoreEngine;
 namespace {
     constexpr std::size_t kDistanceMarkerIntervalMeters = 5;
     constexpr float kDistanceMarkerFontSize = 0.45f;
-
-    // マス座標から 0..1 の安定した乱数を作る。
-    // 毎フレーム同じ値でないと、プールの要素が別のマスへ移った瞬間に色がちらつく。
-    float CellRandom01(std::size_t x, std::size_t z) {
-        std::uint32_t hash = static_cast<std::uint32_t>(x) * 73856093u ^
-            static_cast<std::uint32_t>(z) * 19349663u;
-        hash ^= hash >> 13;
-        hash *= 0x85EBCA6Bu;
-        hash ^= hash >> 16;
-        return static_cast<float>(hash & 0x00FFFFFFu) /
-            static_cast<float>(0x01000000u);
-    }
 }
 
 json GameComponents::MapViewComponent::OnSerialize() const {
@@ -50,7 +39,7 @@ json GameComponents::MapViewComponent::OnSerialize() const {
         { "groundTintStrength", groundTintStrength_ },
         { "groundTintHueSwing", groundTintHueSwing_ },
         { "groundTintFadeStart", groundTintFadeStart_ },
-        { "groundTintFadeRange", groundTintFadeRange_ }
+        { "groundTintFadeRange", groundTintFadeRange_ },
         { "stationPopDuration", stationPopDuration_ },
         { "stationPopSquash", stationPopSquash_ }
     };
@@ -266,7 +255,10 @@ CoreEngine::Vector4 GameComponents::MapViewComponent::CalcGroundTint(
     }
 
     // -1..1 のマス固有の値。これ1つで明度と色味の両方を振る。
-    const float amount = (CellRandom01(x, z) * 2.0f - 1.0f) * fade;
+    // 毎フレーム同じ値でないと、プールの要素が別のマスへ移った瞬間に色がちらつく。
+    const float cell01 = Hash::Cell01(
+        static_cast<std::int32_t>(x), static_cast<std::int32_t>(z));
+    const float amount = (cell01 * 2.0f - 1.0f) * fade;
     const float luminance = 1.0f + groundTintStrength_ * amount;
     // 明度だけだと白黒のムラに見えるので、青チャンネルだけ逆位相に振って
     // 「明るいマスは色が薄い / 暗いマスは色が濃い」という芝のムラらしさを出す。
