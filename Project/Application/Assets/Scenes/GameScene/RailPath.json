@@ -25,8 +25,8 @@
         {
             "enabled": true,
             "parameters": {
-                "mapSizeZ": 9,
-                "startX": 3,
+                "mapSizeZ": 11,
+                "startX": 1,
                 "startZ": 4
             },
             "type": "RailPath"
