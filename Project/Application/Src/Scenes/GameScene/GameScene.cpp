@@ -9,6 +9,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
 #include "PauseMenuFeature.h"
+#include "RailDirectionGuideFeature.h"
 #include "SkyFogFeature.h"
 #include "SpeedGaugeFeature.h"
 #include "StageLightsFeature.h"
@@ -75,6 +76,10 @@ void GameScene::GameScene::OnInitialize() {
     // トロッコの速さを km/h のオドメーターで見せる HUD。
     // 位置・1 マスの実距離は「ゲーム設定」の Game.SpeedGauge.* から調整する。
     AddFeature(GameComponents::CreateSpeedGaugeFeature());
+    // レール先頭の上下左右へ、伸ばせる向きだけ床に矢印を出すガイド。
+    // 戻る（Undo）向きだけは別の記号にしてある。
+    // 見た目は「ゲーム設定」の Game.RailGuide.* から調整する。
+    AddFeature(GameComponents::CreateRailDirectionGuideFeature());
 
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
