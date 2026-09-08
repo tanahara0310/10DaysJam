@@ -4,6 +4,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
+#include "Math/Easing/EasingUtil.h"
 #include "Components/Rail/RailPathComponent.h"
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/HungerComponent.h"
@@ -22,6 +23,30 @@
 
 using namespace CoreEngine;
 
+namespace {
+    // 曲がり角の緩急。始めと終わりが緩やかで、角の真上で最も速く回る。
+    constexpr EasingUtil::Type kTurnEasing = EasingUtil::Type::EaseInOutSine;
+    // 進行方向は 90 度刻みなので、一致判定はこの程度の誤差で足りる。
+    constexpr float kYawEpsilon = 1e-4f;
+
+    // 進行方向のマス差分から Y 軸回転を求める。差分がなければ今の向きを保つ。
+    float HeadingYawFromDelta(int32_t deltaX, int32_t deltaZ, float fallbackYaw) {
+        if (deltaX > 0) {
+            return std::numbers::pi_v<float> * 0.5f;
+        }
+        if (deltaX < 0) {
+            return -std::numbers::pi_v<float> * 0.5f;
+        }
+        if (deltaZ < 0) {
+            return std::numbers::pi_v<float>;
+        }
+        if (deltaZ > 0) {
+            return 0.0f;
+        }
+        return fallbackYaw;
+    }
+}
+
 json GameComponents::TrainMovementComponent::OnSerialize() const {
     return {
         { "gridSize", gridSize_ },
@@ -31,6 +56,7 @@ json GameComponents::TrainMovementComponent::OnSerialize() const {
         { "minimumSpeedIncreasePerRail", minimumSpeedIncreasePerRail_ },
         { "acceleration", acceleration_ },
         { "maximumMoveSpeed", maximumMoveSpeed_ },
+        { "turnBlendRatio", turnBlendRatio_ },
         { "rockThrowJumpHeight", rockThrowJumpHeight_ },
         { "rockThrowJumpDuration", rockThrowJumpDuration_ },
         { "requiredRailCount", requiredRailCount_ }
@@ -48,6 +74,8 @@ void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
         JsonManager::SafeGet<float>(j, "acceleration", acceleration_));
     maximumMoveSpeed_ = std::max(initialMoveSpeed_,
         JsonManager::SafeGet<float>(j, "maximumMoveSpeed", maximumMoveSpeed_));
+    turnBlendRatio_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "turnBlendRatio", turnBlendRatio_), 0.0f, 0.5f);
     rockThrowJumpHeight_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "rockThrowJumpHeight", rockThrowJumpHeight_));
     rockThrowJumpDuration_ = std::max(0.0f,
@@ -79,6 +107,9 @@ bool GameComponents::TrainMovementComponent::DrawInspector() {
     maximumMoveSpeed_ = std::max(maximumMoveSpeed_, initialMoveSpeed_);
     moveSpeed_ = std::min(moveSpeed_, maximumMoveSpeed_);
     ImGui::TextDisabled("現在の最低速度: %.3f", minMoveSpeed_);
+    // 0 にすると従来どおり曲がり角で 1 フレームで向きが変わる。
+    changed |= ImGui::DragFloat(
+        "カーブ補間幅（マス比）", &turnBlendRatio_, 0.01f, 0.0f, 0.5f);
     changed |= ImGui::DragFloat(
         "投石ジャンプ高さ", &rockThrowJumpHeight_, 0.05f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat(
@@ -126,6 +157,8 @@ void GameComponents::TrainMovementComponent::Start() {
     transform_->Get().translate.x = static_cast<float>(gridX_) * gridSize_;
     transform_->Get().translate.y = BlockModelLayout::GetRailTopHeight(gridSize_);
     transform_->Get().translate.z = static_cast<float>(gridZ_) * gridSize_;
+    hasHeading_ = false;
+    entryTurnProgress_ = 0.0f;
     traveledCells_.clear();
     traveledCells_.emplace_back(gridX_, gridZ_);
     pendingStationSteps_.clear();
@@ -304,6 +337,26 @@ bool GameComponents::TrainMovementComponent::BeginNextSegment() {
 
     movementProgress_ = 0.0f;
     isMoving_ = true;
+
+    // 直前のマスで先読みした向きと一致していれば、角の手前で既に半分曲がり終えている。
+    const float headingYaw = HeadingYawFromDelta(deltaX, deltaZ, headingYaw_);
+    entryTurnProgress_ =
+        (hasHeading_ && std::abs(nextHeadingYaw_ - headingYaw) < kYawEpsilon) ? 0.5f : 0.0f;
+    previousHeadingYaw_ = hasHeading_ ? headingYaw_ : headingYaw;
+    headingYaw_ = headingYaw;
+    hasHeading_ = true;
+
+    // 確定でキューの先頭は目的地の次のマスになる。そこから曲がり終わりの向きを先読みする。
+    nextHeadingYaw_ = headingYaw_;
+    std::pair<int32_t, int32_t> lookahead{};
+    if (railPath_->TryGetNextUnconfirmedRail(lookahead)) {
+        const int32_t nextDeltaX = lookahead.first - destinationGridX_;
+        const int32_t nextDeltaZ = lookahead.second - destinationGridZ_;
+        if (std::abs(nextDeltaX) + std::abs(nextDeltaZ) == 1) {
+            nextHeadingYaw_ = HeadingYawFromDelta(nextDeltaX, nextDeltaZ, headingYaw_);
+        }
+    }
+
     UpdateRotation();
     return true;
 }
@@ -322,15 +375,21 @@ void GameComponents::TrainMovementComponent::SyncTransformToProgress() {
 
     transform_->Get().translate.y =
         BlockModelLayout::GetRailTopHeight(gridSize_) + GetRockThrowJumpOffset();
+    UpdateRotation();
     SyncCarriageTransforms();
 }
 
-void GameComponents::TrainMovementComponent::AddCarriage(TransformComponent* carriageTransform) {
+void GameComponents::TrainMovementComponent::AddCarriage(
+    TransformComponent* carriageTransform, const Vector3* scaleMultiplier) {
     if (!carriageTransform || traveledCells_.size() < carriageTransforms_.size() + 2) {
         return;
     }
     carriageTransforms_.push_back(carriageTransform);
+    carriageScaleMultipliers_.push_back(scaleMultiplier);
     SyncCarriageTransforms();
+    // 生成フレームは TransformComponent::Update() がまだ走らない。ここで転送しないと
+    // 連結した最初の1フレームだけ、生成時の既定行列（原点・等倍）で描かれる。
+    carriageTransform->Get().TransferMatrix();
 }
 
 void GameComponents::TrainMovementComponent::ProcessCarriageArrival(bool stationActivated) {
@@ -366,23 +425,54 @@ void GameComponents::TrainMovementComponent::ProcessCarriageArrival(bool station
 
 void GameComponents::TrainMovementComponent::SyncCarriageTransforms() {
     const float modelScale = BlockModelLayout::GetScale(gridSize_);
+    const std::size_t cellCount = traveledCells_.size();
     for (std::size_t index = 0; index < carriageTransforms_.size(); ++index) {
         const std::size_t offset = index + 1;
-        if (traveledCells_.size() <= offset) {
+        if (cellCount <= offset) {
             break;
         }
-        const std::size_t cellIndex = traveledCells_.size() - 1 - offset;
+        const std::size_t cellIndex = cellCount - 1 - offset;
         const auto& [startX, startZ] = traveledCells_[cellIndex];
         const auto& [endX, endZ] = traveledCells_[cellIndex + 1];
         auto& carriage = carriageTransforms_[index]->Get();
-        carriage.scale = { modelScale, modelScale, modelScale };
+        // 連結直後の出現演出など、外から渡された拡縮を掛ける。
+        // ここで掛けないと、TransformComponent::Update() がワールド行列を焼いた
+        // 後の書き込みになり、そのフレームの描画へ届かない。
+        const Vector3* scaleMultiplier = index < carriageScaleMultipliers_.size()
+            ? carriageScaleMultipliers_[index]
+            : nullptr;
+        carriage.scale = scaleMultiplier
+            ? Vector3{
+                modelScale * scaleMultiplier->x,
+                modelScale * scaleMultiplier->y,
+                modelScale * scaleMultiplier->z }
+            : Vector3{ modelScale, modelScale, modelScale };
         carriage.translate = {
             (static_cast<float>(startX) + static_cast<float>(endX - startX) * movementProgress_) * gridSize_,
             BlockModelLayout::GetRailTopHeight(gridSize_),
             (static_cast<float>(startZ) + static_cast<float>(endZ - startZ) * movementProgress_) * gridSize_
         };
-        carriage.rotate.y = std::atan2(
-            static_cast<float>(endX - startX), static_cast<float>(endZ - startZ));
+
+        // 先頭車両と同じく、通過済みの履歴から前後の向きを引いて曲がり角をまたいで補間する。
+        const float headingYaw =
+            HeadingYawFromDelta(endX - startX, endZ - startZ, carriage.rotate.y);
+        float previousYaw = headingYaw;
+        if (cellIndex > 0) {
+            const auto& [beforeX, beforeZ] = traveledCells_[cellIndex - 1];
+            previousYaw = HeadingYawFromDelta(startX - beforeX, startZ - beforeZ, headingYaw);
+        }
+        float nextYaw = headingYaw;
+        if (cellIndex + 2 < cellCount) {
+            const auto& [afterX, afterZ] = traveledCells_[cellIndex + 2];
+            nextYaw = HeadingYawFromDelta(afterX - endX, afterZ - endZ, headingYaw);
+        } else if (isMoving_) {
+            // 先頭車両の次のマスはまだ履歴にないので、機関車の目的地を使う。
+            nextYaw = HeadingYawFromDelta(
+                destinationGridX_ - endX, destinationGridZ_ - endZ, headingYaw);
+        }
+        // 車両は履歴から前後が分かるので、常に角の手前から曲がり始めている。
+        carriage.rotate.y =
+            EvaluateTurnYaw(previousYaw, headingYaw, nextYaw, movementProgress_, 0.5f);
     }
 }
 
@@ -414,19 +504,32 @@ float GameComponents::TrainMovementComponent::GetRockThrowJumpOffset() const {
 }
 
 void GameComponents::TrainMovementComponent::UpdateRotation() {
-    // 進行方向に応じて Y 軸回転を設定する
-    const int32_t deltaX = destinationGridX_ - gridX_;
-    const int32_t deltaZ = destinationGridZ_ - gridZ_;
+    // 進行方向に応じた Y 軸回転を、曲がり角の前後をまたいで補間しながら設定する。
+    transform_->Get().rotate.y = EvaluateTurnYaw(
+        previousHeadingYaw_, headingYaw_, nextHeadingYaw_,
+        movementProgress_, entryTurnProgress_);
+}
 
-    // 進行方向が X 軸正方向なら 90 度、X 軸負方向なら -90 度、Z 軸負方向なら 180 度、Z 軸正方向なら 0 度
-    if (deltaX > 0) {
-        transform_->Get().rotate.y = std::numbers::pi_v<float> * 0.5f;
-    } else if (deltaX < 0) {
-        transform_->Get().rotate.y = -std::numbers::pi_v<float> * 0.5f;
-    } else if (deltaZ < 0) {
-        transform_->Get().rotate.y = std::numbers::pi_v<float>;
-    } else {
-        transform_->Get().rotate.y = 0.0f;
+float GameComponents::TrainMovementComponent::EvaluateTurnYaw(
+    float previousYaw, float headingYaw, float nextYaw,
+    float progress, float entryTurnProgress) const {
+    // 曲がり角の中心を境に、前後 turnBlendRatio_ マス分をかけて向きを変える。
+    const float ratio = std::clamp(turnBlendRatio_, 0.0f, 0.5f);
+    if (ratio <= 0.0f) {
+        return headingYaw;
     }
 
+    const float clampedProgress = std::clamp(progress, 0.0f, 1.0f);
+    // 直前のマスから続く曲がりの後半。入った時点の進み具合から曲がり切るまで回し続ける。
+    if (clampedProgress < ratio) {
+        const float entry = std::clamp(entryTurnProgress, 0.0f, 1.0f);
+        const float turnProgress = entry + (1.0f - entry) * (clampedProgress / ratio);
+        return EasingUtil::LerpAngle(previousYaw, headingYaw, turnProgress, kTurnEasing);
+    }
+    // 次のマスへ続く曲がりの前半。角に着く前から向きを変え始める。
+    if (clampedProgress > 1.0f - ratio) {
+        const float turnProgress = 0.5f * ((clampedProgress - (1.0f - ratio)) / ratio);
+        return EasingUtil::LerpAngle(headingYaw, nextYaw, turnProgress, kTurnEasing);
+    }
+    return headingYaw;
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
+#include "Math/Vector/Vector3.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -69,9 +70,23 @@ namespace GameComponents
         // ビューの表示距離Xを設定する
         void SetViewDistanceX(uint32_t distanceX) { viewDistanceX_ = distanceX; }
 
+        // サルを送り出した駅を1回だけ弾ませる。引数は駅チップのマス座標
+        void PlayStationPop(int32_t gridX, int32_t gridZ);
+
     private:
+        // 再生中の駅の演出
+        struct StationPop {
+            int32_t gridX = 0;
+            int32_t gridZ = 0;
+            float elapsed = 0.0f;
+        };
+
         // 地形と同じ描画範囲で、5mごとの距離目盛りを表示・再利用する。
         void UpdateDistanceMarkers(std::size_t startX, std::size_t endX);
+        // 駅の演出を進め、終わったものを捨てる
+        void UpdateStationPops(float deltaTime);
+        // 指定マスの駅に掛ける拡縮を求める。演出していなければ等倍
+        CoreEngine::Vector3 GetStationPopScale(std::size_t x, std::size_t z) const;
 
         float gridSize_ = 1.0f;
 
@@ -90,6 +105,10 @@ namespace GameComponents
 
         CoreEngine::MsdfFont* distanceMarkerFont_ = nullptr;
         std::vector<CoreEngine::Text3DObject*> distanceMarkers_;
+
+        std::vector<StationPop> stationPops_;
+        float stationPopDuration_ = 0.45f; // 沈んで跳ね返るまでの時間（秒）
+        float stationPopSquash_ = 0.22f;   // 沈み込みの深さ（1.0 で高さが 0 になる）
 
     };
 }

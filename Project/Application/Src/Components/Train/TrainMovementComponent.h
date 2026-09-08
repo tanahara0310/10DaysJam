@@ -71,7 +71,10 @@ namespace GameComponents
         // グリッドサイズを設定する
         void SetGridSize(float size);
         // 最後尾に車両を連結する。車両は親を持たず、通過済みレールを1マス間隔で追従する。
-        void AddCarriage(CoreEngine::TransformComponent* carriageTransform);
+        // scaleMultiplier を渡すと、毎フレームその値を掛けたスケールで描く（出現演出用）。
+        // 参照先はこの列車より長く生きること。
+        void AddCarriage(CoreEngine::TransformComponent* carriageTransform,
+            const CoreEngine::Vector3* scaleMultiplier = nullptr);
         // 岩破壊の投石中だけ列車の移動を停止・再開する
         void SetRockBreakPaused(bool paused) { isPausedForRockBreak_ = paused; }
         // 投石開始時に、その場でのジャンプを再生する
@@ -91,6 +94,10 @@ namespace GameComponents
         float GetRockThrowJumpOffset() const;
         // 移動方向に合わせて Y 軸回転を更新する
         void UpdateRotation();
+        // 曲がり角を中心に、前後のマスへまたがって向きを補間した Y 軸回転を求める。
+        // entryTurnProgress は、このマスに入った時点で直前の曲がりがどこまで進んでいたか。
+        float EvaluateTurnYaw(float previousYaw, float headingYaw, float nextYaw,
+            float progress, float entryTurnProgress) const;
 
         CoreEngine::TransformComponent* transform_ = nullptr;
         GameComponents::RailPathComponent* railPath_ = nullptr;
@@ -108,7 +115,15 @@ namespace GameComponents
         int32_t destinationGridZ_ = 0;
 
         float movementProgress_ = 0.0f;
+        // 曲がり角の前後で向きを補間するための進行方向（ラジアン）
+        float previousHeadingYaw_ = 0.0f; // 直前のマスで向いていた方向
+        float headingYaw_ = 0.0f; // 現在走っているマスの方向
+        float nextHeadingYaw_ = 0.0f; // 先読みした次のマスの方向
+        // マスに入った時点で直前の曲がりが進んでいた割合。角の手前で曲がり始めていれば 0.5
+        float entryTurnProgress_ = 0.0f;
         std::vector<CoreEngine::TransformComponent*> carriageTransforms_;
+        // carriageTransforms_ と同じ添字。null なら等倍で描く
+        std::vector<const CoreEngine::Vector3*> carriageScaleMultipliers_;
         std::deque<std::pair<int32_t, int32_t>> traveledCells_;
         std::deque<std::size_t> pendingStationSteps_;
         std::size_t traveledBlockCount_ = 0;
@@ -117,6 +132,7 @@ namespace GameComponents
         float rockThrowJumpDuration_ = 0.35f;
         float rockThrowJumpElapsed_ = 0.0f;
         bool isMoving_ = false;
+        bool hasHeading_ = false; // 発車直後の1マス目は直前の向きがないため補間しない
         bool isRockThrowJumping_ = false;
         bool hasStarted_ = false;
         bool isGameOver_ = false;
@@ -126,6 +142,7 @@ namespace GameComponents
         float minimumSpeedIncreasePerRail_ = 0.05f; // レール1マスあたりの最低速度増加量
         float acceleration_ = 0.5f; // 毎秒の加速度（速度/秒）
         float maximumMoveSpeed_ = 8.0f;
+        float turnBlendRatio_ = 0.35f; // 曲がり角の前後で向きを補間する幅（マス比、0～0.5）
         std::size_t requiredRailCount_ = 5;
     };
 }

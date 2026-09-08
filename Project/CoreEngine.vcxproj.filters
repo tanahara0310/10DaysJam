@@ -34,6 +34,9 @@
     <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Train\SpawnPopComponent.cpp">
+      <Filter>Application\Src\Components\Train</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Train\TrainMovementComponent.cpp">
       <Filter>Application\Src\Components\Train</Filter>
     </ClCompile>
@@ -1451,6 +1454,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\Train\SpawnPopComponent.h">
+      <Filter>Application\Src\Components\Train</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Train\TrainMovementComponent.h">
       <Filter>Application\Src\Components\Train</Filter>
@@ -3493,9 +3499,6 @@
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LoadingScreen">
       <UniqueIdentifier>{F950BA10-90C3-493E-9215-681967104428}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading">
-      <UniqueIdentifier>{05D9058A-4B44-40BF-9440-8E3F20757549}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\LocalExposure">
       <UniqueIdentifier>{C50EA85E-4E02-42E4-886D-F92DE8DDDAB0}</UniqueIdentifier>
     </Filter>
@@ -3522,6 +3525,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\ToneMapping">
       <UniqueIdentifier>{A92CDA78-6D07-45C2-9567-763B0BD66C3D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\PostEffect\Effect\TrolleyLoading">
+      <UniqueIdentifier>{05D9058A-4B44-40BF-9440-8E3F20757549}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\PostEffect\Effect\Vignette">
       <UniqueIdentifier>{43286C64-BEC4-499A-B7AC-FF2EFBA50B15}</UniqueIdentifier>
