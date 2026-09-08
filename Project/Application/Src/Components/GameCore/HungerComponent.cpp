@@ -88,6 +88,8 @@ void GameComponents::HungerComponent::OnMonkeyEnteredCell(
         std::pair{ 0, 1 }, std::pair{ 0, -1 }
     };
 
+    // 演出へ「どの木から取れたか」を渡すので、本数だけでなく木の位置も控えておく。
+    std::array<std::pair<int32_t, int32_t>, kDirections.size()> triggeredTrees{};
     std::size_t triggeredCount = 0;
     for (const auto& [offsetX, offsetZ] : kDirections) {
         const int32_t treeX = gridX + offsetX;
@@ -102,6 +104,7 @@ void GameComponents::HungerComponent::OnMonkeyEnteredCell(
         }
 
         if (activatedBananaSides_.emplace(monkeyIndex, treeX, treeZ, gridX, gridZ).second) {
+            triggeredTrees[triggeredCount] = { treeX, treeZ };
             ++triggeredCount;
         }
     }
@@ -120,6 +123,23 @@ void GameComponents::HungerComponent::OnMonkeyEnteredCell(
     const float recovery = std::max(0.0f, GameSettings::BananaRecovery.Get()) *
         static_cast<float>(triggeredCount) * monkeyRecoveryCorrection;
     AddStamina(recovery);
+
+    // 回復を確定させてから演出へ渡す。木1本につき1回で、同じ瞬間の複数本には通し番号を振る。
+    if (onBananaHarvest_) {
+        for (std::size_t index = 0; index < triggeredCount; ++index) {
+            onBananaHarvest_(BananaHarvestEvent{
+                .monkeyIndex = monkeyIndex,
+                .treeGridX = triggeredTrees[index].first,
+                .treeGridZ = triggeredTrees[index].second,
+                .monkeyGridX = gridX,
+                .monkeyGridZ = gridZ,
+                .amountRate = monkeyRecoveryCorrection,
+                // recovery は取れた木の本数ぶんの合計なので、1本あたりへ割り戻す
+                .amount = recovery / static_cast<float>(triggeredCount),
+                .indexInFrame = index });
+        }
+    }
+
     Logger::GetInstance().Infof(
         LogCategory::Game,
         "サル {} がバナナの木を {} 本通過しました (回復量={}, 共通スタミナ={})",

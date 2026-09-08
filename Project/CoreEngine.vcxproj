@@ -183,6 +183,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Building\MapViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Building\WaterWaveViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameManagerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\GameCore\GameSettingsComponent.cpp" />
@@ -210,6 +211,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\PauseMenuFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp" />
@@ -286,6 +288,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
+    <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp" />
     <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp" />
@@ -786,6 +789,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Building\MapGeneratorComponent.h" />
     <ClInclude Include="Application\Src\Components\Building\MapViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h" />
+    <ClInclude Include="Application\Src\Components\Building\WaterWaveViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameManagerComponent.h" />
     <ClInclude Include="Application\Src\Components\GameCore\GameResultData.h" />
@@ -815,6 +819,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Editor\Stage\StageEditorPanel.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageProject.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h" />
@@ -826,6 +831,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneModelSetup.h" />
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneUi.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
+    <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h" />
     <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />

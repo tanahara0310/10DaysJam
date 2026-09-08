@@ -395,6 +395,18 @@ void GameComponents::TrainMovementComponent::SyncTransformToProgress() {
     SyncCarriageTransforms();
 }
 
+const CoreEngine::TransformComponent*
+GameComponents::TrainMovementComponent::GetMonkeyTransform(std::size_t monkeyIndex) const {
+    // 先頭のサルは機関車に乗っているので、車両の配列には入っていない。
+    if (monkeyIndex == 0) {
+        return transform_;
+    }
+    const std::size_t carriageIndex = monkeyIndex - 1;
+    return carriageIndex < carriageTransforms_.size()
+        ? carriageTransforms_[carriageIndex]
+        : nullptr;
+}
+
 void GameComponents::TrainMovementComponent::AddCarriage(
     TransformComponent* carriageTransform, const Vector3* scaleMultiplier) {
     if (!carriageTransform || traveledCells_.size() < carriageTransforms_.size() + 2) {

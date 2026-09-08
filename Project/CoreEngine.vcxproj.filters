@@ -10,6 +10,9 @@
     <ClCompile Include="Application\Src\Components\Building\RockThrowComponent.cpp">
       <Filter>Application\Src\Components\Building</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Building\WaterWaveViewComponent.cpp">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.cpp">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClCompile>
@@ -89,6 +92,9 @@
       <Filter>Application\Src</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp">
@@ -308,6 +314,9 @@
       <Filter>Engine\Src</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp">
@@ -1443,6 +1452,9 @@
     <ClInclude Include="Application\Src\Components\Building\RockThrowComponent.h">
       <Filter>Application\Src\Components\Building</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\Building\WaterWaveViewComponent.h">
+      <Filter>Application\Src\Components\Building</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Camera\RockBreakShakeSettingsComponent.h">
       <Filter>Application\Src\Components\Camera</Filter>
     </ClInclude>
@@ -1530,6 +1542,9 @@
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
@@ -1561,6 +1576,9 @@
       <Filter>Application\Src\Scenes\TitleScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h">

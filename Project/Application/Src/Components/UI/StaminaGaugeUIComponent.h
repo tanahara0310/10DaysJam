@@ -45,6 +45,20 @@ namespace GameComponents
         /// @brief スタミナを粒数へ落とし込み、生え／食べられのアニメーションを進める
         void Update() override;
 
+        /// @brief 房の生え際（いま実っている一番右の粒）を返す。
+        /// @param outPosition 粒の中心。基準解像度 1920x1080 の px で、UI と同じ座標系
+        /// @param outSize     粒 1 つの表示サイズ [px]
+        /// @return ゲージを出していない・まだ組み立てていないときは false
+        /// @note 収穫したバナナをここへ飛ばして「粒になった」と見せるための着地点。
+        bool TryGetFillFrontTarget(
+            CoreEngine::Vector2& outPosition, CoreEngine::Vector2& outSize) const;
+
+        /// @brief バナナがゲージへ入った瞬間の反応を鳴らす。
+        /// @param staminaAmount 入ってきたスタミナ量。弾ませる粒の数に使う
+        /// @note スタミナ自体は HungerComponent が加算済み。ここは見た目だけを動かす。
+        ///       粒は既に実っているので、生え際から数粒を「もう一度伸び上がらせる」形で弾ませる。
+        void PlayGainPop(float staminaAmount);
+
     private:
         /// @brief 粒 1 つぶんの表示状態
         struct Pip {
@@ -64,6 +78,8 @@ namespace GameComponents
         void UpdateAnimation(float deltaTime);
         /// @brief CVar の位置・粒数から毎フレーム配置し直す（インスペクタ調整を即反映するため）
         void ApplyLayout(float time);
+        /// @brief バナナが入った反応の強さ。0 なら平常時。上へ弾んで戻る減衰波
+        float GainPopWave() const;
 
         /// @brief 表示する粒の数（スタミナ上限 ÷ 粒あたりの量）
         std::size_t CalculatePipCount() const;
@@ -79,6 +95,9 @@ namespace GameComponents
         std::vector<CoreEngine::UIImage*> vines_;   ///< 板の縁に絡ませた蔦
 
         std::size_t visiblePipCount_ = 0;
+        std::size_t fillFrontIndex_ = 0;  ///< 実っている粒のうち一番右。バナナの着地点
+        float gainPopElapsed_ = 0.0f;     ///< バナナが入った反応の経過秒
+        bool  gainPopActive_ = false;
         float lowPulse_ = 0.0f;   ///< 次の 1 マスも払えないときの警告演出（0〜1）
         std::size_t previewPipCount_ = 0; ///< 次の 1 マスで食べられる粒の数
         bool  built_ = false;

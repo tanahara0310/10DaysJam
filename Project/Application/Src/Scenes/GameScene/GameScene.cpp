@@ -9,6 +9,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
 #include "PauseMenuFeature.h"
+#include "RailDirectionGuideFeature.h"
 #include "SkyFogFeature.h"
 #include "SpeedGaugeFeature.h"
 #include "StageLightsFeature.h"
@@ -20,6 +21,7 @@
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/Building/MapViewComponent.h"
 #include "Components/Building/RockThrowComponent.h"
+#include "Components/Building/WaterWaveViewComponent.h"
 #include "Components/Camera/RockBreakShakeSettingsComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Rail/RailPathComponent.h"
@@ -32,6 +34,7 @@
 #include "Components/GameCore/GameResultData.h"
 #include "Components/GameCore/GameSettingsComponent.h"
 #include "Components/GameCore/HungerComponent.h"
+#include "GameObjects/Effect/BananaHarvestEffect.h"
 #include "GameObjects/Effect/RockBreakDebris.h"
 #include "GameObjects/GameSceneObject.h"
 #include "UI/UIText.h"
@@ -93,6 +96,10 @@ void GameScene::GameScene::OnInitialize() {
     // トロッコの速さを km/h のオドメーターで見せる HUD。
     // 位置・1 マスの実距離は「ゲーム設定」の Game.SpeedGauge.* から調整する。
     AddFeature(GameComponents::CreateSpeedGaugeFeature());
+    // レール先頭の上下左右へ、伸ばせる向きだけ床に矢印を出すガイド。
+    // 戻る（Undo）向きだけは別の記号にしてある。
+    // 見た目は「ゲーム設定」の Game.RailGuide.* から調整する。
+    AddFeature(GameComponents::CreateRailDirectionGuideFeature());
 
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
@@ -201,13 +208,7 @@ void GameScene::GameScene::OnInitialize() {
     groundPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "ground.obj",
         ToUInt(GameComponents::GameSettings::GroundPoolCapacity.Get(), 1), false);
-    // 水場のオブジェクトプールを生成
-    auto* waterPoolManager = CreateObject<GameSceneObject>("WaterPoolManager");
-    waterPoolManager->AddComponent<CoreEngine::TransformComponent>();
-    waterPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
-        "box.obj",
-        ToUInt(GameComponents::GameSettings::WaterPoolCapacity.Get(), 1), true,
-        CoreEngine::Vector4{ 0.0f, 0.35f, 0.65f, 1.0f });
+    // 水場は WaterWaveViewComponent が板を並べて波打たせる（この下の方で生成する）。
     // 駅のオブジェクトプールを生成
     auto* stationPoolManager = CreateObject<GameSceneObject>("StationPoolManager");
     stationPoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -220,6 +221,12 @@ void GameScene::GameScene::OnInitialize() {
     rockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "rock.obj",
         ToUInt(GameComponents::GameSettings::RockPoolCapacity.Get(), 1), true);
+    // レールを敷けない空白マスへ立てる硬い岩のオブジェクトプールを生成
+    auto* hardRockPoolManager = CreateObject<GameSceneObject>("HardRockPoolManager");
+    hardRockPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    hardRockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "hard_rock.obj",
+        ToUInt(GameComponents::GameSettings::HardRockPoolCapacity.Get(), 1), true);
     // バナナの木のオブジェクトプールを生成（仮モデルとしてbox.objを使用）
     auto* bananaTreePoolManager = CreateObject<GameSceneObject>("BananaTreePoolManager");
     bananaTreePoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -367,6 +374,11 @@ void GameScene::GameScene::OnInitialize() {
     // 岩が砕けた瞬間に散る破片。揺れと同じく RailBuilder から静的に鳴らす。
     AddFeature(GameComponents::CreateRockBreakDebrisFeature());
 
+    // サルがバナナの木を通るたびに、バナナを 1 本もぎ取って頭上へ掲げさせる演出。
+    // スタミナ・列車・マップは Feature が自分で探して繋ぐので、ここでは登録だけでよい。
+    // 見た目と時間は「ゲーム設定」の Game.BananaHarvest.* から調整する。
+    AddFeature(GameComponents::CreateBananaHarvestEffectFeature());
+
     railView->AddComponent<GameComponents::RailViewComponent>(
         gridSize,
         railPath->GetComponent<GameComponents::RailPathComponent>(),
@@ -385,13 +397,25 @@ void GameScene::GameScene::OnInitialize() {
     auto* mapView = mapRenderer->AddComponent<GameComponents::MapViewComponent>(
         mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
         groundPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
-        waterPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        // 水は WaterWaveViewComponent が描くので、ここでは渡さない（二重描画になる）
+        nullptr,
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        hardRockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         bananaTreePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         grassPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         gameCamera,
         gridSize, renderWorldDistance);
+
+    // 水マスを描画するオブジェクトを追加。
+    // 地面と同じ「マスごとに1枚」だが、頂点シェーダーで波打たせるためプールではなく専用。
+    auto* waterRenderer = CreateObject<GameSceneObject>("WaterWaveRenderer");
+    waterRenderer->AddComponent<CoreEngine::TransformComponent>();
+    waterRenderer->AddComponent<GameComponents::WaterWaveViewComponent>(
+        mapGenerator->GetComponent<GameComponents::MapGeneratorComponent>(),
+        gameCamera,
+        gridSize, renderWorldDistance,
+        ToUInt(GameComponents::GameSettings::WaterPoolCapacity.Get(), 1));
 
     // サルが増えた駅を弾ませる。描画は MapView が持つのでここで繋ぐ。
     hungerComponent->SetStationPopCallback(

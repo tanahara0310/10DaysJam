@@ -41,7 +41,10 @@ json GameComponents::MapViewComponent::OnSerialize() const {
         { "groundTintFadeStart", groundTintFadeStart_ },
         { "groundTintFadeRange", groundTintFadeRange_ },
         { "stationPopDuration", stationPopDuration_ },
-        { "stationPopSquash", stationPopSquash_ }
+        { "stationPopSquash", stationPopSquash_ },
+        { "bananaTreeShakeDuration", bananaTreeShakeDuration_ },
+        { "bananaTreeShakeLean", bananaTreeShakeLean_ },
+        { "bananaTreeShakeSquash", bananaTreeShakeSquash_ }
     };
 }
 
@@ -60,6 +63,12 @@ void GameComponents::MapViewComponent::OnDeserialize(const json& j) {
         JsonManager::SafeGet<float>(j, "stationPopDuration", stationPopDuration_));
     stationPopSquash_ = std::clamp(
         JsonManager::SafeGet<float>(j, "stationPopSquash", stationPopSquash_), 0.0f, 1.0f);
+    bananaTreeShakeDuration_ = std::max(0.01f,
+        JsonManager::SafeGet<float>(j, "bananaTreeShakeDuration", bananaTreeShakeDuration_));
+    bananaTreeShakeLean_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "bananaTreeShakeLean", bananaTreeShakeLean_), 0.0f, 1.5f);
+    bananaTreeShakeSquash_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "bananaTreeShakeSquash", bananaTreeShakeSquash_), 0.0f, 1.0f);
     // 旧データのモデル別高さ・スケールは使わず、共通ブロック寸法から求める。
 }
 
@@ -81,6 +90,11 @@ bool GameComponents::MapViewComponent::DrawInspector() {
     ImGui::SeparatorText("駅の出現演出");
     changed |= ImGui::DragFloat("駅の反動時間", &stationPopDuration_, 0.01f, 0.01f, 5.0f);
     changed |= ImGui::SliderFloat("駅の沈み込み", &stationPopSquash_, 0.0f, 1.0f);
+    ImGui::SeparatorText("バナナの木の収穫演出");
+    changed |= ImGui::DragFloat("しなりの時間", &bananaTreeShakeDuration_, 0.01f, 0.01f, 5.0f);
+    changed |= ImGui::SliderFloat("しなりの角度", &bananaTreeShakeLean_, 0.0f, 1.5f);
+    changed |= ImGui::SliderFloat("しなりの縮み", &bananaTreeShakeSquash_, 0.0f, 1.0f);
+    ImGui::TextDisabled("サルが取った向きへ倒れて、1.5往復しながら収まる");
     return changed;
 }
 #endif
@@ -94,6 +108,62 @@ void GameComponents::MapViewComponent::PlayStationPop(int32_t gridX, int32_t gri
         }
     }
     stationPops_.push_back({ gridX, gridZ, 0.0f });
+}
+
+void GameComponents::MapViewComponent::PlayBananaTreeShake(
+    int32_t gridX, int32_t gridZ, float towardX, float towardZ) {
+    // 同じ木が続けて取られたら、重ねずに頭から鳴らし直す。
+    // 列車が長いと後続のサルが同じ木を次々に取るので、ここは頻繁に通る。
+    for (auto& shake : bananaTreeShakes_) {
+        if (shake.gridX == gridX && shake.gridZ == gridZ) {
+            shake.towardX = towardX;
+            shake.towardZ = towardZ;
+            shake.elapsed = 0.0f;
+            return;
+        }
+    }
+    bananaTreeShakes_.push_back({ gridX, gridZ, towardX, towardZ, 0.0f });
+}
+
+void GameComponents::MapViewComponent::UpdateBananaTreeShakes(float deltaTime) {
+    const float safeDeltaTime = std::max(deltaTime, 0.0f);
+    for (auto& shake : bananaTreeShakes_) {
+        shake.elapsed += safeDeltaTime;
+    }
+    std::erase_if(bananaTreeShakes_, [this](const BananaTreeShake& shake) {
+        return shake.elapsed >= bananaTreeShakeDuration_;
+    });
+}
+
+void GameComponents::MapViewComponent::ApplyBananaTreeShake(
+    std::size_t x, std::size_t z, Vector3& rotate, Vector3& scale) const {
+    for (const auto& shake : bananaTreeShakes_) {
+        if (shake.gridX < 0 || shake.gridZ < 0 ||
+            static_cast<std::size_t>(shake.gridX) != x ||
+            static_cast<std::size_t>(shake.gridZ) != z) {
+            continue;
+        }
+
+        // もぎ取られた向きへ大きくしなり、跳ね返りながら収まる。
+        // 減衰する正弦波1.5周期ぶんで、最初の山がサル側への倒れ込みになる。
+        const float progress = std::clamp(shake.elapsed / bananaTreeShakeDuration_, 0.0f, 1.0f);
+        const float decay = (1.0f - progress) * (1.0f - progress);
+        const float wave =
+            std::sin(progress * 3.0f * std::numbers::pi_v<float>) * decay;
+
+        // モデルの原点は幹の根元なので、回転させると木がそこを支点に倒れる。
+        // 左手系では X 軸回転が +Y を +Z へ、Z 軸回転が +Y を -X へ倒す。
+        const float lean = wave * bananaTreeShakeLean_;
+        rotate.x += shake.towardZ * lean;
+        rotate.z += -shake.towardX * lean;
+
+        // 倒れる向きに関わらず、しなっている間は縦に縮んで横へ広がる。
+        const float squash = std::abs(wave) * bananaTreeShakeSquash_;
+        scale.y *= 1.0f - squash;
+        scale.x *= 1.0f + squash * 0.5f;
+        scale.z *= 1.0f + squash * 0.5f;
+        return;
+    }
 }
 
 void GameComponents::MapViewComponent::UpdateStationPops(float deltaTime) {
@@ -161,6 +231,7 @@ void GameComponents::MapViewComponent::Update() {
     }
 
     UpdateStationPops(Time::DeltaTime());
+    UpdateBananaTreeShakes(Time::DeltaTime());
 
     // カメラの注視位置を取得する
     const auto cameraFocusPosition = viewCamera_->GetTranslate();
@@ -191,8 +262,10 @@ void GameComponents::MapViewComponent::Update() {
     for (size_t x = startX; x < endX && x < mapChips.size(); ++x) {
         for (size_t z = 0; z < mapChips[x].size(); ++z) {
             const auto chipType = mapGenerator_->GetMapChip(x, z);
-            // チップの種類に応じて描画する
-            if (chipType != MapChipType::Void && chipType != MapChipType::Water) {
+            // チップの種類に応じて描画する。
+            // 水以外はすべて地面を敷く。空白マスも「何も無い穴」ではなく、
+            // 地面の上に壊せない岩を立てた「敷けない床」として見せる。
+            if (chipType != MapChipType::Water) {
                 // グラウンドチップの表示。マスごとに色をわずかに散らしてマス目を読めるようにする。
                 const Vector3 groundPosition{ x * gridSize_, groundHeight, z * gridSize_ };
                 const Vector3 toCamera = groundPosition - cameraFocusPosition;
@@ -224,12 +297,21 @@ void GameComponents::MapViewComponent::Update() {
                 rockRenderPool_->Draw({ x * gridSize_, surfaceHeight, z * gridSize_ }, rotate, scale);
             }
 
-            // バナナの木チップの表示
+            // 空白マスの表示。地面は上で敷いてあるので、その上へ壊せない岩を立てる。
+            if (hardRockRenderPool_ && chipType == MapChipType::Void) {
+                hardRockRenderPool_->Draw(
+                    { x * gridSize_, surfaceHeight, z * gridSize_ }, rotate, scale);
+            }
+
+            // バナナの木チップの表示。収穫された直後だけサル側へしなる。
             if (bananaTreeRenderPool_ && chipType == MapChipType::BananaTree) {
+                Vector3 treeRotate = rotate;
+                Vector3 treeScale = scale;
+                ApplyBananaTreeShake(x, z, treeRotate, treeScale);
                 bananaTreeRenderPool_->Draw(
                     { x * gridSize_, surfaceHeight, z * gridSize_ },
-                    rotate,
-                    scale);
+                    treeRotate,
+                    treeScale);
             }
 
             // 草は地面の上に重ねる装飾として描画する。
