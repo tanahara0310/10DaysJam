@@ -15,7 +15,7 @@
                     0.625
                 ],
                 "translate": [
-                    3.0,
+                    1.0,
                     0.625,
                     4.0
                 ]
@@ -25,9 +25,9 @@
         {
             "enabled": true,
             "parameters": {
-                "acceleration": 0.10000000149011612,
+                "acceleration": 0.15000000596046448,
                 "gridSize": 1.0,
-                "initialGridX": 3,
+                "initialGridX": 1,
                 "initialGridZ": 4,
                 "initialMoveSpeed": 2.0,
                 "maximumMoveSpeed": 32.0,

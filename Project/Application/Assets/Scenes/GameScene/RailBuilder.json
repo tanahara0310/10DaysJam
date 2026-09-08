@@ -6,16 +6,16 @@
             "parameters": {
                 "rotate": [
                     0.0,
-                    171.93666076660156,
+                    86.2953872680664,
                     0.0
                 ],
                 "scale": [
                     0.625,
-                    0.5660324096679688,
+                    0.6072542071342468,
                     0.625
                 ],
                 "translate": [
-                    0.0,
+                    1.0,
                     1.0,
                     3.0
                 ]
@@ -30,7 +30,7 @@
                 "gridSize": 1.0,
                 "height": 1.0,
                 "horizontalPrioritize": true,
-                "initialGridX": 3,
+                "initialGridX": 1,
                 "initialGridZ": 4,
                 "pulseAmplitude": 0.20000000298023224,
                 "pulseBaseScale": 0.800000011920929,
