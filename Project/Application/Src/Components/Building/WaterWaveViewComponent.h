@@ -19,6 +19,7 @@ namespace CoreEngine {
 
 namespace GameComponents {
     class MapGeneratorComponent;
+    class WaterFallShaderProvider;
     class WaterWaveShaderProvider;
 }
 
@@ -72,19 +73,61 @@ namespace GameComponents
                 (std::numeric_limits<std::uint64_t>::max)();
         };
 
-        Entry* CreateEntry();
+        /// @brief 板の種類。メッシュ・シェーダー・見た目の作り方が変わる
+        enum class PlaneKind {
+            Surface, ///< 水面。水平に敷いて Gerstner 波で上下させる
+            Fall,    ///< 落水カーテン。マップ端から垂直に垂らす
+        };
+
+        /// @brief 同じ作り方の板をまとめた 1 つのプール
+        /// @details 水面板と落水カーテンで、割り当てと使い回しの手順は完全に同じ。
+        ///          違うのはメッシュ・シェーダー・置き方だけなので、状態はこの型で
+        ///          まとめて持ち、種類は PlaneKind で切り替える。
+        struct PlanePool {
+            std::vector<Entry> entries;
+
+            /// @brief 位置キー → entries の添字（今フレーム分と前フレーム分）
+            /// @details 同じマスを毎フレーム同じ板へ割り当てるために持つ。
+            ///          呼び出し順で先頭から配ると、描画範囲が 1 マスずれた瞬間に
+            ///          全板の担当マスがずれ、画面は静止して見えるのに板だけが飛ぶ。
+            ///          その「飛び」はモーションベクターへそのまま出るので TAA がぶれる。
+            std::unordered_map<std::uint64_t, std::size_t> entryByPosition;
+            std::unordered_map<std::uint64_t, std::size_t> prevEntryByPosition;
+
+            std::size_t nextEntryIndex = 0;
+            std::uint64_t allocationFrame =
+                (std::numeric_limits<std::uint64_t>::max)();
+            std::uint64_t lastExhaustedWarningFrame =
+                (std::numeric_limits<std::uint64_t>::max)();
+        };
+
+        Entry* CreateEntry(PlanePool& pool, PlaneKind kind);
         /// @brief フレームが変わっていたら割り当て状態を繰り越す
-        void BeginFrameIfNeeded(std::uint64_t frame);
-        /// @brief 指定マスへ板を 1 枚出す
+        void BeginFrameIfNeeded(PlanePool& pool, std::uint64_t frame);
+        /// @brief 今フレームまだ使っていない板を 1 枚借りる（前フレームの担当を優先）
+        Entry* AcquireEntry(
+            PlanePool& pool, PlaneKind kind,
+            std::uint64_t positionKey, std::uint64_t frame);
+        /// @brief このフレームに配られなかった板を隠す
+        void HideUnusedEntries(PlanePool& pool, std::uint64_t frame);
+        /// @brief 指定マスへ水面の板を 1 枚出す
         void DrawCell(float worldX, float worldZ, std::uint64_t frame);
+        /// @brief マップ端へ落水カーテンを 1 枚垂らす
+        /// @param edgeZ マスの外側の縁のワールド Z
+        /// @param facingNegativeZ 手前端（-Z を向く）なら true、奥端なら false
+        void DrawFall(
+            float worldX, float edgeZ, bool facingNegativeZ, std::uint64_t frame);
         /// @brief 波パラメータを組み立てて GPU へ転送する
         void UploadWaveConstants();
         /// @brief 板 1 枚へ色・粗さを反映する
+        /// @note 水面板と落水カーテンで同じ値を入れる（理由は定義側のコメント）
         void ApplyMaterialToEntry(Entry& entry);
         /// @brief 現在の色・粗さを全ての板へ反映する（インスペクタで触ったとき用）
         void ApplyMaterialToEntries();
         /// @brief 静止水面のワールド Y を求める
         float GetWaterSurfaceHeight() const;
+        /// @brief 落水カーテンの縦の長さ[m]を求める
+        float GetFallLength() const;
 
         float gridSize_ = 1.0f;
         uint32_t viewDistanceX_ = 30;
@@ -107,6 +150,18 @@ namespace GameComponents
         ///       やっているので、透過させるために α を下げる必要は無い。
         CoreEngine::Vector4 waterColor_{ 0.0f, 0.35f, 0.65f, 1.0f };
 
+        // ===== マップ端の滝 =====
+        /// @brief マップの Z 両端にある水マスから滝を垂らすか
+        bool fallEnabled_ = true;
+        /// @brief 落差。マス何個ぶん下まで落とすか
+        /// @details 端の水マスは地面ブロックを持たないので、下は素通しの空間になる。
+        ///          短いと板の切れ端に見えるので、下端が霧散しきる長さを取ること。
+        float fallLengthRatio_ = 6.0f;
+        /// @brief 流れ落ちる速さ[マス/秒]
+        float fallFlowSpeed_ = 3.0f;
+        /// @brief 白泡の強さ。0 で泡が消え、ただの water 色の帯になる
+        float fallFoamStrength_ = 1.0f;
+
         float elapsedTime_ = 0.0f;
 
         MapGeneratorComponent* mapGenerator_ = nullptr;
@@ -114,20 +169,9 @@ namespace GameComponents
         CoreEngine::Camera* viewCamera_ = nullptr;
 
         std::unique_ptr<WaterWaveShaderProvider> shaderProvider_;
+        std::unique_ptr<WaterFallShaderProvider> fallShaderProvider_;
 
-        std::uint64_t allocationFrame_ =
-            (std::numeric_limits<std::uint64_t>::max)();
-        std::size_t nextEntryIndex_ = 0;
-        std::uint64_t lastExhaustedWarningFrame_ =
-            (std::numeric_limits<std::uint64_t>::max)();
-        std::vector<Entry> entries_;
-
-        /// @brief 位置キー → entries_ の添字（今フレーム分と前フレーム分）
-        /// @details 同じマスを毎フレーム同じ板へ割り当てるために持つ。
-        ///          呼び出し順で先頭から配ると、描画範囲が 1 マスずれた瞬間に
-        ///          全板の担当マスがずれ、画面は静止して見えるのに板だけが飛ぶ。
-        ///          その「飛び」はモーションベクターへそのまま出るので TAA がぶれる。
-        std::unordered_map<std::uint64_t, std::size_t> entryByPosition_;
-        std::unordered_map<std::uint64_t, std::size_t> prevEntryByPosition_;
+        PlanePool surfacePool_;
+        PlanePool fallPool_;
     };
 }

@@ -84,6 +84,73 @@ namespace GameComponents
         mutable RootSlot waveConstantsSlot_{};
         mutable const void* resolvedRootSignature_ = nullptr;
     };
+
+    /// @brief 落水カーテンの定数バッファ
+    /// @note HLSL 側 WaterFall.VS.hlsl / WaterFall.PS.hlsl の cbuffer WaterFallConstants と
+    ///       メモリレイアウトを一致させること。WaveParams は 32 バイト（＝float4 2 本）なので、
+    ///       配列の直後から 16 バイト境界が続く。末尾の 2 ブロックもそれぞれ float4 1 本ぶん。
+    struct WaterFallConstants {
+        WaveParams waves[kMaxWaterWaveCount]{};
+        uint32_t activeWaveCount = 0;
+        float time = 0.0f;
+        float surfaceY = 0.0f;
+        float fallLength = 1.0f;
+        float flowSpeed = 0.0f;
+        float foamStrength = 1.0f;
+        float patternScale = 1.0f;
+        float padding = 0.0f;
+    };
+    static_assert(sizeof(WaterFallConstants) == sizeof(WaveParams) * kMaxWaterWaveCount + 32,
+        "WaterFallConstants の並びが HLSL の cbuffer とずれている");
+
+    /// @brief 落水カーテンへ差すカスタムシェーダー一式
+    /// @details 水面と違い、ピクセルシェーダーも独自にする。
+    ///          流れの筋・白泡・下端の霧散は、頂点では出せない粒度だから。
+    /// @note 定数バッファは水面用とは別に 1 本持つ。中身の波は同じでも、
+    ///       落差や流速は落水側にしか無いので、同じ構造体には収まらない。
+    class WaterFallShaderProvider final
+        : public CoreEngine::ICustomShaderProvider,
+          public CoreEngine::MaterialBase<WaterFallConstants> {
+    public:
+        void Initialize(ID3D12Device* device) { InitializeBuffer(device); }
+
+        bool IsReady() const { return materialData_ != nullptr; }
+
+        void Upload(const WaterFallConstants& constants) {
+            if (!materialData_) { return; }
+            *materialData_ = constants;
+        }
+
+        std::wstring GetVertexShaderPath() const override { return L"WaterFall.VS.hlsl"; }
+        std::wstring GetPixelShaderPath() const override { return L"WaterFall.PS.hlsl"; }
+        // 奥端のカーテンはカメラへ裏面を向けるので、両面描いて PS 側で法線を向け直す
+        D3D12_CULL_MODE GetCullMode() const override { return D3D12_CULL_MODE_NONE; }
+
+        void BindCustomResources(
+            ID3D12GraphicsCommandList* cmdList,
+            const CoreEngine::CustomShaderPipeline* pipeline) const override {
+            if (!cmdList || !pipeline || !materialData_) { return; }
+
+            EnsureResolved(pipeline);
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+            binder.Set(fallConstantsSlot_, GetGPUVirtualAddress());
+        }
+
+    private:
+        /// @brief ルートパラメータ番号をリフレクション結果から引き当てる
+        /// @note VS と PS の両方が同じ名前で宣言しているので、反射結果は
+        ///       visibility=ALL の 1 本へ統合される。番号を直書きしないこと。
+        void EnsureResolved(const CoreEngine::CustomShaderPipeline* pipeline) const {
+            const void* rootSignature = pipeline->GetForwardRootSignature();
+            if (rootSignature == resolvedRootSignature_) { return; }
+
+            fallConstantsSlot_ = pipeline->GetRootSlot("WaterFallConstants");
+            resolvedRootSignature_ = rootSignature;
+        }
+
+        mutable RootSlot fallConstantsSlot_{};
+        mutable const void* resolvedRootSignature_ = nullptr;
+    };
 }
 
 namespace {
@@ -97,6 +164,14 @@ namespace {
     /// @details 1 マス 1m なら頂点間隔 0.167m。最短波長 0.95m でも 5 頂点以上で拾える。
     ///          上げるほど滑らかになるが、頂点数は 2 乗で増える。
     constexpr uint32_t kPlaneSubdivision = 6;
+
+    /// @brief 落水カーテンの縦方向の分割数
+    /// @details 縦は波を拾う必要がないので粗くてよいが、下端のフェードと
+    ///          法線の揺らぎが階段状に見えない程度は要る。
+    constexpr uint32_t kFallSubdivisionY = 10;
+
+    /// @brief 板を立てるための回転量[rad]
+    constexpr float kQuarterTurn = 1.57079632679489661923f;
 
     /// @brief 重ね合わせる Gerstner 波 1 本ぶんの設定（1 マス = 1m を基準にした値）
     struct WaterWavePreset {
@@ -169,7 +244,11 @@ json GameComponents::WaterWaveViewComponent::OnSerialize() const {
         { "waveSpeedScale", waveSpeedScale_ },
         { "waterLevelRatio", waterLevelRatio_ },
         { "waterRoughness", waterRoughness_ },
-        { "waterColor", JsonManager::Vector4ToJson(waterColor_) }
+        { "waterColor", JsonManager::Vector4ToJson(waterColor_) },
+        { "fallEnabled", fallEnabled_ },
+        { "fallLengthRatio", fallLengthRatio_ },
+        { "fallFlowSpeed", fallFlowSpeed_ },
+        { "fallFoamStrength", fallFoamStrength_ }
     };
 }
 
@@ -186,6 +265,13 @@ void GameComponents::WaterWaveViewComponent::OnDeserialize(const json& j) {
     waterColor_ = JsonManager::SafeGetVector4(j, "waterColor", waterColor_);
     waterRoughness_ = std::clamp(
         JsonManager::SafeGet<float>(j, "waterRoughness", waterRoughness_), 0.0f, 1.0f);
+    fallEnabled_ = JsonManager::SafeGet<bool>(j, "fallEnabled", fallEnabled_);
+    fallLengthRatio_ = std::max(0.01f,
+        JsonManager::SafeGet<float>(j, "fallLengthRatio", fallLengthRatio_));
+    fallFlowSpeed_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "fallFlowSpeed", fallFlowSpeed_));
+    fallFoamStrength_ = std::clamp(
+        JsonManager::SafeGet<float>(j, "fallFoamStrength", fallFoamStrength_), 0.0f, 4.0f);
     ApplyMaterialToEntries();
 }
 
@@ -205,7 +291,17 @@ bool GameComponents::WaterWaveViewComponent::DrawInspector() {
         changed = true;
     }
 
-    ImGui::TextDisabled("板: %zu 枚", entries_.size());
+    ImGui::SeparatorText("マップ端の滝");
+    changed |= ImGui::Checkbox("滝を出す", &fallEnabled_);
+    changed |= ImGui::DragFloat("落差（マス）", &fallLengthRatio_, 0.05f, 0.5f, 40.0f);
+    changed |= ImGui::DragFloat("流れの速さ", &fallFlowSpeed_, 0.02f, 0.0f, 20.0f);
+
+    if (ImGui::DragFloat("泡の強さ", &fallFoamStrength_, 0.01f, 0.0f, 4.0f)) {
+        changed = true;
+    }
+
+    ImGui::TextDisabled("板: 水面 %zu 枚 / 滝 %zu 枚",
+        surfacePool_.entries.size(), fallPool_.entries.size());
     return changed;
 }
 #endif
@@ -224,7 +320,9 @@ void GameComponents::WaterWaveViewComponent::Awake() {
 
     shaderProvider_ = std::make_unique<WaterWaveShaderProvider>();
     shaderProvider_->Initialize(graphics->GetDevice());
-    if (!shaderProvider_->IsReady()) {
+    fallShaderProvider_ = std::make_unique<WaterFallShaderProvider>();
+    fallShaderProvider_->Initialize(graphics->GetDevice());
+    if (!shaderProvider_->IsReady() || !fallShaderProvider_->IsReady()) {
         Logger::GetInstance().Errorf(
             LogCategory::Game,
             "WaterWaveViewComponent: 波の定数バッファを確保できませんでした");
@@ -233,15 +331,33 @@ void GameComponents::WaterWaveViewComponent::Awake() {
     }
     UploadWaveConstants();
 
-    entries_.reserve(initialCapacity_);
-    while (entries_.size() < initialCapacity_) {
-        if (!CreateEntry()) {
-            Logger::GetInstance().Errorf(
-                LogCategory::Game,
-                "WaterWaveViewComponent: 板の事前生成に失敗しました ({}/{})",
-                entries_.size(), initialCapacity_);
-            SetEnabled(false);
-            return;
+    // 滝が出るのは Z 両端の 2 行だけなので、水面ほどの枚数は要らない。
+    // 足りなくなれば DrawFall が都度足すため、ここは初期確保の目安でよい。
+    const std::size_t fallCapacity =
+        (std::max)(static_cast<std::size_t>(16), initialCapacity_ / 4);
+
+    struct PoolSetup {
+        PlanePool* pool;
+        PlaneKind kind;
+        std::size_t capacity;
+        const char* label;
+    };
+    const PoolSetup setups[] = {
+        { &surfacePool_, PlaneKind::Surface, initialCapacity_, "水面" },
+        { &fallPool_,    PlaneKind::Fall,    fallCapacity,     "滝" },
+    };
+
+    for (const PoolSetup& setup : setups) {
+        setup.pool->entries.reserve(setup.capacity);
+        while (setup.pool->entries.size() < setup.capacity) {
+            if (!CreateEntry(*setup.pool, setup.kind)) {
+                Logger::GetInstance().Errorf(
+                    LogCategory::Game,
+                    "WaterWaveViewComponent: {}の板の事前生成に失敗しました ({}/{})",
+                    setup.label, setup.pool->entries.size(), setup.capacity);
+                SetEnabled(false);
+                return;
+            }
         }
     }
 }
@@ -271,20 +387,42 @@ void GameComponents::WaterWaveViewComponent::Update() {
     mapGenerator_->CreateToX(endX);
 
     const std::uint64_t frame = Time::FrameCount();
-    BeginFrameIfNeeded(frame);
+    BeginFrameIfNeeded(surfacePool_, frame);
+    BeginFrameIfNeeded(fallPool_, frame);
 
     const auto& mapChips = mapGenerator_->GetMapChips();
     for (std::size_t x = startX; x < endX && x < mapChips.size(); ++x) {
-        for (std::size_t z = 0; z < mapChips[x].size(); ++z) {
+        const std::size_t zCount = mapChips[x].size();
+        for (std::size_t z = 0; z < zCount; ++z) {
             if (mapGenerator_->GetMapChip(x, z) != MapChipType::Water) {
                 continue;
             }
-            DrawCell(x * gridSize_, z * gridSize_, frame);
+            const float worldX = x * gridSize_;
+            DrawCell(worldX, z * gridSize_, frame);
+
+            if (!fallEnabled_) {
+                continue;
+            }
+            // マップは Z 方向へ広がらない帯で、両端の外は地面すら無い空間。
+            // そこに面した水マスからカーテンを垂らす。X 方向はカメラの先へ
+            // 延び続けるので端が存在せず、ここでは見ない。
+            // 幅 1 マスのマップでは両方に該当するため、else で繋がないこと。
+            if (z == 0) {
+                DrawFall(worldX, -0.5f * gridSize_, true, frame);
+            }
+            if (z + 1 == zCount) {
+                DrawFall(worldX, (z + 0.5f) * gridSize_, false, frame);
+            }
         }
     }
 
-    // このフレームに配られなかった板は隠す
-    for (Entry& entry : entries_) {
+    HideUnusedEntries(surfacePool_, frame);
+    HideUnusedEntries(fallPool_, frame);
+}
+
+void GameComponents::WaterWaveViewComponent::HideUnusedEntries(
+    PlanePool& pool, std::uint64_t frame) {
+    for (Entry& entry : pool.entries) {
         if (!entry.object || entry.object->IsMarkedForDestroy()) {
             continue;
         }
@@ -295,20 +433,22 @@ void GameComponents::WaterWaveViewComponent::Update() {
 }
 
 void GameComponents::WaterWaveViewComponent::OnDestroy() {
-    for (Entry& entry : entries_) {
-        if (entry.object && !entry.object->IsMarkedForDestroy()) {
-            entry.object->Destroy();
+    for (PlanePool* pool : { &surfacePool_, &fallPool_ }) {
+        for (Entry& entry : pool->entries) {
+            if (entry.object && !entry.object->IsMarkedForDestroy()) {
+                entry.object->Destroy();
+            }
         }
+        pool->entries.clear();
+        pool->entryByPosition.clear();
+        pool->prevEntryByPosition.clear();
     }
-    entries_.clear();
-    entryByPosition_.clear();
-    prevEntryByPosition_.clear();
 }
 
 GameComponents::WaterWaveViewComponent::Entry*
-GameComponents::WaterWaveViewComponent::CreateEntry() {
+GameComponents::WaterWaveViewComponent::CreateEntry(PlanePool& pool, PlaneKind kind) {
     GameObject* owner = GetOwner();
-    if (!owner || !shaderProvider_) {
+    if (!owner || !shaderProvider_ || !fallShaderProvider_) {
         return nullptr;
     }
 
@@ -317,8 +457,10 @@ GameComponents::WaterWaveViewComponent::CreateEntry() {
         return nullptr;
     }
 
-    object->SetName(
-        owner->GetName() + "_WaterPlane_" + std::to_string(entries_.size()));
+    const bool isFall = (kind == PlaneKind::Fall);
+    object->SetName(owner->GetName()
+        + (isFall ? "_WaterFall_" : "_WaterPlane_")
+        + std::to_string(pool.entries.size()));
     object->SetSerializeEnabled(false);
     // 描画順は明示的に指定する。RenderManager::ResolveRenderOrder() は
     // ブレンド有りのモデルへ一律 +10000 するので、放っておくと
@@ -336,52 +478,58 @@ GameComponents::WaterWaveViewComponent::CreateEntry() {
     // ブレンド無しのモデルは Deferred 経路へ振り分けられ、その経路には
     // カスタム PSO を差す口が無い（＝波が消えて平らな板になる）。
     // ブレンドありにしてフォワード経路へ乗せることが、波を出すための前提条件。
-    // α は 1 のままでよく、見た目は不透明のまま。
+    // 水面は α を 1 のままにするので見た目は不透明、滝だけ下端を透けさせる。
     renderer->SetBlendMode(BlendMode::kBlendModeNormal);
-    renderer->SetCustomShaderProvider(shaderProvider_.get());
+    renderer->SetCustomShaderProvider(isFall
+        ? static_cast<CoreEngine::ICustomShaderProvider*>(fallShaderProvider_.get())
+        : static_cast<CoreEngine::ICustomShaderProvider*>(shaderProvider_.get()));
     // 板はローカル 1×1。頂点変位はワールド座標で決まるので、
     // マスごとに別の板でも隣と縁の高さが必ず一致する。
+    // 滝は横（ローカル X）を水面板と同じ分割数にしておくこと。分割数が違うと
+    // 折れ線の頂点位置がずれ、同じ波を評価していても落ち口に隙間が開く。
     renderer->SetPrimitive(std::make_unique<PlaneMeshGenerator>(
-        1.0f, 1.0f, kPlaneSubdivision, kPlaneSubdivision));
+        1.0f, 1.0f, kPlaneSubdivision,
+        isFall ? kFallSubdivisionY : kPlaneSubdivision));
     renderer->ReloadFromSpec();
 
     object->SetActive(false);
-    entries_.push_back({ object, transform, renderer });
+    pool.entries.push_back({ object, transform, renderer });
 
     // マテリアルは MaterialComponent を介さず、モデルへ直接入れる。
     // MaterialComponent は Start() で「α が 1 ならブレンド無し」へ戻してしまい、
     // 上でせっかく指定したフォワード経路が Deferred へ落ちて波が止まるため。
-    ApplyMaterialToEntry(entries_.back());
-    return &entries_.back();
+    ApplyMaterialToEntry(pool.entries.back());
+    return &pool.entries.back();
 }
 
-void GameComponents::WaterWaveViewComponent::BeginFrameIfNeeded(std::uint64_t frame) {
-    if (allocationFrame_ == frame) {
+void GameComponents::WaterWaveViewComponent::BeginFrameIfNeeded(
+    PlanePool& pool, std::uint64_t frame) {
+    if (pool.allocationFrame == frame) {
         return;
     }
-    allocationFrame_ = frame;
-    nextEntryIndex_ = 0;
-    prevEntryByPosition_ = std::move(entryByPosition_);
-    entryByPosition_.clear();
+    pool.allocationFrame = frame;
+    pool.nextEntryIndex = 0;
+    pool.prevEntryByPosition = std::move(pool.entryByPosition);
+    pool.entryByPosition.clear();
 }
 
-void GameComponents::WaterWaveViewComponent::DrawCell(
-    float worldX, float worldZ, std::uint64_t frame) {
-    const std::uint64_t positionKey = MakePositionKey(worldX, worldZ);
-
-    // 前フレームに同じマスを描いた板を優先して使い回す（担当がずれると TAA がぶれる）
+GameComponents::WaterWaveViewComponent::Entry*
+GameComponents::WaterWaveViewComponent::AcquireEntry(
+    PlanePool& pool, PlaneKind kind,
+    std::uint64_t positionKey, std::uint64_t frame) {
+    // 前フレームに同じ場所を描いた板を優先して使い回す（担当がずれると TAA がぶれる）
     Entry* entry = nullptr;
-    if (const auto it = prevEntryByPosition_.find(positionKey);
-        it != prevEntryByPosition_.end() && it->second < entries_.size()) {
-        Entry& candidate = entries_[it->second];
+    if (const auto it = pool.prevEntryByPosition.find(positionKey);
+        it != pool.prevEntryByPosition.end() && it->second < pool.entries.size()) {
+        Entry& candidate = pool.entries[it->second];
         if (candidate.lastSubmittedFrame != frame && candidate.object &&
             !candidate.object->IsMarkedForDestroy()) {
             entry = &candidate;
         }
     }
 
-    while (entry == nullptr && nextEntryIndex_ < entries_.size()) {
-        Entry& candidate = entries_[nextEntryIndex_++];
+    while (entry == nullptr && pool.nextEntryIndex < pool.entries.size()) {
+        Entry& candidate = pool.entries[pool.nextEntryIndex++];
         if (candidate.lastSubmittedFrame != frame && candidate.object &&
             !candidate.object->IsMarkedForDestroy()) {
             entry = &candidate;
@@ -389,18 +537,33 @@ void GameComponents::WaterWaveViewComponent::DrawCell(
     }
 
     if (entry == nullptr) {
-        entry = CreateEntry();
+        entry = CreateEntry(pool, kind);
     }
 
     if (entry == nullptr || !entry->object || !entry->transform) {
         // 生成にも失敗した場合。警告は1フレームに1回までに抑える。
-        if (lastExhaustedWarningFrame_ != frame) {
-            lastExhaustedWarningFrame_ = frame;
+        if (pool.lastExhaustedWarningFrame != frame) {
+            pool.lastExhaustedWarningFrame = frame;
             Logger::GetInstance().Warnf(
                 LogCategory::Game,
-                "WaterWaveViewComponent: 板が足りません (capacity={})",
-                entries_.size());
+                "WaterWaveViewComponent: 板が足りません (kind={}, capacity={})",
+                kind == PlaneKind::Fall ? "滝" : "水面", pool.entries.size());
         }
+        return nullptr;
+    }
+
+    entry->lastSubmittedFrame = frame;
+    entry->object->SetActive(true);
+    pool.entryByPosition[positionKey] =
+        static_cast<std::size_t>(entry - pool.entries.data());
+    return entry;
+}
+
+void GameComponents::WaterWaveViewComponent::DrawCell(
+    float worldX, float worldZ, std::uint64_t frame) {
+    Entry* entry = AcquireEntry(
+        surfacePool_, PlaneKind::Surface, MakePositionKey(worldX, worldZ), frame);
+    if (entry == nullptr) {
         return;
     }
 
@@ -409,15 +572,35 @@ void GameComponents::WaterWaveViewComponent::DrawCell(
     transform.rotate = { 0.0f, 0.0f, 0.0f };
     transform.scale = { gridSize_, 1.0f, gridSize_ };
     transform.TransferMatrix();
+}
 
-    entry->lastSubmittedFrame = frame;
-    entry->object->SetActive(true);
-    entryByPosition_[positionKey] =
-        static_cast<std::size_t>(entry - entries_.data());
+void GameComponents::WaterWaveViewComponent::DrawFall(
+    float worldX, float edgeZ, bool facingNegativeZ, std::uint64_t frame) {
+    Entry* entry = AcquireEntry(
+        fallPool_, PlaneKind::Fall, MakePositionKey(worldX, edgeZ), frame);
+    if (entry == nullptr) {
+        return;
+    }
+
+    // 板はローカル XZ 平面（法線 +Y）なので、X 軸まわりに 1/4 回すと立ち上がる。
+    // -90 度で法線が -Z（手前端）、+90 度で +Z（奥端）を向き、
+    // どちらもローカル Z がワールド Y へ写るので、縦の長さは scale.z で決まる。
+    const float fallLength = GetFallLength();
+    auto& transform = entry->transform->Get();
+    transform.translate = {
+        worldX,
+        // 上端をちょうど静止水面へ合わせる。シェーダーはこの前提で
+        // 「上端 0・下端 1」の落下率を求めている。
+        GetWaterSurfaceHeight() - fallLength * 0.5f,
+        edgeZ
+    };
+    transform.rotate = { facingNegativeZ ? -kQuarterTurn : kQuarterTurn, 0.0f, 0.0f };
+    transform.scale = { gridSize_, 1.0f, fallLength };
+    transform.TransferMatrix();
 }
 
 void GameComponents::WaterWaveViewComponent::UploadWaveConstants() {
-    if (!shaderProvider_) {
+    if (!shaderProvider_ || !fallShaderProvider_) {
         return;
     }
 
@@ -437,6 +620,22 @@ void GameComponents::WaterWaveViewComponent::UploadWaveConstants() {
     }
 
     shaderProvider_->Upload(constants);
+
+    // 落水カーテンの上端は水面板の縁と一致していなければならない。
+    // 波は必ず同じ値をそのまま渡し、落水側で作り直さないこと。
+    WaterFallConstants fallConstants{};
+    std::copy(std::begin(constants.waves), std::end(constants.waves),
+        std::begin(fallConstants.waves));
+    fallConstants.activeWaveCount = constants.activeWaveCount;
+    fallConstants.time = constants.time;
+    fallConstants.surfaceY = GetWaterSurfaceHeight();
+    fallConstants.fallLength = GetFallLength();
+    fallConstants.flowSpeed = fallFlowSpeed_ * gridSize_;
+    fallConstants.foamStrength = fallFoamStrength_;
+    // 模様の細かさもマスの大きさへ追従させる（波と揃える）
+    fallConstants.patternScale = 1.0f / gridSize_;
+
+    fallShaderProvider_->Upload(fallConstants);
 }
 
 void GameComponents::WaterWaveViewComponent::ApplyMaterialToEntry(Entry& entry) {
@@ -444,6 +643,14 @@ void GameComponents::WaterWaveViewComponent::ApplyMaterialToEntry(Entry& entry) 
     if (!model) {
         return;
     }
+
+    // 落ちているのも溜まっているのと同じ水。マテリアルは水面とまったく同じ値を入れる。
+    // @note 色も粗さも「落水らしく」ずらしてはいけない。水色（0, 0.35, 0.65）は
+    //       赤がちょうど 0 なので、白を 0.1 混ぜるだけで拡散反射の赤が丸ごと増え、
+    //       トーンマップ後には #57BFD3 → #C1DAE2 と別物になる（実測）。
+    //       落水らしさは PS 側の筋・泡・下端フェードだけで付けること。
+    // @note α も 1 のまま。下端のフェードは PS が自分で書き込むので、ここを下げると
+    //       ForwardMain のアルファテストで先に消えてしまう。
     model->ForEachMaterial([this](MaterialInstance* material) {
         material->SetColor(waterColor_);
         material->SetMetallic(0.0f);
@@ -455,15 +662,21 @@ void GameComponents::WaterWaveViewComponent::ApplyMaterialToEntry(Entry& entry) 
 }
 
 void GameComponents::WaterWaveViewComponent::ApplyMaterialToEntries() {
-    for (Entry& entry : entries_) {
-        if (!entry.object || entry.object->IsMarkedForDestroy()) {
-            continue;
+    for (PlanePool* pool : { &surfacePool_, &fallPool_ }) {
+        for (Entry& entry : pool->entries) {
+            if (!entry.object || entry.object->IsMarkedForDestroy()) {
+                continue;
+            }
+            ApplyMaterialToEntry(entry);
         }
-        ApplyMaterialToEntry(entry);
     }
 }
 
 float GameComponents::WaterWaveViewComponent::GetWaterSurfaceHeight() const {
     // 地面ブロックは [底面, 底面+1マス] を占める。その途中に静止水面を置く。
     return BlockModelLayout::GetGroundHeight(gridSize_) + waterLevelRatio_ * gridSize_;
+}
+
+float GameComponents::WaterWaveViewComponent::GetFallLength() const {
+    return (std::max)(fallLengthRatio_ * gridSize_, 0.01f);
 }
