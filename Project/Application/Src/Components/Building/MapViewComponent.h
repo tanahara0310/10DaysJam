@@ -33,6 +33,7 @@ namespace GameComponents
             ModelRenderPoolComponent* waterRenderPool,
             ModelRenderPoolComponent* stationRenderPool,
             ModelRenderPoolComponent* rockRenderPool,
+            ModelRenderPoolComponent* hardRockRenderPool,
             ModelRenderPoolComponent* bananaTreeRenderPool,
             ModelRenderPoolComponent* grassRenderPool,
             CoreEngine::Camera* viewCamera,
@@ -43,6 +44,7 @@ namespace GameComponents
             waterRenderPool_(waterRenderPool),
             stationRenderPool_(stationRenderPool),
             rockRenderPool_(rockRenderPool),
+            hardRockRenderPool_(hardRockRenderPool),
             bananaTreeRenderPool_(bananaTreeRenderPool),
             grassRenderPool_(grassRenderPool),
             viewCamera_(viewCamera) {}
@@ -114,6 +116,8 @@ namespace GameComponents
         ModelRenderPoolComponent* waterRenderPool_ = nullptr;
         ModelRenderPoolComponent* stationRenderPool_ = nullptr;
         ModelRenderPoolComponent* rockRenderPool_ = nullptr;
+        // レールを敷けない空白マスへ立てる、壊せない岩
+        ModelRenderPoolComponent* hardRockRenderPool_ = nullptr;
         ModelRenderPoolComponent* bananaTreeRenderPool_ = nullptr;
         ModelRenderPoolComponent* grassRenderPool_ = nullptr;
         // 描画範囲はゲーム視点カメラの位置から決める（構図は CameraRig が握る）

@@ -191,8 +191,10 @@ void GameComponents::MapViewComponent::Update() {
     for (size_t x = startX; x < endX && x < mapChips.size(); ++x) {
         for (size_t z = 0; z < mapChips[x].size(); ++z) {
             const auto chipType = mapGenerator_->GetMapChip(x, z);
-            // チップの種類に応じて描画する
-            if (chipType != MapChipType::Void && chipType != MapChipType::Water) {
+            // チップの種類に応じて描画する。
+            // 水以外はすべて地面を敷く。空白マスも「何も無い穴」ではなく、
+            // 地面の上に壊せない岩を立てた「敷けない床」として見せる。
+            if (chipType != MapChipType::Water) {
                 // グラウンドチップの表示。マスごとに色をわずかに散らしてマス目を読めるようにする。
                 const Vector3 groundPosition{ x * gridSize_, groundHeight, z * gridSize_ };
                 const Vector3 toCamera = groundPosition - cameraFocusPosition;
@@ -222,6 +224,12 @@ void GameComponents::MapViewComponent::Update() {
             // 岩チップの表示
             if (rockRenderPool_ && chipType == MapChipType::Resource) {
                 rockRenderPool_->Draw({ x * gridSize_, surfaceHeight, z * gridSize_ }, rotate, scale);
+            }
+
+            // 空白マスの表示。地面は上で敷いてあるので、その上へ壊せない岩を立てる。
+            if (hardRockRenderPool_ && chipType == MapChipType::Void) {
+                hardRockRenderPool_->Draw(
+                    { x * gridSize_, surfaceHeight, z * gridSize_ }, rotate, scale);
             }
 
             // バナナの木チップの表示

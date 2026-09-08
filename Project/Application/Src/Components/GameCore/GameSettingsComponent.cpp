@@ -93,6 +93,10 @@ namespace GameComponents::GameSettings
     CoreEngine::CVar<int> RockPoolCapacity{
         "Game.Pools.RockCapacity", 50, "岩モデルの初期プール数",
         CoreEngine::CVarRange{ 1.0f, 1000.0f } };
+    CoreEngine::CVar<int> HardRockPoolCapacity{
+        "Game.Pools.HardRockCapacity", 150,
+        "レールを敷けない空白マスへ立てる硬い岩モデルの初期プール数",
+        CoreEngine::CVarRange{ 1.0f, 5000.0f } };
     CoreEngine::CVar<int> BananaTreePoolCapacity{
         "Game.Pools.BananaTreeCapacity", 50, "バナナの木モデルの初期プール数",
         CoreEngine::CVarRange{ 1.0f, 1000.0f } };

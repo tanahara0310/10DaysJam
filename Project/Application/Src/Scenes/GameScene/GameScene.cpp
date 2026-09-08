@@ -201,6 +201,12 @@ void GameScene::GameScene::OnInitialize() {
     rockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
         "rock.obj",
         ToUInt(GameComponents::GameSettings::RockPoolCapacity.Get(), 1), true);
+    // レールを敷けない空白マスへ立てる硬い岩のオブジェクトプールを生成
+    auto* hardRockPoolManager = CreateObject<GameSceneObject>("HardRockPoolManager");
+    hardRockPoolManager->AddComponent<CoreEngine::TransformComponent>();
+    hardRockPoolManager->AddComponent<GameComponents::ModelRenderPoolComponent>(
+        "hard_rock.obj",
+        ToUInt(GameComponents::GameSettings::HardRockPoolCapacity.Get(), 1), true);
     // バナナの木のオブジェクトプールを生成（仮モデルとしてbox.objを使用）
     auto* bananaTreePoolManager = CreateObject<GameSceneObject>("BananaTreePoolManager");
     bananaTreePoolManager->AddComponent<CoreEngine::TransformComponent>();
@@ -367,6 +373,7 @@ void GameScene::GameScene::OnInitialize() {
         waterPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         stationPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         rockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
+        hardRockPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         bananaTreePoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         grassPoolManager->GetComponent<GameComponents::ModelRenderPoolComponent>(),
         gameCamera,
