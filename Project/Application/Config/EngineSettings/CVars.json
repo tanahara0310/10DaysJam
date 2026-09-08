@@ -90,9 +90,9 @@
     ],
     "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
     "r.AtmosphereLights.SunDirection": [
-        -0.21282228827476501,
-        -0.9104350209236145,
-        0.354703813791275
+        -0.6597630381584167,
+        -0.43073102831840515,
+        0.6157788038253784
     ],
     "r.AutoExposure.Enabled": true,
     "r.Bloom.Intensity": 0.9480000138282776,
