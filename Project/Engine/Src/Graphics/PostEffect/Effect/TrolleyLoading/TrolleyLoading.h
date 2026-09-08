@@ -14,8 +14,11 @@ namespace CoreEngine
     ///          1/4 ほど）。逆にすると駅の方が歩いて来るように見えて違和感が出る。
     ///          進捗が止まってもトロッコはその場で跳ね続けるので画面は固まらない
     ///          ―― シーン構築が 1 フレーム 1 ステップで、所要時間が読めないため。
-    /// @note 絵は Assets/Textures/loading_*.png（.obj から焼いたスプライト）。
-    ///       車輪だけは trolley.obj に存在しないのでシェーダーが手続き的に描く。
+    ///          画面中央には「ローディング中…」を出す。点は 0→1→2→3 個と増えて戻り、
+    ///          文字は同じ周期でゆっくり明滅する（どちらも進捗ではなく時間で回る）。
+    /// @note 絵は Assets/Textures/loading_*.png（.obj から焼いたスプライト）と
+    ///       loading_text.png（ドット絵フォントを焼いた「ローディング中」）。
+    ///       車輪と点だけはシェーダーが手続き的に描く。
     ///       レイアウト値は CVar（"r.TrolleyLoading.*"）が保持する。
     class TrolleyLoading : public PostEffectComputeBase, public ILoadingScreenEffect {
     public:
@@ -46,9 +49,12 @@ namespace CoreEngine
             float scale       = 0.72f;  // 全体の拡大率（上の距離とスプライトへ一括で掛かる）
             float cartGoalX   = 0.73f;  // 進捗 1.0 のトロッコ左端（画面幅に対する比率）
             float railScroll  = 0.0f;   // レールと景色が流れる速さ（0 で世界に固定）
-            // 定数バッファは 16 バイト単位なので、末尾を詰め物で埋める。
-            // 省くと Cb::Verify が「全体サイズ不一致」で弾く
-            float scalePad0   = 0.0f;
+            float textTime    = 0.0f;   // 文字と点を回す経過時間（実行時値。実測のまま）
+
+            float textScale   = 1.0f;   // 「ローディング中」の拡大率（1.0 で焼いたままの大きさ）
+            float textY       = 0.5f;   // 文字列の中心の高さ（画面高さに対する比率）
+            float dotInterval = 0.35f;  // 点が 1 つ増える間隔（秒）
+            float textGap     = 21.0f;  // 文字列の右端から最初の点までの距離
         };
 
         static constexpr Cb::Field kTrolleyParamsFields[] = {
@@ -61,7 +67,9 @@ namespace CoreEngine
             CB_FIELD(TrolleyParams, cartLift),    CB_FIELD(TrolleyParams, stationGoal),
             CB_FIELD(TrolleyParams, stationDrop), CB_FIELD(TrolleyParams, sceneryDrop),
             CB_FIELD(TrolleyParams, scale),       CB_FIELD(TrolleyParams, cartGoalX),
-            CB_FIELD(TrolleyParams, railScroll),  CB_FIELD(TrolleyParams, scalePad0),
+            CB_FIELD(TrolleyParams, railScroll),  CB_FIELD(TrolleyParams, textTime),
+            CB_FIELD(TrolleyParams, textScale),   CB_FIELD(TrolleyParams, textY),
+            CB_FIELD(TrolleyParams, dotInterval), CB_FIELD(TrolleyParams, textGap),
         };
         CB_VERIFY_LAYOUT(TrolleyParams, kTrolleyParamsFields);
         CB_BIND_HLSL(TrolleyParams, kTrolleyParamsFields, "TrolleyParams");
@@ -115,10 +123,12 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE railHandle_    = {};
         D3D12_GPU_DESCRIPTOR_HANDLE stationHandle_ = {};
         D3D12_GPU_DESCRIPTOR_HANDLE sceneryHandle_ = {};
+        D3D12_GPU_DESCRIPTOR_HANDLE textHandle_    = {};
 
         // 実行時状態（保存対象ではない）
         float screenAlpha_     = 0.0f;
         float timeAccumulator_ = 0.0f;
+        float textTimeAccumulator_ = 0.0f;  ///< 文字と点用。コマ落ちを切り詰めずに実測を積む
         float progress_        = 0.0f;  ///< 画面に出している進捗（下の目標へ追従する）
         float progressTarget_  = 0.0f;  ///< シーン遷移から渡された生の進捗
     };

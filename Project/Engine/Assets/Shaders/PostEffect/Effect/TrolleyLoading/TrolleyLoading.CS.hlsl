@@ -3,6 +3,14 @@
 // 絵は Assets/Textures/loading_*.png（.obj から正射投影で焼いたボクセルのスプライト）を
 // 奥から順に重ねるだけ。車輪だけは trolley.obj に存在しないのでここで手続き的に描く。
 //
+// ■ 「ローディング中…」
+//   画面中央にドット絵フォントを焼いた 1 枚（loading_text.png）を置き、その右へ点を
+//   手続き的に並べる。点は 0→1→2→3 個と増えて戻り、文字は同じ周期でゆっくり明滅する。
+//   進捗ではなく時間で回すので、シーン構築が詰まっても「動いている」ことが伝わる。
+//   時計は time ではなく textTime（実測の経過時間）。time はコマ落ち対策で 1 フレーム
+//   0.1 秒までに切り詰めてあり、重い読み込みの間はほとんど進まない ―― それで点を
+//   回すと、肝心のローディング中だけ止まって見える。
+//
 // ■ 進捗の見せ方
 //   カメラは世界に固定してあり（railScroll = 0）、進捗ぶんだけ「トロッコが左から右へ
 //   走っていく」。駅も右外から少しだけ寄ってくるが、動く量はトロッコの 1/4 ほどなので
@@ -26,6 +34,7 @@ Texture2D<float4> gCart    : register(t1); // トロッコ＋猿
 Texture2D<float4> gRail    : register(t2); // レール 1 周期
 Texture2D<float4> gStation : register(t3); // 駅（進捗の到達点）
 Texture2D<float4> gScenery : register(t4); // 奥の景色（木・岩を焼き込んだ帯）
+Texture2D<float4> gText    : register(t5); // 「ローディング中」（ドット絵フォントを焼いたもの）
 RWTexture2D<float4> gOutput : register(u0);
 
 cbuffer TrolleyParams : register(b0)
@@ -53,7 +62,12 @@ cbuffer TrolleyParams : register(b0)
     float scale;        // 全体の拡大率。上の距離もスプライトも一括で掛かる
     float cartGoalX;    // 進捗 1 のときのトロッコ左端（画面幅に対する比率）
     float railScroll;   // レールと景色が流れる速さ（1080 基準の px/秒。0 で世界に固定）
-    float scalePad0;    // 16 バイト境界を埋めるための詰め物（C++ 側と対で持つ）
+    float textTime;     // 「ローディング中…」用の経過時間（秒。実測のまま＝上の time とは別）
+
+    float textScale;    // 文字の拡大率（1.0 で焼いたままの大きさ）
+    float textY;        // 文字列の中心の高さ（画面高さに対する比率）
+    float dotInterval;  // 点が 1 つ増える間隔（秒）
+    float textGap;      // 文字列の右端から最初の点までの距離（1080 基準 px）
 };
 
 cbuffer ScreenParams : register(b1)
@@ -67,6 +81,14 @@ static const uint  kGroupSize       = 8;
 static const float kReferenceHeight = 1080.0f; // レイアウト値の基準解像度
 static const float kEdgeWidth       = 1.5f;    // 車輪の輪郭のぼかし幅（ピクセル）
 static const float kStationEnter    = 60.0f;   // 駅が画面右外から現れる距離
+
+// 「ローディング中」の右に並べる点。大きさはフォントのドット（84px 焼き = 7px）を単位にする
+static const uint  kDotCount     = 3;      // 点の数。1 周期でこの数まで増えて 0 へ戻る
+static const float kDotSize      = 14.0f;  // 点 1 つの一辺（1080 基準 px。フォント 2 ドット分）
+static const float kDotStride    = 28.0f;  // 点の左端どうしの間隔
+static const float kDotBaseInset = 7.0f;   // 画像の下端から点の下端まで（文字のベースラインに揃える）
+static const float kTextDimMin   = 0.72f;  // 明滅の下限（1.0 との間を往復する）
+static const float3 kTextColor   = float3(1.0f, 1.0f, 1.0f); // 点の色（sRGB。文字の白と揃える）
 
 // 車輪の色（sRGB）。モデルに車輪が無いのでここで描く
 static const float3 kTireColor  = float3(0.165f, 0.165f, 0.180f);
@@ -233,6 +255,45 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
                 float inset = (i == 0) ? wheelInset : ((float)cartW - wheelInset);
                 float wx    = cartLeft + inset * uiScale;
                 color = DrawWheel(color, pix - float2(wx, cy), r, ang, screenAlpha);
+            }
+        }
+
+        // ---- 「ローディング中…」（画面中央）----
+        // 文字列と点をひとかたまりとして中央へ置く。トロッコの scale とは独立に
+        // 拡大したいので、uiScale ではなく textScale から作り直す
+        {
+            uint textW, textH; gText.GetDimensions(textW, textH);
+            float textScl = (float)screenHeight / kReferenceHeight * textScale;
+
+            float dotsW     = kDotSize + kDotStride * (float)(kDotCount - 1);
+            float groupW    = ((float)textW + textGap + dotsW) * textScl;
+            float groupLeft = ((float)screenWidth - groupW) * 0.5f;
+            float textTop   = textY * (float)screenHeight - (float)textH * 0.5f * textScl;
+
+            // 点が 1 周する時間。文字の明滅も同じ周期に乗せて足並みを揃える
+            float interval = max(dotInterval, 0.01f);
+            float cycle    = interval * (float)(kDotCount + 1);
+            float dotPhase = fmod(textTime, cycle);
+            float pulse    = lerp(kTextDimMin, 1.0f, 0.5f + 0.5f * sin(TWO_PI * textTime / cycle));
+
+            float4 t = LoadSprite(gText, (pix - float2(groupLeft, textTop)) / textScl);
+            color = lerp(color, t.rgb, t.a * screenAlpha * pulse);
+
+            float dotsLeft = groupLeft + ((float)textW + textGap) * textScl;
+            float dotTop   = textTop + ((float)textH - kDotBaseInset - kDotSize) * textScl;
+            float side     = kDotSize * textScl;
+
+            [unroll]
+            for (uint d = 0; d < kDotCount; ++d)
+            {
+                // d 番目は (d+1) 個目の間隔を過ぎてから出る（0 個の状態から始まる）
+                bool shown = dotPhase >= (float)(d + 1) * interval;
+                float2 local = pix - float2(dotsLeft + kDotStride * (float)d * textScl, dotTop);
+                if (shown && local.x >= 0.0f && local.x < side
+                          && local.y >= 0.0f && local.y < side)
+                {
+                    color = lerp(color, SrgbToLinear(kTextColor), screenAlpha * pulse);
+                }
             }
         }
     }
