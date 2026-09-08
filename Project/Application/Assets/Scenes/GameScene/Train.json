@@ -25,13 +25,13 @@
         {
             "enabled": true,
             "parameters": {
-                "acceleration": 0.15000000596046448,
+                "acceleration": 0.10999999940395355,
                 "gridSize": 1.0,
                 "initialGridX": 1,
                 "initialGridZ": 4,
-                "initialMoveSpeed": 2.0,
+                "initialMoveSpeed": 1.5,
                 "maximumMoveSpeed": 32.0,
-                "minimumSpeedIncreasePerRail": 0.009999999776482582,
+                "minimumSpeedIncreasePerRail": 0.02500000037252903,
                 "requiredRailCount": 5,
                 "rockThrowJumpDuration": 0.3499999940395355,
                 "rockThrowJumpHeight": 0.6000000238418579
