@@ -27,12 +27,13 @@ namespace GameComponents
     ///          比べる相手を 3 つ画面に出す。
     ///           - 目標（既定 500m）……画面下のゲージの終点に立つゲート
     ///           - 前回の自分  ……ゲージの上に立つ杭（`GameRecordStore`）
-    ///           - 自己最高    ……左上の板。記録が無い回でも必ず出す
+    ///           - 自己最高    ……右上の板。記録が無い回でも必ず出す
     ///          距離は 0 から数えあげ、トロッコが実際にレールを敷きながら走って止まる。
     ///
-    ///          絵は既存の流用のみ。板・ツタ・茂み・葉カーソルはポーズメニューと同じ
-    ///          `Textures/Pause/*.png`、レール・トロッコ・駅はローディング演出の
-    ///          `loading_*.png`。新規アセットは 1 枚も足していない。
+    ///          絵は既存の流用のみ。板・ツタ・茂み・葉カーソル・レールはポーズメニューと同じ
+    ///          `Textures/Pause/*.png`（レールは板の中央パーツを引き伸ばして使う。
+    ///          専用のレール絵は見た目が浮くので使わない）。トロッコ・駅だけはローディング
+    ///          演出の `loading_*.png`。新規アセットは 1 枚も足していない。
     ///
     /// @note 背景（地面に埋まったサル）が主役なので、UI は画面の上端・下端・四隅にだけ置く。
     ///       y = 250〜760 には何も出さない。暗幕も掛けない。
@@ -165,16 +166,18 @@ namespace GameComponents
         CoreEngine::UIText* monkeyText_ = nullptr;
         Plank rankPlank_{};
         CoreEngine::UIText* rankText_ = nullptr;
+
+        // 右上（自己最高。操作説明はここから撤去した）
         Plank bestPlank_{};
         CoreEngine::UIText* bestText_ = nullptr;
 
         // ゲージ
-        std::vector<CoreEngine::UIImage*> railTiles_;
+        CoreEngine::UIImage* railBar_ = nullptr;  ///< 敷いた区間 1 本（板を伸縮させて使う）
         std::vector<CoreEngine::UIImage*> sleepers_;
         std::vector<CoreEngine::UIImage*> railVines_;
         std::vector<CoreEngine::UIImage*> tickPosts_;  ///< 100m ごとの目盛り（最後は目標地点）
         std::vector<CoreEngine::UIText*> tickTexts_;
-        CoreEngine::UIImage* startPost_ = nullptr;
+        CoreEngine::UIImage* gatePost_ = nullptr;  ///< 目標看板を支える柱
         Plank gateBeam_{};
         std::array<CoreEngine::UIImage*, 2> gateFoliage_{};
         CoreEngine::UIText* gateText_ = nullptr;
@@ -191,8 +194,8 @@ namespace GameComponents
         CoreEngine::UIImage* cursor_ = nullptr;
         CoreEngine::UIText* tipText_ = nullptr;
         CoreEngine::UIImage* tipLeaf_ = nullptr;
-        CoreEngine::UIText* hintText_ = nullptr;
-        std::array<CoreEngine::UIImage*, 4> corners_{};
+        CoreEngine::UIImage* tipBg_ = nullptr;  ///< Tips を読みやすくする半透明の帯
+        std::array<CoreEngine::UIImage*, 2> corners_{};  ///< 上の 2 隅だけ
 
         static constexpr std::size_t kLeafPoolSize = 18;
         std::array<Leaf, kLeafPoolSize> leaves_{};

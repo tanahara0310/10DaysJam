@@ -31,8 +31,11 @@ namespace
 {
     // ───────────────────────────────────────────────────────────────
     // テクスチャ（すべて既存の流用。新規アセットは無い）
-    //  Pause/*      … 板・ツタ・茂み・葉カーソル・舞う葉（ポーズメニューと同じ版下）
-    //  loading_*    … レール・トロッコ（ローディング演出と同じ絵）
+    //  Pause/*      … 板・ツタ・茂み・葉カーソル・舞う葉・暗幕・レール（ポーズメニューと同じ版下。
+    //                 レールは板の中央パーツを引き伸ばして使う。専用のレール絵は
+    //                 質感だけ写真っぽくて浮くので採用しない）
+    //  result_cart  … トロッコ（loading_cart.png の絵を、UI と同じドット密度へ焼き直したもの。
+    //                 元の版下は 1 ドットが画面 6.3px かつ非整数グリッドで、周りより粗くにじんでいた）
     // ───────────────────────────────────────────────────────────────
     constexpr const char* kTexPlankMid = "Application/Assets/Textures/Pause/plank_mid.png";
     constexpr const char* kTexPlankCapL = "Application/Assets/Textures/Pause/plank_cap_l.png";
@@ -43,8 +46,8 @@ namespace
     constexpr const char* kTexCursor = "Application/Assets/Textures/Pause/cursor.png";
     constexpr const char* kTexLeafM = "Application/Assets/Textures/Pause/leaf_m.png";
     constexpr const char* kTexLeafS = "Application/Assets/Textures/Pause/leaf_s.png";
-    constexpr const char* kTexRail = "Application/Assets/Textures/loading_rail.png";
-    constexpr const char* kTexCart = "Application/Assets/Textures/loading_cart.png";
+    constexpr const char* kTexDim = "Application/Assets/Textures/Pause/dim.png";
+    constexpr const char* kTexCart = "Application/Assets/Textures/result_cart.png";
 
     constexpr const char* kSeTick = "Application/Assets/Sounds/SE/rail_build.mp3";
     constexpr const char* kSeArrive = "Application/Assets/Sounds/SE/title_bound.mp3";
@@ -87,9 +90,11 @@ namespace
     constexpr float kRankY = 176.0f;
     constexpr float kRankHeight = 76.0f;
     constexpr float kRankFontSize = 26.0f;
-    constexpr float kBestY = 248.0f;         ///< 自己最高の板（記録の有無によらず出す）
-    constexpr float kBestHeight = 68.0f;
-    constexpr float kBestFontSize = 26.0f;
+    constexpr float kBestCenterX = 644.0f;   ///< 自己最高の板。左上のサル数板とちょうど左右対称
+    constexpr float kBestY = kSideY;
+    constexpr float kBestWidth = kSideWidth;
+    constexpr float kBestHeight = kPlankHeight;
+    constexpr float kBestFontSize = kSideFontSize;
 
     constexpr float kNewRecordX = 470.0f;    ///< 見出し板の右肩にぶら下げる「しんきろく！」
     constexpr float kNewRecordY = 206.0f;
@@ -107,28 +112,43 @@ namespace
     constexpr int kTiesPerTick = 5;          ///< 目盛り 1 つを枕木で等分する数（= 20m ごと）
     constexpr float kMinTiePitch = 24.0f;    ///< これより詰まるなら等分数を落とす
     constexpr int kMaxTicks = 16;
-    constexpr float kRailTieRatio = 0.805f;  ///< loading_rail.png の縞の中心（タイル幅に対する比）
     constexpr float kSleeperWidth = 15.0f;
     constexpr float kSleeperHeight = 34.0f;
     constexpr float kRailVineStep = 96.0f;
     constexpr float kTickFontSize = 24.0f;
     constexpr float kTickLabelY = kRailY + 58.0f;
-    constexpr float kTickPostWidth = 12.0f;
+    // 100m の杭は枕木を下へ伸ばしたもの。太さと上端を枕木に合わせないと、
+    // 並べたときに「太さが違う」「上が欠けて空いて見える」になる
+    constexpr float kTickPostWidth = kSleeperWidth;
     constexpr float kTickPostHeight = 52.0f;
+    constexpr float kTickPostY =
+        kRailY - kSleeperHeight * 0.5f + kTickPostHeight * 0.5f;
     constexpr float kGateBeamY = 638.0f;
     constexpr float kGateBeamWidth = 350.0f;
+    constexpr float kGatePostWidth = 40.0f;  ///< 看板を支える柱。まえのきろくの杭より太い
+    constexpr float kGatePostTop = kGateBeamY + kPlankHeight * 0.5f;
     constexpr float kGateFontSize = 30.0f;
-    constexpr float kCartWidth = 106.0f;
-    constexpr float kCartHeight = 110.0f;
-    constexpr float kCartY = kRailY - kRailHeight * 0.5f - kCartHeight * 0.5f + 6.0f;
+    // トロッコは result_cart.png（25x26 ドットを 10 倍で書き出した 250x260）。
+    // 1 ドット = 画面 5px で置くと、ミップ 1 がちょうど表示サイズと一致してドットが崩れない。
+    // 外周 1 ドットは透明なので、絵の見えている大きさは 115x120
+    constexpr float kCartDot = 5.0f;
+    constexpr float kCartWidth = kCartDot * 25.0f;
+    constexpr float kCartHeight = kCartDot * 26.0f;
+    // 最後の + kCartDot は、下端の透明 1 ドットぶんを詰めてレールへ乗せ直す補正
+    constexpr float kCartY =
+        kRailY - kRailHeight * 0.5f - kCartHeight * 0.5f + 6.0f + kCartDot;
     constexpr float kOverGoalMaxX = 46.0f;   ///< 目標を越えたぶんのはみ出し幅
 
-    constexpr float kRecordPostTop = 734.0f;
-    constexpr float kRecordPostBottom = 806.0f;
-    constexpr float kRecordPostWidth = 20.0f;
-    constexpr float kRecordPlankY = 700.0f;
     constexpr float kRecordPlankWidth = 300.0f;
     constexpr float kRecordPlankHeight = 52.0f;
+    // 札はトロッコの上端（kCartY - kCartHeight * 0.5）より上へ置く。
+    // 同じ位置に来たとき絵が重なってどちらも読めなくなるため
+    constexpr float kRecordPlankY =
+        kRailY - kRailHeight * 0.5f - kCartHeight + 6.0f + kCartDot
+        - kRecordPlankHeight * 0.5f - 8.0f;
+    constexpr float kRecordPostTop = kRecordPlankY + kRecordPlankHeight * 0.5f;
+    constexpr float kRecordPostBottom = 806.0f;
+    constexpr float kRecordPostWidth = 20.0f;
     constexpr float kRecordFontSize = 24.0f;
 
     constexpr float kChoiceY = 940.0f;
@@ -137,11 +157,15 @@ namespace
     constexpr float kChoiceFontSize = 44.0f;
     constexpr float kChoiceTilt = -0.030f;
 
+    constexpr float kCanvasWidth = 1920.0f;  ///< 基準解像度の横幅（帯を端まで伸ばすのに使う）
     constexpr float kTipY = 1042.0f;
-    constexpr float kTipFontSize = 28.0f;
-    constexpr float kHintY = 44.0f;
-    constexpr float kHintFontSize = 24.0f;
-    constexpr float kHintRightX = 908.0f;
+    constexpr float kTipFontSize = 34.0f;
+    constexpr float kTipBgHeight = 64.0f;
+    constexpr float kTipBgAlpha = 0.5f;      ///< 薄い黒帯。背景を隠しすぎない濃さ
+    constexpr float kTipPulseSeconds = 1.6f; ///< Tips の明滅 1 周期
+    // Tips の色（リニア 0.62）はとっくに飽和域なので、明るい側へ振っても画面は動かない。
+    // 今の明るさを山にして、暗い側だけへ振ると「点滅」に見える
+    constexpr float kTipPulseMin = 0.30f;
 
     // ───────────────────────────────────────────────────────────────
     // 演出
@@ -240,8 +264,8 @@ namespace GameComponents
 
     CVar<float> ResultGaugeUIComponent::RailBrightness{
         "Result.Gauge.RailBrightness", 0.32f,
-        "レールとトロッコの明るさ。loading_*.png は見たままの色で描かれているので、"
-        "等倍で貼ると白飛びする",
+        "トロッコの明るさ。loading_cart.png は見たままの色で描かれているので、"
+        "等倍で貼ると白飛びする（レールは板と同じ Brightness を使うのでここでは動かない）",
         CVarRange{ 0.05f, 1.5f } };
 
     CVar<int> ResultGaugeUIComponent::SortOrder{
@@ -376,7 +400,7 @@ void GameComponents::ResultGaugeUIComponent::BuildParts()
         }
     }
 
-    // 四隅の茂み（額縁。中央には置かない）
+    // 上の 2 隅だけ茂みを置く。下の 2 隅は Tips の帯と喧嘩するので置かない
     for (std::size_t i = 0; i < corners_.size(); ++i) {
         corners_[i] = SpawnImage(kTexFoliage, "ResultCorner" + std::to_string(i), order + 10);
         if (!corners_[i]) {
@@ -384,11 +408,7 @@ void GameComponents::ResultGaugeUIComponent::BuildParts()
         }
         constexpr float kScale = 1.15f;
         corners_[i]->SetSize({ kFoliageWidth * kScale, kFoliageHeight * kScale });
-        const float x = (i % 2 == 0) ? -944.0f : 944.0f;
-        const float y = (i < 2) ? 4.0f : 1076.0f;
-        corners_[i]->SetAnchoredPosition({ x, y });
-        // 上下左右で向きを変えて、同じ絵に見えないようにする
-        corners_[i]->SetUIRotation((i < 2) ? 0.0f : 3.14159265f);
+        corners_[i]->SetAnchoredPosition({ (i == 0) ? -944.0f : 944.0f, 4.0f });
     }
 
     built_ = true;
@@ -485,7 +505,7 @@ void GameComponents::ResultGaugeUIComponent::BuildSideBoards(int order)
                           "ResultRank", kRankFontSize, order + 6);
 
     // 自己最高は「比べる相手」の中で唯一いつでも意味を持つ値なので、
-    // 記録が無い回（＝今回が最高）でも隠さずに出す
+    // 記録が無い回（＝今回が最高）でも隠さずに出す。置き場所は右上（左上の板と左右対称）
     bestPlank_ = SpawnPlank("ResultBestBoard", order);
     bestText_ = SpawnText(font, "さいこうきろく " + std::to_string(bestMeters_) + "ｍ",
                           "ResultBest", kBestFontSize, order + 6);
@@ -517,19 +537,14 @@ void GameComponents::ResultGaugeUIComponent::BuildGauge(int order)
         sleepers_.push_back(sleeper);
     }
 
-    // 走った区間に敷くレール。UI にクリップが無いので、タイルを必要な枚数だけ出す。
-    // loading_rail.png は 1 枚に枕木の縞が 1 本あるので、その縞が上の枕木と同じ x へ
-    // 来るようタイルをずらす（0 本目は始点の杭の裏へ隠れる）
-    for (int i = 0; i <= tieCount; ++i) {
-        auto* tile = SpawnImage(kTexRail, "ResultRailTile", order + 1);
-        if (!tile) {
-            continue;
-        }
-        const float tieX = kRailLeft + pitch * static_cast<float>(i);
-        tile->SetSize({ pitch, kRailHeight });
-        tile->SetAnchoredPosition({ tieX + (0.5f - kRailTieRatio) * pitch, kRailY });
-        tile->SetActive(false);
-        railTiles_.push_back(tile);
+    // 走った区間に敷くレール。専用の版下だと質感だけ写真っぽくて他の板から浮くので、
+    // 板の中央パーツ（kTexPlankMid）を 1 枚だけ横に伸ばして使う。
+    // 無地なので継ぎ目やパターンずれの心配が無く、伸縮も ApplyGauge で毎フレーム描き直すだけでいい
+    railBar_ = SpawnImage(kTexPlankMid, "ResultRailBar", order + 1);
+    if (railBar_) {
+        railBar_->SetPivot({ 0.0f, 0.5f }); // 左端（0m）を基準に右へ伸ばす
+        railBar_->SetSize({ 0.0f, kRailHeight });
+        railBar_->SetAnchoredPosition({ kRailLeft, kRailY });
     }
 
     // 敷いた線をなぞるツタ
@@ -544,11 +559,6 @@ void GameComponents::ResultGaugeUIComponent::BuildGauge(int order)
         railVines_.push_back(vine);
     }
 
-    startPost_ = SpawnImage(kTexPlankCapL, "ResultStartPost", order + 2);
-    if (startPost_) {
-        startPost_->SetSize({ 28.0f, 84.0f });
-        startPost_->SetAnchoredPosition({ kRailLeft - 24.0f, kRailY - 18.0f });
-    }
 
     // 目盛り（100m ごと。最後の 1 本は目標地点そのもの）
     const int tickCount = std::clamp(
@@ -563,15 +573,21 @@ void GameComponents::ResultGaugeUIComponent::BuildGauge(int order)
                                        kTickFontSize, order + 6));
     }
 
-    // 前回の記録の杭
-    recordPost_ = SpawnImage(kTexPlankCapR, "ResultRecordPost", order + 3);
+    // 前回の記録の杭。レール（order + 1）より後ろへ回して、ゲージの上に乗らないようにする
+    recordPost_ = SpawnImage(kTexPlankCapR, "ResultRecordPost", order - 1);
     if (recordPost_) {
         recordPost_->SetSize({ kRecordPostWidth, kRecordPostBottom - kRecordPostTop });
     }
     recordPlank_ = SpawnPlank("ResultRecordBoard", order + 3);
     recordText_ = SpawnText(font, "", "ResultRecordLabel", kRecordFontSize, order + 6);
 
-    // 目標の看板。柱は立てない（ゲージの上に文字だけを吊るす）
+    // 目標の看板と、それを支える柱（柱は記録の杭と同じくレールより後ろ）
+    gatePost_ = SpawnImage(kTexPlankCapR, "ResultGatePost", order - 1);
+    if (gatePost_) {
+        gatePost_->SetSize({ kGatePostWidth, kRecordPostBottom - kGatePostTop });
+        gatePost_->SetAnchoredPosition({
+            kGoalX, (kGatePostTop + kRecordPostBottom) * 0.5f });
+    }
     gateBeam_ = SpawnPlank("ResultGateBeam", order + 4);
     for (std::size_t i = 0; i < gateFoliage_.size(); ++i) {
         gateFoliage_[i] = SpawnImage(kTexFoliage, "ResultGateFoliage" + std::to_string(i), order + 5);
@@ -635,7 +651,15 @@ void GameComponents::ResultGaugeUIComponent::BuildFooter(int order)
     auto* engine = GetOwner() ? GetOwner()->GetEngineSystem() : nullptr;
     auto* fontManager = engine ? engine->GetService<FontManager>() : nullptr;
 
-    // Tips もタイトルのスタート表示と同じドットフォントを使う。
+    // Tips の可読性を上げる半透明の帯。文字より 1 つ手前に出す必要は無いので order のまま
+    // （文字・葉より後ろへ回したいだけなので、テキストより先に作って sort order を下げておく）
+    tipBg_ = SpawnImage(kTexDim, "ResultTipBg", order - 1);
+    if (tipBg_) {
+        tipBg_->SetAnchoredPosition({ 0.0f, kTipY });
+        tipBg_->SetActive(false);
+    }
+
+    // Tips は任意の漢字が来るので既定フォントに任せる（ドットフォントには漢字が無い）
     MsdfFont* tipFont = fontManager
         ? fontManager->AcquireNamed("x8y12pxDenkiChip.ttf")
         : nullptr;
@@ -649,18 +673,6 @@ void GameComponents::ResultGaugeUIComponent::BuildFooter(int order)
     if (tipLeaf_) {
         tipLeaf_->SetSize({ kLeafWidth, kLeafHeight });
         tipLeaf_->SetActive(false);
-    }
-
-    MsdfFontDesc desc;
-    desc.filePath = L"Engine/Assets/font/x8y12pxDenkiChip.ttf";
-    desc.systemFamilyNames = { L"Yu Gothic UI", L"Meiryo", L"Segoe UI" };
-    desc.charsetUtf8 = kPixelCharset;
-    MsdfFont* font = fontManager ? fontManager->Acquire(desc) : nullptr;
-    hintText_ = SpawnText(font, "← →  えらぶ    SPACE  けってい", "ResultHint",
-                          kHintFontSize, order);
-    if (hintText_) {
-        hintText_->SetPivot({ 1.0f, 0.5f });
-        hintText_->SetAnchoredPosition({ kHintRightX, kHintY });
     }
 }
 
@@ -935,10 +947,11 @@ void GameComponents::ResultGaugeUIComponent::ApplyLayout(float deltaTime)
         rankText_->SetAnchoredPosition({ kSideCenterX, kRankY });
         rankText_->SetColor(Tinted(AccentColor.Get()));
     }
-    PlacePlank(bestPlank_, { kSideCenterX, kBestY }, kSideWidth, kBestHeight);
+    // ── 右上の板（自己最高）
+    PlacePlank(bestPlank_, { kBestCenterX, kBestY }, kBestWidth, kBestHeight);
     SetPlankColor(bestPlank_, wood);
     if (bestText_) {
-        bestText_->SetAnchoredPosition({ kSideCenterX, kBestY });
+        bestText_->SetAnchoredPosition({ kBestCenterX, kBestY });
         bestText_->SetColor(Tinted(LabelColor.Get()));
     }
 
@@ -977,7 +990,10 @@ void GameComponents::ResultGaugeUIComponent::ApplyLayout(float deltaTime)
     }
 
     if (tipText_) {
-        tipText_->SetColor(Tinted({ 0.62f, 0.68f, 0.55f, 0.95f }));
+        const float pulsePhase = swayTimer_ * (6.2831853f / kTipPulseSeconds);
+        const float pulse = kTipPulseMin
+            + (1.0f - kTipPulseMin) * (0.5f + 0.5f * std::sin(pulsePhase));
+        tipText_->SetColor(Tinted({ 0.62f, 0.68f, 0.55f, 0.95f }, pulse));
         const bool visible = tipText_->IsActive();
         SetActiveIf(tipLeaf_, visible);
         if (visible && tipLeaf_) {
@@ -985,9 +1001,12 @@ void GameComponents::ResultGaugeUIComponent::ApplyLayout(float deltaTime)
                 -tipText_->GetMeasuredSize().x * 0.5f - 34.0f, kTipY + 2.0f });
             tipLeaf_->SetColor(wood);
         }
-    }
-    if (hintText_) {
-        hintText_->SetColor(Tinted({ 0.30f, 0.38f, 0.28f, 1.0f }));
+        // 帯は画面の左右端まで通す（文字幅に合わせると Tips ごとに幅が変わって落ち着かない）
+        SetActiveIf(tipBg_, visible);
+        if (visible && tipBg_) {
+            tipBg_->SetSize({ kCanvasWidth, kTipBgHeight });
+            tipBg_->SetColor({ 0.0f, 0.0f, 0.0f, kTipBgAlpha });
+        }
     }
     for (UIImage* corner : corners_) {
         if (corner) {
@@ -1002,25 +1021,17 @@ void GameComponents::ResultGaugeUIComponent::ApplyGauge()
     const float railBrightness = RailBrightness.Get();
     const Vector4 wood = Tinted({ 1.0f, 1.0f, 1.0f, 1.0f }, brightness);
     const Vector4 woodDim = Tinted({ 1.0f, 1.0f, 1.0f, 1.0f }, brightness * 0.55f);
-    // レールは「見たままの色」で描かれた版下なので、倍率だけだと緑と青が残って白茶ける。
-    // 実測（画面 146,117,73 ／ 版下 133,87,43）から逆算した比を掛けて、
-    // ローディング演出と同じ焦茶に寄せる
-    const Vector4 rail = Tinted({ 1.0f, 0.79f, 0.66f, 1.0f }, railBrightness);
     // トロッコの車体は無彩色なので、色味を足さず倍率だけ掛ける
     const Vector4 cartColor = Tinted({ 1.0f, 1.0f, 1.0f, 1.0f }, railBrightness);
     const float goal = GoalDistance();
     const float endX = DistanceToX(shownMeters_);
     const bool reached = shownMeters_ >= goal;
 
-    // 敷いたレールと、まだ敷いていない枕木
-    const float tilePitch = TiePitch();
-    for (UIImage* tile : railTiles_) {
-        if (!tile) {
-            continue;
-        }
-        const bool laid = tile->GetAnchoredPosition().x - tilePitch * 0.5f + 20.0f <= endX;
-        tile->SetActive(laid);
-        tile->SetColor(rail);
+    // 敷いたレール（板 1 枚を左端から現在地まで伸ばすだけ。中身が無地なので伸縮に継ぎ目が出ない）
+    if (railBar_) {
+        const float length = (std::max)(0.0f, endX - kRailLeft);
+        railBar_->SetSize({ length, kRailHeight });
+        railBar_->SetColor(wood);
     }
     for (UIImage* sleeper : sleepers_) {
         if (!sleeper) {
@@ -1036,10 +1047,6 @@ void GameComponents::ResultGaugeUIComponent::ApplyGauge()
         vine->SetActive(vine->GetAnchoredPosition().x < endX - 24.0f);
         vine->SetColor(wood);
     }
-    if (startPost_) {
-        startPost_->SetColor(wood);
-    }
-
     // 目盛り（100m ごと。最後の 1 本は目標地点なので、越えたら数字も色を変える）
     for (std::size_t i = 0; i < tickPosts_.size(); ++i) {
         const bool isGoal = (i + 1 == tickPosts_.size());
@@ -1049,7 +1056,7 @@ void GameComponents::ResultGaugeUIComponent::ApplyGauge()
         const bool passed = shownMeters_ >= meters;
         if (tickPosts_[i]) {
             SetActiveIf(tickPosts_[i], visible);
-            tickPosts_[i]->SetAnchoredPosition({ x, kRailY + 14.0f });
+            tickPosts_[i]->SetAnchoredPosition({ x, kTickPostY });
             tickPosts_[i]->SetColor(passed ? wood : woodDim);
         }
         if (tickTexts_[i]) {
@@ -1078,8 +1085,10 @@ void GameComponents::ResultGaugeUIComponent::ApplyGauge()
             recordPost_->SetColor(wood);
         }
         // 札は杭の真上に置いて、どの位置の記録なのかを迷わせない。
-        // 目標のゲートに重なるときだけ左へ逃がす
-        const float labelX = (std::min)(x, kGoalX - 210.0f);
+        // トロッコを避けて上げたぶん目標の看板と同じ高さになったので、
+        // 看板に触れる手前で左へ逃がす（看板の左端は kGoalX - kGateBeamWidth * 0.5）
+        const float labelX = (std::min)(
+            x, kGoalX - kGateBeamWidth * 0.5f - kRecordPlankWidth * 0.5f - 10.0f);
         PlacePlank(recordPlank_, { labelX, kRecordPlankY }, kRecordPlankWidth, kRecordPlankHeight);
         SetPlankColor(recordPlank_, wood);
         if (recordText_) {
@@ -1093,6 +1102,9 @@ void GameComponents::ResultGaugeUIComponent::ApplyGauge()
     const Vector4 gateWood = reached
         ? Tinted({ 1.0f, 1.0f, 1.0f, 1.0f }, brightness * 1.2f)
         : Tinted({ 1.0f, 1.0f, 1.0f, 1.0f }, brightness * 0.9f);
+    if (gatePost_) {
+        gatePost_->SetColor(gateWood);
+    }
     const float beamAngle = reached ? -0.055f : 0.0f;
     PlacePlank(gateBeam_, { kGoalX, kGateBeamY }, kGateBeamWidth, kPlankHeight, beamAngle);
     SetPlankColor(gateBeam_, gateWood);

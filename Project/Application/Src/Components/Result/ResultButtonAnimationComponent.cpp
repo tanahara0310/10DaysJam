@@ -118,9 +118,7 @@ void GameComponents::ResultButtonAnimationComponent::SetSelected(bool selected)
         to,
         0.10f,
         [this](const Vector4& color) {
-            if (text_) {
-                text_->SetColor(color);
-            }
+            ApplyColor(color);
         })
         .SetEase(EasingUtil::Type::EaseOutCubic)
         .SetLink(text_)
@@ -204,9 +202,7 @@ void GameComponents::ResultButtonAnimationComponent::PlayConfirmReaction(
                 endColor,
                 fadeDuration,
                 [this](const Vector4& color) {
-                    if (text_) {
-                        text_->SetColor(color);
-                    }
+                    ApplyColor(color);
                 })
                 .SetEase(EasingUtil::Type::EaseInCubic))
         .AppendCallback(std::move(onFinished))
@@ -249,9 +245,7 @@ void GameComponents::ResultButtonAnimationComponent::PlayUnselectedFade()
         endColor,
         duration,
         [this](const Vector4& color) {
-            if (text_) {
-                text_->SetColor(color);
-            }
+            ApplyColor(color);
         })
         .SetEase(EasingUtil::Type::EaseInCubic)
         .SetLink(text_)
@@ -325,6 +319,20 @@ void GameComponents::ResultButtonAnimationComponent::StartSelectedIdle()
         .SetLink(text_)
         .SetUpdateType(TweenUpdate::Unscaled)
         .SetId(tweenId_ + "_bob");
+}
+
+void GameComponents::ResultButtonAnimationComponent::ApplyColor(const Vector4& color)
+{
+    if (!text_) {
+        return;
+    }
+    text_->SetColor(color);
+    // アウトラインは文字と別の色を持っている（既定は黒・不透明固定）。
+    // フェード演出はここも一緒に動かさないと、文字が透明になった後もアウトラインの
+    // 輪郭線だけ画面に残ってしまう
+    Vector4 outline = text_->GetOutlineColor();
+    outline.w = color.w;
+    text_->SetOutline(outline, text_->GetOutlineWidth());
 }
 
 void GameComponents::ResultButtonAnimationComponent::StopTweens()
