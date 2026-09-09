@@ -364,9 +364,9 @@ void GameComponents::SpeedGaugeUIComponent::BuildParts()
     digitFontDesc.charsetUtf8 = "0123456789.";
     auto* digitFont = fontManager->Acquire(digitFontDesc);
 
-    // 単位はスタミナゲージの見出しと同じフォントで揃える
+    // 単位はタイトルの決定（スタート）UIと同じフォントで揃える
     MsdfFontDesc unitFontDesc;
-    unitFontDesc.filePath = L"Engine/Assets/font/851Gkktt_005.ttf";
+    unitFontDesc.filePath = L"Engine/Assets/font/x8y12pxDenkiChip.ttf";
     unitFontDesc.systemFamilyNames = { L"Yu Gothic UI", L"Meiryo", L"Segoe UI" };
     unitFontDesc.charsetUtf8 = "km/h";
     auto* unitFont = fontManager->Acquire(unitFontDesc);

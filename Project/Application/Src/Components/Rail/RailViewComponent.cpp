@@ -143,44 +143,6 @@ void GameComponents::RailViewComponent::Update() {
     UpdateRailJumpAnimations(Time::DeltaTime());
     UpdateConfirmationSounds(Time::DeltaTime());
     DrawRailModels();
-    
-    // LineManager のインスタンスを取得する
-    auto& lines = LineManager::GetInstance();
-    // 確定しているレールの座標を取得する
-    const auto& railMap = railPath_->GetRailMap();
-    for (size_t i = 0; i + 1 < railMap.size(); ++i) {
-        float x = static_cast<float>(railMap[i].first) * gridSize_;
-        float z = static_cast<float>(railMap[i].second) * gridSize_;
-
-        float nextX = static_cast<float>(railMap[i + 1].first) * gridSize_;
-        float nextZ = static_cast<float>(railMap[i + 1].second) * gridSize_;
-
-        // ラインを描画する
-        lines.DrawLine({ x, 1.0f, z }, { nextX, 1.0f, nextZ }, { 1.0f, 0.0f, 0.0f }, 1.0f, true);
-    }
-
-    // 確定していないレールの座標を取得する
-    const auto& railUndoStack = railPath_->GetRailUndoStack();
-    for (size_t i = 0; i + 1 < railUndoStack.size(); ++i) {
-        float x = static_cast<float>(railUndoStack[i].first) * gridSize_;
-        float z = static_cast<float>(railUndoStack[i].second) * gridSize_;
-
-        float nextX = static_cast<float>(railUndoStack[i + 1].first) * gridSize_;
-        float nextZ = static_cast<float>(railUndoStack[i + 1].second) * gridSize_;
-
-        // ラインを描画する
-        lines.DrawLine({ x, 1.0f, z }, { nextX, 1.0f, nextZ }, { 1.0f, 1.0f, 1.0f }, 1.0f, true);
-    }
-
-    // 確定したレールと確定していないレールの間のラインを描画する
-    if (!railMap.empty() && !railUndoStack.empty()) {
-        float x = static_cast<float>(railMap.back().first) * gridSize_;
-        float z = static_cast<float>(railMap.back().second) * gridSize_;
-        float nextX = static_cast<float>(railUndoStack.front().first) * gridSize_;
-        float nextZ = static_cast<float>(railUndoStack.front().second) * gridSize_;
-        // ラインを描画する
-        lines.DrawLine({ x, 1.0f, z }, { nextX, 1.0f, nextZ }, { 1.0f, 1.0f, 0.0f }, 1.0f, true);
-    }
 }
 
 void GameComponents::RailViewComponent::UpdateRailJumpAnimations(float deltaTime) {
@@ -270,8 +232,9 @@ void GameComponents::RailViewComponent::UpdateConfirmationSounds(float deltaTime
             const auto& rail = railPath_->GetRailMap()[i];
             const bool isStationRail = mapGenerator_ && mapGenerator_->IsStationRailCell(
                 static_cast<std::size_t>(rail.first), static_cast<std::size_t>(rail.second));
-            if (previousTime <= 0.0f && animationTime > 0.0f && onRailBuildSE_ && !isStationRail) {
-                onRailBuildSE_(confirmationSeVolume_, confirmationSoundPitches_[i]);
+            if (previousTime <= 0.0f && animationTime > 0.0f && onRailBuildSE_) {
+                onRailBuildSE_(
+                    confirmationSeVolume_, confirmationSoundPitches_[i], isStationRail);
             }
         }
     }
@@ -343,9 +306,6 @@ void GameComponents::RailViewComponent::DrawRailModels() {
         if (current.first < minVisibleX || current.first > maxVisibleX) {
             continue;
         }
-        const bool isStationRail = mapGenerator_->IsStationRailCell(
-            static_cast<std::size_t>(current.first), static_cast<std::size_t>(current.second));
-
         const bool hasPrevious = i > 0;
         const bool hasNext = i + 1 < railPath.size();
         // 接続先がまだないゲーム開始時の始点レールは右方向（+X）を向ける。
@@ -364,12 +324,9 @@ void GameComponents::RailViewComponent::DrawRailModels() {
             outgoing = incoming;
         }
 
-        const float jumpOffset = !isStationRail
-            ? GetRailJumpOffset(i)
-            : 0.0f;
-        const float bananaBuildRotation = !isStationRail
-            ? GetBananaBuildRotation(i, current.first, current.second)
-            : 0.0f;
+        const float jumpOffset = GetRailJumpOffset(i);
+        const float bananaBuildRotation =
+            GetBananaBuildRotation(i, current.first, current.second);
         const Vector3 position = {
             static_cast<float>(current.first) * gridSize_,
             railHeight + jumpOffset,
