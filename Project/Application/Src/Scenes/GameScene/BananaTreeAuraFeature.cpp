@@ -5,6 +5,7 @@
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/GameCore/GameSettingsComponent.h"
 #include "Components/Rail/RailPathComponent.h"
+#include "Components/UI/PauseMenuUIComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
 
 #include "GameObject/GameObjectManager.h"
@@ -128,11 +129,23 @@ namespace {
             }
         }
 
-        void Update(SceneContext&, SceneUpdatePhase phase) override
+        void Update(SceneContext& ctx, SceneUpdatePhase phase) override
         {
+            // ポーズメニューは PauseMenuFeature が PostSceneInitialize で作る。
+            // Feature の登録順に依存しないよう、全 Feature の初期化が終わった
+            // 最初の Update で 1 度だけ引く。
+            if (!pauseMenuResolved_) {
+                if (ctx.gameObjectManager) {
+                    pauseMenu_ = ctx.gameObjectManager
+                        ->FindFirstComponent<GameComponents::PauseMenuUIComponent>();
+                }
+                pauseMenuResolved_ = true;
+            }
+
             // RailBuilderComponent の更新後に判定し、レールを敷いたフレームですぐ消す。
             if (phase != SceneUpdatePhase::PostObjectUpdate ||
-                !cvEnabled.Get() || !mapGenerator_ || !railPath_) {
+                !cvEnabled.Get() || !mapGenerator_ || !railPath_ ||
+                (pauseMenu_ && pauseMenu_->IsVisible())) {
                 return;
             }
 
@@ -202,6 +215,8 @@ namespace {
         {
             mapGenerator_ = nullptr;
             railPath_ = nullptr;
+            pauseMenu_ = nullptr;
+            pauseMenuResolved_ = false;
             wavePhase_ = 0.0f;
         }
 
@@ -241,6 +256,8 @@ namespace {
 
         GameComponents::MapGeneratorComponent* mapGenerator_ = nullptr;
         GameComponents::RailPathComponent* railPath_ = nullptr;
+        GameComponents::PauseMenuUIComponent* pauseMenu_ = nullptr;
+        bool pauseMenuResolved_ = false;
         float wavePhase_ = 0.0f;
     };
 }

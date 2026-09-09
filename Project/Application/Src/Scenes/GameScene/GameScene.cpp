@@ -318,14 +318,18 @@ void GameScene::GameScene::OnInitialize() {
                 { .bus = AudioBus::SE });
         }
         };
-    std::function<void(float, float)> playRailBuildSe = [this](float volume, float pitch) {
+    std::function<void(float, float, bool)> playRailBuildSe =
+        [this](float volume, float pitch, bool isStationRail) {
         if (auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr) {
             CoreEngine::PlayParams params;
             params.bus = AudioBus::SE;
             params.volume = volume;
             params.pitch = pitch;
             audioSystem->PlayOneShot(
-                "Application/Assets/Sounds/SE/rail_build.mp3", params);
+                isStationRail
+                    ? "Application/Assets/Sounds/SE/build_station.mp3"
+                    : "Application/Assets/Sounds/SE/rail_build.mp3",
+                params);
         }
         };
 
