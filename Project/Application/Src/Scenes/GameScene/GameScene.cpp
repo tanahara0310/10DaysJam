@@ -6,9 +6,16 @@
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
-#include "EngineSystem/EngineSystem.h"
+#include "GameObject/GameObjectManager.h"
+#include "Graphics/Model/ModelManager.h"
+#include "Graphics/Model/ModelResource.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Particle/ParticleSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
 #include "OffscreenTrainIndicatorFeature.h"
+#include "BananaTreeAuraFeature.h"
+#include "GameEntranceFeature.h"
 #include "PauseMenuFeature.h"
 #include "RailDirectionGuideFeature.h"
 #include "SkyFogFeature.h"
@@ -30,7 +37,6 @@
 #include "Components/Rail/RailViewComponent.h"
 #include "Components/Train/SpawnPopComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
-#include "Components/UI/GameStartPromptAnimationComponent.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/GameResultData.h"
@@ -41,17 +47,183 @@
 #include "GameObjects/Effect/StationSlowdownEffect.h"
 #include "GameObjects/GameSceneObject.h"
 #include "UI/UIText.h"
+#include "Utility/JsonManager/JsonManager.h"
 
 #include <algorithm>
+#include <cctype>
+#include <filesystem>
 #include <string>
 
 using namespace CoreEngine;
 
 namespace {
     constexpr const char* kGameBgmPath = "Application/Assets/Sounds/BGM/Game_bgm.mp3";
+    constexpr const char* kMonkeyLaunchTrailPresetPath =
+        "Application/Assets/Presets/Particle/MonkeyLaunchTrail.json";
+    constexpr const char* kMonkeyLaunchParticleModel = "particle.obj";
+    constexpr const char* kMonkeyLaunchParticleTexture = "particle.png";
+
+    CoreEngine::ParticleSystem* CreateMonkeyLaunchTrail(
+        CoreEngine::GameObjectManager* objectManager,
+        CoreEngine::EngineSystem* engine,
+        const std::string& name) {
+        if (!engine || !objectManager) {
+            return nullptr;
+        }
+
+        auto* dxCommon = engine->GetService<CoreEngine::GraphicsCore>();
+        auto* resourceFactory = engine->GetService<CoreEngine::ResourceFactory>();
+        auto* modelManager = engine->GetService<CoreEngine::ModelManager>();
+        if (!dxCommon || !resourceFactory || !modelManager) {
+            CoreEngine::Logger::GetInstance().Errorf(
+                CoreEngine::LogCategory::Game,
+                "MonkeyLaunchTrail: 必要なサービスが揃っていないのでパーティクルを作れません");
+            return nullptr;
+        }
+
+        modelManager->PreloadModels({ kMonkeyLaunchParticleModel });
+        auto* modelResource = modelManager->GetModelResource(kMonkeyLaunchParticleModel);
+        if (!modelResource) {
+            CoreEngine::Logger::GetInstance().Errorf(
+                CoreEngine::LogCategory::Game,
+                "MonkeyLaunchTrail: モデルを読めませんでした: {}",
+                kMonkeyLaunchParticleModel);
+            return nullptr;
+        }
+
+        auto* particleSystem =
+            objectManager->AddObject(std::make_unique<CoreEngine::ParticleSystem>());
+        particleSystem->Initialize(dxCommon, resourceFactory, name);
+        particleSystem->SetTexture(kMonkeyLaunchParticleTexture);
+        particleSystem->SetModelResource(modelResource);
+        if (!particleSystem->LoadPreset(kMonkeyLaunchTrailPresetPath)) {
+            CoreEngine::Logger::GetInstance().Errorf(
+                CoreEngine::LogCategory::Game,
+                "MonkeyLaunchTrail: プリセットを読めませんでした: {}",
+                kMonkeyLaunchTrailPresetPath);
+            return nullptr;
+        }
+
+        return particleSystem;
+    }
+    constexpr const char* kStageProjectPath = "Application/Assets/Maps/stage_project.json";
 
     uint32_t ToUInt(int value, int minimum = 0) {
         return static_cast<uint32_t>(std::max(value, minimum));
+    }
+
+    std::string ToPortablePath(const std::filesystem::path& path) {
+        const std::u8string text = path.generic_u8string();
+        return std::string(text.begin(), text.end());
+    }
+
+    std::vector<std::string> ScanAreaCsvFiles(const std::string& areaName) {
+        const std::filesystem::path areaDirectory =
+            std::filesystem::path("Application") / "Assets" / "Maps" / "Areas" / areaName;
+        std::error_code ec;
+        if (!std::filesystem::is_directory(areaDirectory, ec)) {
+            return {};
+        }
+
+        std::vector<std::filesystem::path> csvFiles;
+        for (const auto& entry : std::filesystem::directory_iterator(areaDirectory, ec)) {
+            std::error_code fileError;
+            if (!entry.is_regular_file(fileError) || fileError) {
+                continue;
+            }
+            std::string extension = entry.path().extension().string();
+            std::transform(extension.begin(), extension.end(), extension.begin(),
+                [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+            if (extension == ".csv") {
+                csvFiles.push_back(entry.path());
+            }
+        }
+        std::sort(csvFiles.begin(), csvFiles.end(),
+            [](const std::filesystem::path& lhs, const std::filesystem::path& rhs) {
+                return lhs.filename().generic_u8string() < rhs.filename().generic_u8string();
+            });
+
+        std::vector<std::string> paths;
+        paths.reserve(csvFiles.size());
+        for (const auto& csvFile : csvFiles) {
+            paths.push_back(ToPortablePath(csvFile));
+        }
+        return paths;
+    }
+
+    void RefreshAreaCsvFiles(GameComponents::MapGenerationSettings& settings) {
+        bool hasArea1 = false;
+        for (auto& pool : settings.csvPools) {
+            const std::vector<std::string> scanned = ScanAreaCsvFiles(pool.name);
+            if (!scanned.empty()) {
+                pool.paths = scanned;
+            }
+            hasArea1 = hasArea1 || pool.name == "Area1";
+        }
+
+        // 構成JSONにArea1が無くても、フォルダーに置かれたチャンクは使えるようにする。
+        if (!hasArea1) {
+            const std::vector<std::string> area1Paths = ScanAreaCsvFiles("Area1");
+            if (!area1Paths.empty()) {
+                settings.csvPools.push_back({ "Area1", area1Paths });
+            }
+        }
+    }
+
+    GameComponents::MapGenerationSettings MakeDefaultMapSettings(std::size_t chunkSizeX) {
+        GameComponents::MapGenerationSettings settings;
+        settings.mode = GameComponents::MapGenerationMode::FixedThenRandomCsvPool;
+        settings.csvChunkSizeX = chunkSizeX;
+        settings.csvPools = {
+            { "Area1", {} },
+            { "Area2", {} },
+        };
+        settings.initialCsvPoolName = "Area1";
+        settings.fixedCsvPath = "Application/Assets/Maps/fixed.csv";
+        RefreshAreaCsvFiles(settings);
+        return settings;
+    }
+
+    void LoadStageProjectSettings(GameComponents::MapGenerationSettings& settings) {
+        const json root = JsonManager::GetInstance().LoadJson(kStageProjectPath);
+        if (root.empty() || !root.is_object()) {
+            return;
+        }
+
+        settings.csvChunkSizeX = std::max<std::size_t>(1,
+            JsonManager::SafeGet<std::size_t>(root, "chunkSizeX", settings.csvChunkSizeX));
+        settings.fixedCsvPath = JsonManager::SafeGet<std::string>(
+            root, "fixedCsvPath", settings.fixedCsvPath);
+        settings.initialCsvPoolName = JsonManager::SafeGet<std::string>(
+            root, "initialArea", settings.initialCsvPoolName);
+
+        if (root.contains("areas") && root["areas"].is_array()) {
+            std::vector<GameComponents::CsvMapPoolSettings> pools;
+            for (const auto& element : root["areas"]) {
+                if (!element.is_object()) {
+                    continue;
+                }
+                const std::string name = JsonManager::SafeGet<std::string>(
+                    element, "name", std::string{});
+                if (name.empty() || !element.contains("paths") || !element["paths"].is_array()) {
+                    continue;
+                }
+
+                GameComponents::CsvMapPoolSettings pool;
+                pool.name = name;
+                for (const auto& path : element["paths"]) {
+                    if (path.is_string()) {
+                        pool.paths.push_back(path.get<std::string>());
+                    }
+                }
+                pools.push_back(std::move(pool));
+            }
+            if (!pools.empty()) {
+                settings.csvPools = std::move(pools);
+            }
+        }
+        // Area1フォルダーを正として再走査するため、後から追加したCSVも自動で入る。
+        RefreshAreaCsvFiles(settings);
     }
 }
 
@@ -66,29 +238,16 @@ void GameScene::GameScene::OnInitialize() {
     // SkyFogFeature の雲で埋めるので、板を出すと雲も水場の滝も板に隠れてしまう。
     SetDefaultGroundEnabled(false);
 
-    // ゲーム開始時の目標距離を、右から中央へ入り、2秒滞在してから
-    // 左へ抜ける案内として表示する。
-    auto* startPrompt = CreateText(
-        "200ｍすすめ！",
-        72.0f,
-        UIAnchor::Center,
-        { 0.0f, 0.0f },
-        { 1.0f, 0.92f, 0.58f, 1.0f },
-        "GameStartDistancePrompt");
-    if (startPrompt) {
-        startPrompt->SetSerializeEnabled(false);
-        startPrompt->SetPivot({ 0.5f, 0.5f });
-        startPrompt->SetOutline({ 0.04f, 0.02f, 0.0f, 1.0f }, 0.045f);
-        startPrompt->SetSortOrder(1000);
-        startPrompt->AddComponent<GameComponents::GameStartPromptAnimationComponent>();
-    }
-
     // ========== 昼夜サイクル ==========
     // 時刻を進めて空と太陽・月を昼→夕→夜と変えるだけの Feature。
     // 進み方（1 周の秒数・開始時刻）は Engine Settings の "Time of Day" から調整する。
     AddFeature(std::make_unique<CoreEngine::TimeOfDayFeature>());
     // 夕方から夜にかけて灯る、ビルダーとトロッコの灯り（ポイントライト）
     AddFeature(std::make_unique<StageLightsFeature>());
+    // 突入演出（雲海ブレイク → もくひょう看板 → つなげ！！）と、200m 刻みの目標提示。
+    // 開幕の雲は Game.Fog.* を借りて書き換えるので、SkyFogFeature より先に登録すること
+    // （同じ FrameStart では登録順に回る。後にすると雲の反映が 1 フレーム遅れる）。
+    AddFeature(GameComponents::CreateGameEntranceFeature());
     // ステージのブロックより下を埋める雲（高さフォグ）。
     // 濃さ・色・高さは「ゲーム設定」の Game.Fog.* から調整する。
     AddFeature(GameComponents::CreateSkyFogFeature());
@@ -113,6 +272,9 @@ void GameScene::GameScene::OnInitialize() {
     // トロッコのアイコンと「あと○m」を出す案内。
     // 見た目は「ゲーム設定」の Game.TrainOffscreen.* から調整する。
     AddFeature(GameComponents::CreateOffscreenTrainIndicatorFeature());
+    // バナナの木の上下左右へ、レールが無い間だけ四角い波動を出して収穫範囲を示す。
+    // 見た目は「ゲーム設定」の Game.BananaTreeAura.* から調整する。
+    AddFeature(GameComponents::CreateBananaTreeAuraFeature());
 
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
@@ -183,30 +345,11 @@ void GameScene::GameScene::OnInitialize() {
     const uint32_t renderWorldDistance = ToUInt(
         GameComponents::GameSettings::RenderDistance.Get(), 1);
 
-    // FixedCsv にすると fixedCsvPath の1枚を使用し、終端以降はVoidになる。
-    // Procedural にすると従来のチップ単位のランダム生成を使用する。
-    GameComponents::MapGenerationSettings mapSettings;
-    mapSettings.mode = GameComponents::MapGenerationMode::RandomCsvPool;
-    mapSettings.csvChunkSizeX = ToUInt(
-        GameComponents::GameSettings::CsvChunkSizeX.Get(), 1);
-    // 1プール = 1エリアで使用する複数の区画CSV。地形の種類では分けない。
-    // Area内の全区画をランダム順で一巡し、使い切ったら再シャッフルする。
-    mapSettings.csvPools = {
-        { "Area1", {
-            "Application/Assets/Maps/Areas/Area1/chunk_01.csv",
-            "Application/Assets/Maps/Areas/Area1/chunk_02.csv",
-            "Application/Assets/Maps/Areas/Area1/chunk_03.csv",
-            "Application/Assets/Maps/Areas/Area1/chunk_04.csv",
-            "Application/Assets/Maps/Areas/Area1/chunk_05.csv",
-        } },
-        { "Area2", {
-            "Application/Assets/Maps/Areas/Area2/chunk_01.csv",
-            "Application/Assets/Maps/Areas/Area2/chunk_02.csv",
-            "Application/Assets/Maps/Areas/Area2/chunk_03.csv",
-        } },
-    };
-    mapSettings.initialCsvPoolName = "Area1";
-    mapSettings.fixedCsvPath = "Application/Assets/Maps/fixed.csv";
+    // 先頭は fixed.csv の実幅ぶんをそのまま使い、その終端からArea1の
+    // チャンクCSVを開始する。構成表を読めない場合はサンプルの既定値を使う。
+    GameComponents::MapGenerationSettings mapSettings = MakeDefaultMapSettings(
+        ToUInt(GameComponents::GameSettings::CsvChunkSizeX.Get(), 1));
+    LoadStageProjectSettings(mapSettings);
 
     // ========== オブジェクトの生成 ==========
     //　ゲームマスターの追加
@@ -319,6 +462,8 @@ void GameScene::GameScene::OnInitialize() {
         railPath->GetComponent<GameComponents::RailPathComponent>(),
         gameManagerComponent,
         hungerComponent);
+    // モデルの正面（-Z）をマップ右方向（+X）へ向ける。
+    trainTransform->Get().rotate.y = -1.57079632679f;
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
 
@@ -350,7 +495,8 @@ void GameScene::GameScene::OnInitialize() {
     auto* monkeyTransform = monkey->AddComponent<CoreEngine::TransformComponent>();
     monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
     monkeyTransform->Get().SetParent(&trainTransform->Get());
-    monkeyTransform->Get().rotate.y = 3.14f;
+    // 親のトロッコが右を向くため、サルは正面向きの相対回転にする。
+    monkeyTransform->Get().rotate.y = 0.0f;
     trainMovement->AddMonkey(monkeyTransform);
     hungerComponent->SetMonkeyAddedCallback(
         [this, trainMovement, monkeyTransform](std::size_t monkeyCount) {
@@ -380,7 +526,10 @@ void GameScene::GameScene::OnInitialize() {
                 addedTransform->Get().translate = monkeyTransform->Get().translate;
                 addedTransform->Get().rotate = monkeyTransform->Get().rotate;
                 addedTransform->Get().scale = monkeyTransform->Get().scale;
-                trainMovement->AddMonkey(addedTransform);
+                auto* monkeyLaunchTrail = CreateMonkeyLaunchTrail(
+                    &gameObjectManager_, engine_,
+                    "MonkeyLaunchTrail_" + std::to_string(monkeyCount));
+                trainMovement->AddMonkey(addedTransform, monkeyLaunchTrail);
             }
         });
 

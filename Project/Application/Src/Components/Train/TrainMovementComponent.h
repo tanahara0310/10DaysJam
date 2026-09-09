@@ -11,6 +11,7 @@
 
 namespace CoreEngine
 {
+    class ParticleSystem;
     class TransformComponent;
 }
 
@@ -80,7 +81,9 @@ namespace GameComponents
         void AddCarriage(CoreEngine::TransformComponent* carriageTransform,
             const CoreEngine::Vector3* scaleMultiplier = nullptr);
         // ゲームオーバー時に車両から切り離して飛ばすサルを登録する。
-        void AddMonkey(CoreEngine::TransformComponent* monkeyTransform);
+        // launchTrail はシーン初期化時に作っておいた飛行中の軌跡用パーティクル。
+        void AddMonkey(CoreEngine::TransformComponent* monkeyTransform,
+            CoreEngine::ParticleSystem* launchTrail = nullptr);
         // 岩破壊の投石中だけ列車の移動を停止・再開する
         void SetRockBreakPaused(bool paused) { isPausedForRockBreak_ = paused; }
         // 投石開始時に、その場でのジャンプを再生する
@@ -133,6 +136,8 @@ namespace GameComponents
         // carriageTransforms_ と同じ添字。null なら等倍で描く
         std::vector<const CoreEngine::Vector3*> carriageScaleMultipliers_;
         std::vector<CoreEngine::TransformComponent*> monkeyTransforms_;
+        // monkeyTransforms_ と同じ添字。null なら軌跡を出さずに飛ばす。
+        std::vector<CoreEngine::ParticleSystem*> monkeyLaunchTrails_;
         std::deque<std::pair<int32_t, int32_t>> traveledCells_;
         std::deque<std::size_t> pendingStationSteps_;
         std::size_t traveledBlockCount_ = 0;
@@ -151,6 +156,7 @@ namespace GameComponents
         float minMoveSpeed_ = 0.5f; // 線路長から計算された現在の最低移動速度
         float minimumSpeedIncreasePerRail_ = 0.05f; // レール1マスあたりの最低速度増加量
         float acceleration_ = 0.5f; // 毎秒の加速度（速度/秒）
+        float accelerationMonkeyBonusRate_ = 0.05f; // サル1匹追加ごとの加速度増加率
         float maximumMoveSpeed_ = 8.0f;
         float turnBlendRatio_ = 0.35f; // 曲がり角の前後で向きを補間する幅（マス比、0～0.5）
         std::size_t requiredRailCount_ = 5;

@@ -1,4 +1,10 @@
 {
+    "Game.BananaTreeAura.Color": [
+        1.0,
+        0.2816901206970215,
+        0.0,
+        1.0
+    ],
     "Game.Hud.Position": [
         32.0,
         190.0
@@ -139,7 +145,7 @@
     ],
     "r.LensFlare.Enabled": false,
     "r.MotionBlur.Enabled": true,
-    "r.MotionBlur.ShutterAngle": 36.16740798950195,
+    "r.MotionBlur.ShutterAngle": 29.62104606628418,
     "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,

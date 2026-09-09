@@ -41,6 +41,8 @@ namespace
     constexpr float kPanelHeight = 38.0f * kArtScale;  ///< board_mid.png の高さと一致させる
     constexpr float kCapWidth = 14.0f * kArtScale;
     constexpr float kInnerPadding = 10.0f * kArtScale;
+    /// 登場アニメーションで引っ込めるときに、板の右端を画面外へ出しておく余白 [px]
+    constexpr float kIntroMargin = 48.0f;
 
     /// board_mid.png に焼かれている枠の太さ（上下それぞれ）。実測 12px なので中身は 52px しかない
     constexpr float kBoardFrameInset = 6.0f * kArtScale;
@@ -282,6 +284,12 @@ namespace
         }
         return current + (diff > 0.0f ? maxDelta : -maxDelta);
     }
+}
+
+/// @note 上限を 2 まで許すのは、EaseOutBack を通した「行き過ぎ」をそのまま活かすため
+void GameComponents::SpeedGaugeUIComponent::SetIntroReveal(float reveal)
+{
+    introReveal_ = std::clamp(reveal, 0.0f, 2.0f);
 }
 
 void GameComponents::SpeedGaugeUIComponent::Awake()
@@ -617,9 +625,13 @@ void GameComponents::SpeedGaugeUIComponent::LayoutParts(float time)
         std::lerp(kDigitColor.z, kSlowdownDigitColor.z, slowdownRed),
         1.0f };
 
-    // スタミナゲージと同じ TopLeft アンカー。左上からの距離をそのまま使う
-    const Vector2 anchor = cvPosition.Get();
-    const Vector2 origin{ anchor.x, anchor.y + slowdownDip };
+    // スタミナゲージと同じ TopLeft アンカー。左上からの距離をそのまま使う。
+    // 横は突入演出あけの登場で、板の右端が画面外へ抜ける距離まで左へ寄せてから戻す。
+    // 縦は駅の減速で板ごと沈める。両方同時に起きても軸が違うのでそのまま足せる
+    const Vector2 basePosition = cvPosition.Get();
+    const Vector2 origin{
+        basePosition.x - (1.0f - introReveal_) * (basePosition.x + panelWidth + kIntroMargin),
+        basePosition.y + slowdownDip };
 
     // 板と端木は濃いめに落として緑へ寄せる。湿ったジャングルの木らしい色みにする
     const float brightness = cvBoardBrightness.Get();

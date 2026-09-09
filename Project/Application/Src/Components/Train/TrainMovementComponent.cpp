@@ -12,6 +12,7 @@
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/HungerComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
+#include "Particle/ParticleSystem.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Tween/Tween.h"
@@ -35,10 +36,9 @@ namespace {
 
     // ゲームオーバー時にサルを最終レールの先へ飛ばす時間と距離。
     constexpr float kGameOverLaunchRiseDuration = 0.26f;
-    constexpr float kGameOverLaunchFallDuration = 0.78f;
+    constexpr float kGameOverLaunchFlightDuration = 0.78f;
     constexpr float kGameOverLaunchDistance = 8.0f;
     constexpr float kGameOverLaunchRiseHeight = 5.5f;
-    constexpr float kGameOverLaunchEndHeight = 1.2f;
     constexpr float kGameOverLaunchSpin = 5.5f;
 
     // サルが飛び出す瞬間だけトロッコを傾け、すぐ元の姿勢へ戻す。
@@ -52,22 +52,26 @@ namespace {
     constexpr const char* kGameOverMonkeyVoicePath =
         "Application/Assets/Sounds/SE/guaaaaaaaaaaa.mp3";
 
-    // 進行方向のマス差分から Y 軸回転を求める。差分がなければ今の向きを保つ。
+    // モデルの正面が -Z のため、進行方向のマス差分から Y 軸回転を求める。
+    // 差分がなければ今の向きを保つ。
     float HeadingYawFromDelta(int32_t deltaX, int32_t deltaZ, float fallbackYaw) {
         if (deltaX > 0) {
-            return std::numbers::pi_v<float> * 0.5f;
-        }
-        if (deltaX < 0) {
             return -std::numbers::pi_v<float> * 0.5f;
         }
+        if (deltaX < 0) {
+            return std::numbers::pi_v<float> * 0.5f;
+        }
         if (deltaZ < 0) {
-            return std::numbers::pi_v<float>;
+            return 0.0f;
         }
         if (deltaZ > 0) {
-            return 0.0f;
+            return std::numbers::pi_v<float>;
         }
         return fallbackYaw;
     }
+
+    // ゲーム開始時は、まだ次のレールがないため右方向（+X）を向けておく。
+    constexpr float kInitialHeadingYaw = -std::numbers::pi_v<float> * 0.5f;
 }
 
 json GameComponents::TrainMovementComponent::OnSerialize() const {
@@ -78,6 +82,7 @@ json GameComponents::TrainMovementComponent::OnSerialize() const {
         { "initialGridZ", initialGridZ_ },
         { "minimumSpeedIncreasePerRail", minimumSpeedIncreasePerRail_ },
         { "acceleration", acceleration_ },
+        { "accelerationMonkeyBonusRate", accelerationMonkeyBonusRate_ },
         { "maximumMoveSpeed", maximumMoveSpeed_ },
         { "turnBlendRatio", turnBlendRatio_ },
         { "rockThrowJumpHeight", rockThrowJumpHeight_ },
@@ -95,6 +100,9 @@ void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
         JsonManager::SafeGet<float>(j, "minimumSpeedIncreasePerRail", minimumSpeedIncreasePerRail_));
     acceleration_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "acceleration", acceleration_));
+    accelerationMonkeyBonusRate_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(
+            j, "accelerationMonkeyBonusRate", accelerationMonkeyBonusRate_));
     maximumMoveSpeed_ = std::max(initialMoveSpeed_,
         JsonManager::SafeGet<float>(j, "maximumMoveSpeed", maximumMoveSpeed_));
     turnBlendRatio_ = std::clamp(
@@ -126,6 +134,8 @@ bool GameComponents::TrainMovementComponent::DrawInspector() {
     changed |= ImGui::DragFloat(
         "最低速度の増加量（レール1マス）", &minimumSpeedIncreasePerRail_, 0.001f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat("加速度（速度/秒）", &acceleration_, 0.01f, 0.0f, 20.0f);
+    changed |= ImGui::DragFloat(
+        "サル1匹追加ごとの加速度補正率", &accelerationMonkeyBonusRate_, 0.01f, 0.0f, 1.0f);
     changed |= ImGui::DragFloat("最高速度", &maximumMoveSpeed_, 0.01f, 0.01f, 100.0f);
     maximumMoveSpeed_ = std::max(maximumMoveSpeed_, initialMoveSpeed_);
     moveSpeed_ = std::min(moveSpeed_, maximumMoveSpeed_);
@@ -180,6 +190,10 @@ void GameComponents::TrainMovementComponent::Start() {
     transform_->Get().translate.x = static_cast<float>(gridX_) * gridSize_;
     transform_->Get().translate.y = BlockModelLayout::GetRailTopHeight(gridSize_);
     transform_->Get().translate.z = static_cast<float>(gridZ_) * gridSize_;
+    previousHeadingYaw_ = kInitialHeadingYaw;
+    headingYaw_ = kInitialHeadingYaw;
+    nextHeadingYaw_ = kInitialHeadingYaw;
+    transform_->Get().rotate.y = kInitialHeadingYaw;
     hasHeading_ = false;
     entryTurnProgress_ = 0.0f;
     traveledCells_.clear();
@@ -219,12 +233,21 @@ void GameComponents::TrainMovementComponent::Update() {
     }
 
     const std::size_t laidRailCount = railPath_->GetLaidRailCount();
+    const std::size_t monkeyCount = hunger_->GetMonkeyCount();
+    // サルが増えるほど、加速度とレールによる最低速度の伸びが少しだけ強くなる。
+    // 先頭の1匹では補正なしなので、従来の走行感を維持する。
+    const float monkeySpeedBonus = 1.0f +
+        static_cast<float>(monkeyCount > 0 ? monkeyCount - 1 : 0) *
+        accelerationMonkeyBonusRate_;
+    const float effectiveMinimumSpeedIncrease =
+        minimumSpeedIncreasePerRail_ * monkeySpeedBonus;
     const float dynamicMinimum = initialMoveSpeed_ +
-        static_cast<float>(laidRailCount) * minimumSpeedIncreasePerRail_;
+        static_cast<float>(laidRailCount) * effectiveMinimumSpeedIncrease;
     minMoveSpeed_ = std::min(dynamicMinimum, maximumMoveSpeed_);
-    // 駅で最低速度へ戻した後、毎秒の加速度で最高速度まで徐々に加速する。
+    const float effectiveAcceleration = acceleration_ * monkeySpeedBonus;
+    // 駅で最低速度へ戻した後、猿数に応じた加速度で最高速度まで徐々に加速する。
     moveSpeed_ = std::clamp(
-        moveSpeed_ + acceleration_ * deltaTime,
+        moveSpeed_ + effectiveAcceleration * deltaTime,
         minMoveSpeed_, maximumMoveSpeed_);
 
     // 移動量を計算する前に進行方向を確定し、曲がり角なら減速を反映する。
@@ -428,9 +451,11 @@ void GameComponents::TrainMovementComponent::AddCarriage(
     carriageTransform->Get().TransferMatrix();
 }
 
-void GameComponents::TrainMovementComponent::AddMonkey(TransformComponent* monkeyTransform) {
+void GameComponents::TrainMovementComponent::AddMonkey(
+    TransformComponent* monkeyTransform, ParticleSystem* launchTrail) {
     if (monkeyTransform) {
         monkeyTransforms_.push_back(monkeyTransform);
+        monkeyLaunchTrails_.push_back(launchTrail);
     }
 }
 
@@ -617,7 +642,7 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
         }
     }
 
-    const auto launchMonkey = [&launchDirection](
+    const auto launchMonkey = [this, &launchDirection](
         TransformComponent* monkeyTransform,
         std::size_t monkeyIndex) {
             if (!monkeyTransform || !monkeyTransform->GetOwner()) {
@@ -648,7 +673,8 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                 startPosition.z + launchDirection.z * distance * 0.42f };
             const Vector3 endPosition{
                 startPosition.x + launchDirection.x * distance,
-                startPosition.y + kGameOverLaunchEndHeight,
+                // 2 区間目も最高点の高さを保ち、落下させずに飛び続ける。
+                apexPosition.y,
                 startPosition.z + launchDirection.z * distance };
             const Vector3 midRotation{
                 startRotation.x + kGameOverLaunchSpin * 0.4f,
@@ -658,6 +684,15 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                 startRotation.x + kGameOverLaunchSpin,
                 startRotation.y - kGameOverLaunchSpin * 0.75f,
                 startRotation.z + kGameOverLaunchSpin * 0.9f };
+            ParticleSystem* launchTrail = monkeyIndex < monkeyLaunchTrails_.size()
+                ? monkeyLaunchTrails_[monkeyIndex]
+                : nullptr;
+            if (launchTrail) {
+                launchTrail->SetEmitterPosition(startPosition);
+                launchTrail->Clear();
+                launchTrail->GetMainModule().Restart();
+                launchTrail->GetEmissionModule().Play();
+            }
 
             TweenSequence launch;
             launch
@@ -677,19 +712,30 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                     Tween::MoveTo(
                         monkey,
                         endPosition,
-                        kGameOverLaunchFallDuration)
+                        kGameOverLaunchFlightDuration)
                     .SetEase(EasingUtil::Type::EaseInCubic))
                 .Join(
                     Tween::RotateTo(
                         monkey,
                         endRotation,
-                        kGameOverLaunchFallDuration)
+                        kGameOverLaunchFlightDuration)
                     .SetEase(EasingUtil::Type::EaseInCubic))
                 .SetLink(monkey)
                 .SetUpdateType(TweenUpdate::Unscaled)
                 .SetId(
                     std::string("game_over_monkey_launch_")
                     + std::to_string(monkeyIndex));
+            launch.Handle().OnUpdate([launchTrail, monkeyTransform](float) {
+                if (launchTrail && monkeyTransform) {
+                    launchTrail->SetEmitterPosition(monkeyTransform->Get().translate);
+                }
+            });
+            launch.OnComplete([launchTrail]() {
+                if (launchTrail) {
+                    // 生きている粒はそのまま残し、以降の放出だけ止める。
+                    launchTrail->Stop();
+                }
+            });
         };
 
     for (std::size_t index = 0; index < monkeyTransforms_.size(); ++index) {

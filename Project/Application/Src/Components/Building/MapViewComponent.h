@@ -6,12 +6,14 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "MapChipData.h"
 
 namespace CoreEngine {
     class Camera;
+    class GameObject;
     class MsdfFont;
     class Text3DObject;
 }
@@ -75,7 +77,10 @@ namespace GameComponents
         // ビューの表示距離Xを設定する
         void SetViewDistanceX(uint32_t distanceX) { viewDistanceX_ = distanceX; }
 
-        // サルを送り出した駅を1回だけ弾ませる。引数は駅チップのマス座標
+        // サルを送り出した駅を1回だけ弾ませる。引数は駅チップのマス座標。
+        // ここへ来た駅は「使い終わった駅」として覚え、以降は待機の呼吸を止めて
+        // 少し暗く落とす。動いている＝まだ取れる、の区別に使っている
+        // （理由は ApplyStationIdle のコメント）。
         void PlayStationPop(int32_t gridX, int32_t gridZ);
 
         // バナナを収穫された木を、取られた向きへしならせて揺らす。
@@ -86,6 +91,14 @@ namespace GameComponents
     private:
         // 再生中の駅の演出
         struct StationPop {
+            int32_t gridX = 0;
+            int32_t gridZ = 0;
+            float elapsed = 0.0f;
+        };
+
+        // サルを送り出し終えた駅。止めるだけなら座標だけで足りるが、
+        // 色を落とすのに掛かった時間が要るので経過時間も持つ
+        struct UsedStation {
             int32_t gridX = 0;
             int32_t gridZ = 0;
             float elapsed = 0.0f;
@@ -106,6 +119,33 @@ namespace GameComponents
         void UpdateStationPops(float deltaTime);
         // 指定マスの駅に掛ける拡縮を求める。演出していなければ等倍
         CoreEngine::Vector3 GetStationPopScale(std::size_t x, std::size_t z) const;
+        // まだ使っていない駅を呼吸させる。列車が近いほど強く・速くなる。
+        // cameraGridX はカメラ（＝ほぼ列車の先頭）のマス座標。段が付くので丸めないこと
+        void ApplyStationIdle(std::size_t x, std::size_t z, float cameraGridX,
+            CoreEngine::Vector3& scale) const;
+        // 列車がどれだけ近いか。0 で遠く、1 で真横
+        float GetStationApproach(std::size_t x, float cameraGridX) const;
+        // 駅の演出が共通で使う -1..1 の波。位相をずらせば別の拍になる
+        float GetStationWave(std::size_t x, std::size_t z,
+            float approach, float phaseOffset) const;
+        // 駅の屋根で待つサルを1匹描く。roofHeight は呼吸で上下する屋根の高さ、
+        // modelScale はマップ共通のモデル拡縮
+        void DrawStationMonkey(std::size_t x, std::size_t z, float cameraGridX,
+            float roofHeight, float modelScale);
+        // 使い終わった駅へ掛ける色。まだ使っていなければ std::nullopt
+        std::optional<CoreEngine::Vector4> GetStationTint(
+            std::size_t x, std::size_t z) const;
+        // 使い終わった駅として覚える。すでに覚えていれば何もしない
+        // （同じ駅で2回鳴っても色の落ち方が頭から鳴り直さないように）
+        void MarkStationUsed(int32_t gridX, int32_t gridZ);
+        // 使い終わっていれば記録を返す。まだなら nullptr
+        const UsedStation* FindUsedStation(std::size_t x, std::size_t z) const;
+        bool IsStationUsed(std::size_t x, std::size_t z) const;
+        // 使い終わった駅の経過時間を進める
+        void UpdateUsedStations(float deltaTime);
+        // 描画範囲から出た使い終わった駅を捨てる。マップは前へ無限に伸びるので、
+        // 覚えっぱなしにすると走った距離ぶん増え続ける
+        void ForgetUsedStationsBefore(std::size_t startX);
         // バナナの木の演出を進め、終わったものを捨てる
         void UpdateBananaTreeShakes(float deltaTime);
         // 指定マスのバナナの木のしなりを、渡された回転と拡縮へ反映する。
@@ -169,6 +209,65 @@ namespace GameComponents
         std::vector<StationPop> stationPops_;
         float stationPopDuration_ = 0.45f; // 沈んで跳ね返るまでの時間（秒）
         float stationPopSquash_ = 0.22f;   // 沈み込みの深さ（1.0 で高さが 0 になる）
+
+        // ===== 駅の待機演出（常時） =====
+        // 駅は「速度を捨ててサルを買う」決断点なので、何マス手前で気づけるかが
+        // そのまま操作の質になる。止まったままだと背景の岩と区別が付かないので、
+        // 静かに呼吸させておき、列車が近づくほど強く速くする。
+        //
+        // ■ 木と同じ「風で傾く」にはしていない
+        //   建物が風で揺れると倒れかけて見える。駅の語彙は連結ポップ
+        //   （GetStationPopScale）の伸び縮みで既に決まっているので、待機はその弱い版に
+        //   して、ポップが「同じ体の大きな反応」として読めるようにしてある。
+        //
+        // ■ 速さは周波数ではなく2本目の振幅で上げる
+        //   sin(t * freq) の freq を動かすと、変えた瞬間に位相が飛んで跳ねる。
+        //   遅い波は鳴らしっぱなしにして、速い波を近づくほど混ぜる。
+        //   位相が連続なので、どの距離から近づいても継ぎ目が出ない。
+        //
+        // ■ 近さは距離の絶対値で測る
+        //   通り過ぎた駅まで鳴らし続けると「まだ取れる」と嘘をつく。前後対称に
+        //   すれば、駅を通らず素通りした（＝使われないので下の使用済みにならない）駅も
+        //   離れるにつれて自然に静まる。
+        //
+        // ■ 見え方の目安（gridSize 1.0・1080p）
+        //   駅は高さ 3.0 モデル単位＝1.875m。見下ろし約48度なので縦の変位は画面上で
+        //   0.67倍に潰れる。待機 0.02 で屋根が約1.2px、接近 0.07 で約4.3px 動く。
+        //   縦だけでは弱いので、横は逆位相に縮めて足元の広がりでも読ませる。
+        std::vector<UsedStation> usedStations_;
+        float stationIdleBreath_ = 0.02f;  // 待機時の呼吸の振幅（縦の伸び縮み）
+        float stationWakeBreath_ = 0.07f;  // 最接近時の呼吸の振幅
+        float stationIdleSpeed_ = 0.45f;   // 鳴らしっぱなしにする遅い波の速さ（Hz）
+        float stationWakeSpeed_ = 1.5f;    // 近づくほど混ぜる速い波の速さ（Hz）
+        float stationWakeRange_ = 7.0f;    // 何マス手前から起き出すか
+        // 使い終わった駅へ掛ける明るさ。1.0 で色を変えない。
+        // 露出が掛かる画面では明るい側は白へ飽和して差が出ないので、暗い側で付ける。
+        float stationUsedTint_ = 0.78f;
+
+        // ===== 駅で待つサル =====
+        // 「この駅は何をくれるのか」をモデルで言わせる。プールは GameScene から
+        // 渡さず Start() で自前に生やす（距離目盛りの Text3DObject と同じ扱い）。
+        //
+        // ■ 屋根の上に載せる理由
+        //   station.obj は 1 マスをぎっしり埋めていて、地面には正面 0.06m しか余地が無い。
+        //   その先はレールのマスで、通るトロッコが 1 マス幅を丸ごと使うため、
+        //   地上へ置くとどこに立たせても壁かトロッコへめり込む。屋根の頂点だけが
+        //   0.5m 角の平らな面として空いていて、サルなら登っていておかしくない。
+        //
+        // ■ 屋根は呼吸で上下するので、乗せる高さは毎フレーム今の拡縮から出す
+        //   固定の高さで置くと、駅が縮んだときにサルだけ宙に浮く。
+        //
+        // ■ 拍は駅とずらす
+        //   同じ拍で動くと駅とサルが 1 つの塊に見える。跳ねは波の絶対値なので、
+        //   屋根へ着地しては跳ね上がる弾みになる（下へは沈まない）。
+        ModelRenderPoolComponent* stationMonkeyRenderPool_ = nullptr;
+        CoreEngine::GameObject* stationMonkeyPoolObject_ = nullptr;
+        // 列車に乗っているサルに対する大きさの比。屋根の面から食み出しすぎない値
+        float stationMonkeyScale_ = 0.85f;
+        // 最接近時の跳ね上がる高さ［マス］。遠いときはこの 0.35 倍まで落ちる
+        float stationMonkeyHop_ = 0.16f;
+        // 連結したあとに列車側（-Z）へ飛び降りる距離［マス］
+        float stationMonkeyLeap_ = 0.7f;
 
         std::vector<BananaTreeShake> bananaTreeShakes_;
         float bananaTreeShakeDuration_ = 0.55f; // しなって戻り切るまでの時間（秒）

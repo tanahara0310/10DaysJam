@@ -60,11 +60,15 @@ namespace GameEditors
         void ResizeDocumentToProjectSize();
         void PrepareNewChunkSuggestion();
         int FindAreaIndexForCsvPath(const std::string& path) const;
+        bool IsEditingFixedMap() const;
+        std::size_t GetInitialMapSizeX() const;
+        std::size_t GetInitialMapSizeZ() const;
 
         // ── 実行中マップ ──────────────────────────────────────
         GameComponents::MapGeneratorComponent* FindMapGenerator() const;
-        /// @brief 適用先として指定できる区画番号の上限
-        /// @details 遠い区画を指定すると、そこへ届くまでの地形が一気に生成されてしまう。
+        /// @brief 適用先として指定できるチャンク番号の上限
+        /// @details 固定マップの後ろへ置くチャンク番号。遠いチャンクを指定すると、
+        ///          そこへ届くまでの地形が一気に生成されてしまう。
         std::size_t GetMaxApplyChunkIndex(GameComponents::MapGeneratorComponent* generator) const;
         void ApplyToRuntime(GameComponents::MapGeneratorComponent* generator, std::size_t startX);
         void CaptureFromRuntime(GameComponents::MapGeneratorComponent* generator, std::size_t startX);

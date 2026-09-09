@@ -6,7 +6,7 @@
             "parameters": {
                 "rotate": [
                     0.0,
-                    0.0,
+                    -1.5707963705062866,
                     0.0
                 ],
                 "scale": [
@@ -25,13 +25,14 @@
         {
             "enabled": true,
             "parameters": {
-                "acceleration": 0.12999999523162842,
+                "acceleration": 0.10000000149011612,
+                "accelerationMonkeyBonusRate": 0.07999999821186066,
                 "gridSize": 1.0,
                 "initialGridX": 1,
                 "initialGridZ": 4,
                 "initialMoveSpeed": 1.5,
                 "maximumMoveSpeed": 32.0,
-                "minimumSpeedIncreasePerRail": 0.00800000037997961,
+                "minimumSpeedIncreasePerRail": 0.004999999888241291,
                 "requiredRailCount": 5,
                 "rockThrowJumpDuration": 0.3499999940395355,
                 "rockThrowJumpHeight": 0.6000000238418579,
