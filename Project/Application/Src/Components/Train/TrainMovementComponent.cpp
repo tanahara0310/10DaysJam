@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "TrainMovementComponent.h"
 
+#include "Audio/AudioSystem.h"
+#include "Camera/Shake/CameraShake.h"
+#include "Camera/Shake/CameraShakePresets.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
@@ -43,6 +46,11 @@ namespace {
     constexpr float kGameOverTrolleyTiltOutDuration = 0.36f;
     constexpr float kGameOverTrolleyTiltX = 0.30f;
     constexpr float kGameOverTrolleyTiltZ = 0.46f;
+
+    constexpr const char* kGameOverSePath =
+        "Application/Assets/Sounds/SE/gameover.mp3";
+    constexpr const char* kGameOverMonkeyVoicePath =
+        "Application/Assets/Sounds/SE/guaaaaaaaaaaa.mp3";
 
     // 進行方向のマス差分から Y 軸回転を求める。差分がなければ今の向きを保つ。
     float HeadingYawFromDelta(int32_t deltaX, int32_t deltaZ, float fallbackYaw) {
@@ -521,6 +529,26 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
     }
     gameOverLaunchStarted_ = true;
 
+    CameraShakeParams gameOverShake = CameraShakePresets::HeavyHit();
+    gameOverShake.positionAmplitude = gameOverShake.positionAmplitude * 2.0f;
+    gameOverShake.rotationAmplitude = gameOverShake.rotationAmplitude * 2.0f;
+    gameOverShake.duration = 1.2f;
+    gameOverShake.timeMode = ShakeTimeMode::Unscaled;
+    CameraShake::Play(gameOverShake);
+
+    if (GameObject* owner = GetOwner()) {
+        if (EngineSystem* engine = owner->GetEngineSystem()) {
+            if (auto* audioSystem = engine->GetService<AudioSystem>()) {
+                audioSystem->PlayOneShot(
+                    kGameOverSePath,
+                    { .bus = AudioBus::SE });
+                audioSystem->PlayOneShot(
+                    kGameOverMonkeyVoicePath,
+                    { .bus = AudioBus::SE });
+            }
+        }
+    }
+
     // ゲームオーバー判定は列車移動の途中で発生するため、直前に更新された
     // ローカル座標をワールド行列へ反映してから、サルの現在位置を取得する。
     if (transform_) {
@@ -554,8 +582,8 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
 
             const Vector3 originalRotation = trolleyTransform->Get().rotate;
             Vector3 tiltedRotation = originalRotation;
-            tiltedRotation.x -= kGameOverTrolleyTiltX;
-            tiltedRotation.z += kGameOverTrolleyTiltZ;
+            tiltedRotation.x += kGameOverTrolleyTiltX;
+            tiltedRotation.z -= kGameOverTrolleyTiltZ;
 
             TweenSequence tilt;
             tilt
