@@ -1,4 +1,10 @@
 {
+    "Game.BananaTreeAura.Color": [
+        1.0,
+        0.2816901206970215,
+        0.0,
+        1.0
+    ],
     "Game.Hud.Position": [
         32.0,
         190.0

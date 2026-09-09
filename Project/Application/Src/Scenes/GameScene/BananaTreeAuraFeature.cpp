@@ -100,8 +100,7 @@ namespace {
             { centerX - half, height, centerZ + half },
         };
 
-        // 目印として常に読めることを優先し、岩などのモデルにも隠さない。
-        constexpr bool kDepthTest = false;
+        constexpr bool kDepthTest = true;
         for (std::size_t i = 0; i < 4; ++i) {
             lines.DrawLine(corners[i], corners[(i + 1) % 4], color, alpha, kDepthTest);
         }
