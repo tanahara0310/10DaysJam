@@ -12,6 +12,7 @@
 #include "Scenes/TestScene/TestScene.h"
 #include "Scenes/TitleScene/TitleScene.h"
 #include "Scenes/ResultScene/ResultScene.h"
+#include "Components/GameCore/GameResultData.h" // TEMP-SCREENSHOT
 
 #include "Editor/Stage/StageEditorPanel.h"
 
@@ -85,6 +86,9 @@ void MyGame::CreateSceneManager()
 
 void MyGame::LoadInitialScene()
 {
+    // TEMP-SCREENSHOT
+    GameComponents::GameResultData::SetHorizontalProgressBlocks(384);
+    GameComponents::GameResultData::SetMonkeyCount(5);
     // 初期シーンを設定（トランジション無し）
     sceneManager_->SetInitialScene(kInitialSceneName);
 }

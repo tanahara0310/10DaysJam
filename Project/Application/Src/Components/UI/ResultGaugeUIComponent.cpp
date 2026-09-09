@@ -87,6 +87,9 @@ namespace
     constexpr float kRankY = 176.0f;
     constexpr float kRankHeight = 76.0f;
     constexpr float kRankFontSize = 26.0f;
+    constexpr float kBestY = 248.0f;         ///< 自己最高の板（記録の有無によらず出す）
+    constexpr float kBestHeight = 68.0f;
+    constexpr float kBestFontSize = 26.0f;
 
     constexpr float kNewRecordX = 470.0f;    ///< 見出し板の右肩にぶら下げる「しんきろく！」
     constexpr float kNewRecordY = 206.0f;
@@ -98,8 +101,13 @@ namespace
     constexpr float kRailLeft = -760.0f;     ///< 0m（画面 x=200）
     constexpr float kGoalX = 600.0f;         ///< 目標地点（画面 x=1560）
     constexpr float kRailHeight = 44.0f;
-    constexpr float kTileWidth = 52.0f;
-    constexpr float kSleeperStep = 56.0f;
+    // 目盛りは 100m 刻み。枕木（レールの縞）はその 100m を等分した位置に置くので、
+    // 何本目かを数えれば必ず目盛りの杭に行き当たる。px を直に刻むとここがずれる
+    constexpr float kTickStepMeters = 100.0f;
+    constexpr int kTiesPerTick = 5;          ///< 目盛り 1 つを枕木で等分する数（= 20m ごと）
+    constexpr float kMinTiePitch = 24.0f;    ///< これより詰まるなら等分数を落とす
+    constexpr int kMaxTicks = 16;
+    constexpr float kRailTieRatio = 0.805f;  ///< loading_rail.png の縞の中心（タイル幅に対する比）
     constexpr float kSleeperWidth = 15.0f;
     constexpr float kSleeperHeight = 34.0f;
     constexpr float kRailVineStep = 96.0f;
@@ -108,10 +116,6 @@ namespace
     constexpr float kTickPostWidth = 12.0f;
     constexpr float kTickPostHeight = 52.0f;
     constexpr float kGateBeamY = 638.0f;
-    constexpr float kGatePostTop = 668.0f;
-    constexpr float kGatePostBottom = 812.0f;
-    constexpr float kGatePostOffsetX = 80.0f;
-    constexpr float kGatePostWidth = 44.0f;
     constexpr float kGateBeamWidth = 350.0f;
     constexpr float kGateFontSize = 30.0f;
     constexpr float kCartWidth = 106.0f;
@@ -162,6 +166,7 @@ namespace
         "もくひょうまであとｍ"
         "とっぱ！＋"
         "まえのきろく"
+        "さいこうきろく"
         "しんきろく"
         "しょうごう"
         "はじめのいっぽ"
@@ -349,6 +354,8 @@ void GameComponents::ResultGaugeUIComponent::BuildParts()
     runMeters_ = GameComponents::GameResultData::GetHorizontalProgressMeters();
     const auto record = GameComponents::GameRecordStore::CommitRun(runMeters_);
     previousMeters_ = record.previous;
+    // CommitRun が返す best は今回を含まない。画面に出すのは今回を含めた自己最高
+    bestMeters_ = (std::max)(record.best, runMeters_);
     hasPrevious_ = record.hasPrevious;
     isNewBest_ = record.isNewBest && record.hasPrevious;
 
@@ -476,6 +483,12 @@ void GameComponents::ResultGaugeUIComponent::BuildSideBoards(int order)
     const float ratio = runMeters_ / (std::max)(1.0f, GoalDistance());
     rankText_ = SpawnText(font, std::string("しょうごう  ") + RankName(ratio),
                           "ResultRank", kRankFontSize, order + 6);
+
+    // 自己最高は「比べる相手」の中で唯一いつでも意味を持つ値なので、
+    // 記録が無い回（＝今回が最高）でも隠さずに出す
+    bestPlank_ = SpawnPlank("ResultBestBoard", order);
+    bestText_ = SpawnText(font, "さいこうきろく " + std::to_string(bestMeters_) + "ｍ",
+                          "ResultBest", kBestFontSize, order + 6);
 }
 
 void GameComponents::ResultGaugeUIComponent::BuildGauge(int order)
@@ -488,25 +501,33 @@ void GameComponents::ResultGaugeUIComponent::BuildGauge(int order)
     desc.charsetUtf8 = kPixelCharset;
     MsdfFont* font = fontManager ? fontManager->Acquire(desc) : nullptr;
 
+    // 枕木は 100m の目盛りを等分した位置に置く。こうすると 5 本ごとに目盛りの杭と重なり、
+    // 「何本進んだか」と「何 m 進んだか」が画面の上で一致する
+    const float pitch = TiePitch();
+    const int tieCount = static_cast<int>((kGoalX - kRailLeft) / pitch + 0.001f);
+
     // まだ敷いていない区間の枕木（薄い板）
-    for (float x = kRailLeft; x < kGoalX; x += kSleeperStep) {
+    for (int i = 1; i <= tieCount; ++i) {
         auto* sleeper = SpawnImage(kTexPlankMid, "ResultSleeper", order);
         if (!sleeper) {
             continue;
         }
         sleeper->SetSize({ kSleeperWidth, kSleeperHeight });
-        sleeper->SetAnchoredPosition({ x, kRailY });
+        sleeper->SetAnchoredPosition({ kRailLeft + pitch * static_cast<float>(i), kRailY });
         sleepers_.push_back(sleeper);
     }
 
-    // 走った区間に敷くレール。UI にクリップが無いので、タイルを必要な枚数だけ出す
-    for (float x = kRailLeft; x < kGoalX; x += kTileWidth) {
+    // 走った区間に敷くレール。UI にクリップが無いので、タイルを必要な枚数だけ出す。
+    // loading_rail.png は 1 枚に枕木の縞が 1 本あるので、その縞が上の枕木と同じ x へ
+    // 来るようタイルをずらす（0 本目は始点の杭の裏へ隠れる）
+    for (int i = 0; i <= tieCount; ++i) {
         auto* tile = SpawnImage(kTexRail, "ResultRailTile", order + 1);
         if (!tile) {
             continue;
         }
-        tile->SetSize({ kTileWidth, kRailHeight });
-        tile->SetAnchoredPosition({ x + kTileWidth * 0.5f, kRailY });
+        const float tieX = kRailLeft + pitch * static_cast<float>(i);
+        tile->SetSize({ pitch, kRailHeight });
+        tile->SetAnchoredPosition({ tieX + (0.5f - kRailTieRatio) * pitch, kRailY });
         tile->SetActive(false);
         railTiles_.push_back(tile);
     }
@@ -529,14 +550,17 @@ void GameComponents::ResultGaugeUIComponent::BuildGauge(int order)
         startPost_->SetAnchoredPosition({ kRailLeft - 24.0f, kRailY - 18.0f });
     }
 
-    // 目盛り（目標の 20 / 40 / 60 / 80%）
-    for (std::size_t i = 0; i < tickPosts_.size(); ++i) {
-        tickPosts_[i] = SpawnImage(kTexPlankMid, "ResultTick" + std::to_string(i), order + 2);
-        if (tickPosts_[i]) {
-            tickPosts_[i]->SetSize({ kTickPostWidth, kTickPostHeight });
+    // 目盛り（100m ごと。最後の 1 本は目標地点そのもの）
+    const int tickCount = std::clamp(
+        static_cast<int>(GoalDistance() / kTickStepMeters + 0.5f), 1, kMaxTicks);
+    for (int i = 0; i < tickCount; ++i) {
+        auto* post = SpawnImage(kTexPlankMid, "ResultTick" + std::to_string(i), order + 2);
+        if (post) {
+            post->SetSize({ kTickPostWidth, kTickPostHeight });
         }
-        tickTexts_[i] = SpawnText(font, "0", "ResultTickLabel" + std::to_string(i),
-                                  kTickFontSize, order + 6);
+        tickPosts_.push_back(post);
+        tickTexts_.push_back(SpawnText(font, "0", "ResultTickLabel" + std::to_string(i),
+                                       kTickFontSize, order + 6));
     }
 
     // 前回の記録の杭
@@ -547,14 +571,7 @@ void GameComponents::ResultGaugeUIComponent::BuildGauge(int order)
     recordPlank_ = SpawnPlank("ResultRecordBoard", order + 3);
     recordText_ = SpawnText(font, "", "ResultRecordLabel", kRecordFontSize, order + 6);
 
-    // 目標のゲート
-    gatePostLeft_ = SpawnImage(kTexPlankCapL, "ResultGatePostL", order + 3);
-    gatePostRight_ = SpawnImage(kTexPlankCapR, "ResultGatePostR", order + 3);
-    for (UIImage* post : { gatePostLeft_, gatePostRight_ }) {
-        if (post) {
-            post->SetSize({ kGatePostWidth, kGatePostBottom - kGatePostTop });
-        }
-    }
+    // 目標の看板。柱は立てない（ゲージの上に文字だけを吊るす）
     gateBeam_ = SpawnPlank("ResultGateBeam", order + 4);
     for (std::size_t i = 0; i < gateFoliage_.size(); ++i) {
         gateFoliage_[i] = SpawnImage(kTexFoliage, "ResultGateFoliage" + std::to_string(i), order + 5);
@@ -563,7 +580,6 @@ void GameComponents::ResultGaugeUIComponent::BuildGauge(int order)
         }
     }
     gateText_ = SpawnText(font, "もくひょう 0ｍ", "ResultGateLabel", kGateFontSize, order + 6);
-    goalTickText_ = SpawnText(font, "0", "ResultGoalTick", kTickFontSize, order + 6);
 
     cart_ = SpawnImage(kTexCart, "ResultCart", order + 7);
     if (cart_) {
@@ -655,6 +671,18 @@ void GameComponents::ResultGaugeUIComponent::BuildFooter(int order)
 float GameComponents::ResultGaugeUIComponent::GoalDistance() const
 {
     return (std::max)(1.0f, GoalMeters.Get());
+}
+
+float GameComponents::ResultGaugeUIComponent::TiePitch() const
+{
+    // 目盛り 1 つ（100m）ぶんの px を等分する。詰まりすぎるときだけ等分数を落として、
+    // 「枕木が目盛りに乗る」関係だけは崩さない
+    const float tickSpan = (kGoalX - kRailLeft) * (kTickStepMeters / GoalDistance());
+    int ties = kTiesPerTick;
+    while (ties > 1 && tickSpan / static_cast<float>(ties) < kMinTiePitch) {
+        --ties;
+    }
+    return tickSpan / static_cast<float>(ties);
 }
 
 float GameComponents::ResultGaugeUIComponent::DistanceToX(float meters) const
@@ -907,6 +935,12 @@ void GameComponents::ResultGaugeUIComponent::ApplyLayout(float deltaTime)
         rankText_->SetAnchoredPosition({ kSideCenterX, kRankY });
         rankText_->SetColor(Tinted(AccentColor.Get()));
     }
+    PlacePlank(bestPlank_, { kSideCenterX, kBestY }, kSideWidth, kBestHeight);
+    SetPlankColor(bestPlank_, wood);
+    if (bestText_) {
+        bestText_->SetAnchoredPosition({ kSideCenterX, kBestY });
+        bestText_->SetColor(Tinted(LabelColor.Get()));
+    }
 
     ApplyGauge();
 
@@ -979,11 +1013,12 @@ void GameComponents::ResultGaugeUIComponent::ApplyGauge()
     const bool reached = shownMeters_ >= goal;
 
     // 敷いたレールと、まだ敷いていない枕木
+    const float tilePitch = TiePitch();
     for (UIImage* tile : railTiles_) {
         if (!tile) {
             continue;
         }
-        const bool laid = tile->GetAnchoredPosition().x - kTileWidth * 0.5f + 20.0f <= endX;
+        const bool laid = tile->GetAnchoredPosition().x - tilePitch * 0.5f + 20.0f <= endX;
         tile->SetActive(laid);
         tile->SetColor(rail);
     }
@@ -1005,20 +1040,26 @@ void GameComponents::ResultGaugeUIComponent::ApplyGauge()
         startPost_->SetColor(wood);
     }
 
-    // 目盛り（目標の 20 / 40 / 60 / 80%）
+    // 目盛り（100m ごと。最後の 1 本は目標地点なので、越えたら数字も色を変える）
     for (std::size_t i = 0; i < tickPosts_.size(); ++i) {
-        const float meters = goal * 0.2f * static_cast<float>(i + 1);
+        const bool isGoal = (i + 1 == tickPosts_.size());
+        const float meters = isGoal ? goal : kTickStepMeters * static_cast<float>(i + 1);
+        const bool visible = meters <= goal + 0.5f;
         const float x = DistanceToX(meters);
         const bool passed = shownMeters_ >= meters;
         if (tickPosts_[i]) {
+            SetActiveIf(tickPosts_[i], visible);
             tickPosts_[i]->SetAnchoredPosition({ x, kRailY + 14.0f });
             tickPosts_[i]->SetColor(passed ? wood : woodDim);
         }
         if (tickTexts_[i]) {
+            SetActiveIf(tickTexts_[i], visible);
             tickTexts_[i]->SetText(std::to_string(static_cast<int>(meters + 0.5f)));
             tickTexts_[i]->SetAnchoredPosition({ x, kTickLabelY });
-            tickTexts_[i]->SetColor(Tinted(passed ? LabelColor.Get()
-                                                  : Vector4{ 0.16f, 0.20f, 0.15f, 1.0f }));
+            tickTexts_[i]->SetColor(Tinted(
+                (isGoal && reached) ? AccentColor.Get()
+                : passed ? LabelColor.Get()
+                : Vector4{ 0.16f, 0.20f, 0.15f, 1.0f }));
         }
     }
 
@@ -1048,20 +1089,10 @@ void GameComponents::ResultGaugeUIComponent::ApplyGauge()
         }
     }
 
-    // 目標のゲート。越えると梁が傾いて明るくなる
+    // 目標の看板。越えると板が傾いて明るくなる
     const Vector4 gateWood = reached
         ? Tinted({ 1.0f, 1.0f, 1.0f, 1.0f }, brightness * 1.2f)
         : Tinted({ 1.0f, 1.0f, 1.0f, 1.0f }, brightness * 0.9f);
-    if (gatePostLeft_) {
-        gatePostLeft_->SetAnchoredPosition({
-            kGoalX - kGatePostOffsetX, (kGatePostTop + kGatePostBottom) * 0.5f });
-        gatePostLeft_->SetColor(gateWood);
-    }
-    if (gatePostRight_) {
-        gatePostRight_->SetAnchoredPosition({
-            kGoalX + kGatePostOffsetX, (kGatePostTop + kGatePostBottom) * 0.5f });
-        gatePostRight_->SetColor(gateWood);
-    }
     const float beamAngle = reached ? -0.055f : 0.0f;
     PlacePlank(gateBeam_, { kGoalX, kGateBeamY }, kGateBeamWidth, kPlankHeight, beamAngle);
     SetPlankColor(gateBeam_, gateWood);
@@ -1078,12 +1109,6 @@ void GameComponents::ResultGaugeUIComponent::ApplyGauge()
         gateText_->SetUIRotation(beamAngle);
         gateText_->SetColor(Tinted(reached ? AccentColor.Get() : NumberColor.Get()));
     }
-    if (goalTickText_) {
-        goalTickText_->SetText(std::to_string(static_cast<int>(goal + 0.5f)));
-        goalTickText_->SetAnchoredPosition({ kGoalX, kTickLabelY });
-        goalTickText_->SetColor(Tinted(reached ? AccentColor.Get() : LabelColor.Get()));
-    }
-
     if (cart_) {
         cart_->SetAnchoredPosition({ endX - 4.0f, kCartY });
         cart_->SetColor(cartColor);
