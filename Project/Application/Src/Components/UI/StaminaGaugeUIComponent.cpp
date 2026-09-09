@@ -52,6 +52,8 @@ namespace
     constexpr float kCapWidth = 14.0f * kArtScale;
     constexpr float kPanelHeight = 38.0f * kArtScale;
     constexpr float kInnerPadding = 7.0f * kArtScale;
+    /// 登場アニメーションで引っ込めるときに、板の右端を画面外へ出しておく余白 [px]
+    constexpr float kIntroMargin = 48.0f;
     constexpr float kPipTopOffset = 11.0f * kArtScale; ///< 板の上端から粒の上端まで
     constexpr float kLeafWidth = 22.0f * kArtScale;
     constexpr float kLeafHeight = 13.0f * kArtScale;
@@ -360,6 +362,12 @@ bool GameComponents::StaminaGaugeUIComponent::TryGetFillFrontTarget(
     return true;
 }
 
+/// @note 上限を 2 まで許すのは、EaseOutBack を通した「行き過ぎ」をそのまま活かすため
+void GameComponents::StaminaGaugeUIComponent::SetIntroReveal(float reveal)
+{
+    introReveal_ = std::clamp(reveal, 0.0f, 2.0f);
+}
+
 void GameComponents::StaminaGaugeUIComponent::PlayGainPop(float staminaAmount)
 {
     if (!built_) {
@@ -519,9 +527,6 @@ void GameComponents::StaminaGaugeUIComponent::ApplyLayout(float time)
     const float gainPop = GainPopWave();
     const float gainStretch = 1.0f + gainPop * cvGainPopStretch.Get();
     const Vector2 basePosition = cvPosition.Get();
-    const Vector2 origin{
-        basePosition.x,
-        basePosition.y - gainPop * cvGainPopLift.Get() * scale };
     const float pipW = kPipWidth * scale;
     const float pipH = kPipHeight * scale;
     const float pitch = kPipPitch * scale;
@@ -541,6 +546,12 @@ void GameComponents::StaminaGaugeUIComponent::ApplyLayout(float time)
     }
     const float contentWidth = std::max(pipW, cursor - (pitch - pipW));
     const float panelWidth = capW * 2.0f + padding * 2.0f + contentWidth;
+
+    // 突入演出あけの登場。板の右端が画面外へ抜ける距離まで左へ寄せてから戻す。
+    // 幅が粒の数で変わるので、寄せ幅もそのつど板の実寸から求める。
+    const Vector2 origin{
+        basePosition.x - (1.0f - introReveal_) * (basePosition.x + panelWidth + kIntroMargin),
+        basePosition.y - gainPop * cvGainPopLift.Get() * scale };
 
     board_->SetAnchoredPosition({ origin.x + capW, origin.y });
     board_->SetSize({ panelWidth - capW * 2.0f, panelH });
