@@ -2,6 +2,8 @@
 #include "TrainMovementComponent.h"
 
 #include "Audio/AudioSystem.h"
+#include "Camera/Shake/CameraShake.h"
+#include "Camera/Shake/CameraShakePresets.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
@@ -527,6 +529,13 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
     }
     gameOverLaunchStarted_ = true;
 
+    CameraShakeParams gameOverShake = CameraShakePresets::HeavyHit();
+    gameOverShake.positionAmplitude = gameOverShake.positionAmplitude * 2.0f;
+    gameOverShake.rotationAmplitude = gameOverShake.rotationAmplitude * 2.0f;
+    gameOverShake.duration = 1.2f;
+    gameOverShake.timeMode = ShakeTimeMode::Unscaled;
+    CameraShake::Play(gameOverShake);
+
     if (GameObject* owner = GetOwner()) {
         if (EngineSystem* engine = owner->GetEngineSystem()) {
             if (auto* audioSystem = engine->GetService<AudioSystem>()) {
@@ -573,8 +582,8 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
 
             const Vector3 originalRotation = trolleyTransform->Get().rotate;
             Vector3 tiltedRotation = originalRotation;
-            tiltedRotation.x -= kGameOverTrolleyTiltX;
-            tiltedRotation.z += kGameOverTrolleyTiltZ;
+            tiltedRotation.x += kGameOverTrolleyTiltX;
+            tiltedRotation.z -= kGameOverTrolleyTiltZ;
 
             TweenSequence tilt;
             tilt
