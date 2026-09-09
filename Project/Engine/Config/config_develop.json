@@ -13,9 +13,9 @@
         "maxRTVDescriptors": 256,
         "maxSRVDescriptors": 2048
     },
-    "window": {
-        "height": 720,
-        "title": "CoreEngine",
-        "width": 1280
-    }
+  "window": {
+    "height": 720,
+    "title": "3006_つながザルをえない",
+    "width": 1280
+  }
 }
