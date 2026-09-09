@@ -739,6 +739,7 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                     + std::to_string(monkeyIndex));
             launch.Handle().OnUpdate([launchTrail, monkeyTransform](float) {
                 if (launchTrail && monkeyTransform) {
+                    // エミッターはサルに追従させ、生成済みパーティクルはワールド空間で残す。
                     launchTrail->SetEmitterPosition(monkeyTransform->Get().translate);
                 }
             });
