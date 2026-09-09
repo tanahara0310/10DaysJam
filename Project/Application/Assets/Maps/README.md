@@ -8,33 +8,35 @@ ImGuiが入るDebug・Developmentビルドだけの機能です。Releaseには�
 
 タブは3枚あります。
 
-- **区画を編集**: 開くCSVを選び、マス目を塗ります。
+- **区画を編集**: 開くCSVを選び、マス目を塗ります。起動直後は先頭の固定マップを開きます。
   左ドラッグで選択中のチップ、右ドラッグで空白に戻します。
   ホイールクリックでその場のチップを吸い取り、マップの上では数字キー `0`〜`6` でも切り替わります。
   `Ctrl+Z`（マップの上にカーソルがあるとき）とボタンでドラッグ1回ぶん戻せます。
   保存先はカレントディレクトリ基準なので、デバッグ実行なら `Project/Application/Assets/Maps/` の
   ファイルがそのまま書き換わります。
-- **実行中へ反映**: 編集中の区画を、いま動いているマップのどこへ置くかを決めて書き込みます。
+- **実行中へ反映**: 編集中の固定マップまたはチャンクを、いま動いているマップのどこへ置くかを決めて書き込みます。
+  固定マップは常にX=0、チャンクは固定マップの幅の後ろから配置します。
   シーンを読み直さずに地形が変わります。「生成済みの先端へ」を押すと、
   走っている列車のすぐ前に当たる区画番号が入ります。
   **書き換えるのは実行中のマップだけです。CSVは「区画を編集」タブで別に保存してください。**
 - **エリア構成**: エリアの追加・削除と、エリアに属する区画CSVの登録を編集し、
   `stage_project.json` へ保存します。
 
-`stage_project.json` はエディタが扱う構成表で、**ゲーム本体は読みません**。
-エリアの増減をゲームへ効かせるときは、このタブの下にあるコードをコピーして
-`GameScene::OnInitialize` の `mapSettings` と差し替えてください。
+`stage_project.json` はエディタとゲームが共有する構成表です。ゲーム起動時に読み込み、
+固定マップとエリアのCSV一覧へ反映します。下のコードは、構成をコードへ手動で埋め込みたい場合の
+互換用スニペットです。
 
 ## 生成方式の切り替え
 
 `Project/Application/Src/Scenes/GameScene/GameScene.cpp` の `mapSettings` を設定します。
 
-- `RandomCsvPool`（現在の設定）: 選択中の名前付きプール内の全CSVをランダム順で1回ずつ使用します。全CSVを使い切ると再シャッフルし、次の周回を始めます。周回の境界では同じCSVが連続する場合があります。
+- `FixedThenRandomCsvPool`（現在の設定）: `fixedCsvPath` のCSVを先頭へ実サイズで1回だけ置き、その終端から選択中の名前付きプール内のCSVをチャンク幅でランダム順に使用します。
+- `RandomCsvPool`: 選択中の名前付きプール内の全CSVをランダム順で1回ずつ使用します。全CSVを使い切ると再シャッフルし、次の周回を始めます。周回の境界では同じCSVが連続する場合があります。
 - `FixedCsv`: `fixedCsvPath` のCSVを原点から1回だけ使用します。CSVの終端以降はVoidです。
 - `Procedural`: 従来のチップ単位のランダム生成です。
 
 ```cpp
-mapSettings.mode = GameComponents::MapGenerationMode::RandomCsvPool;
+mapSettings.mode = GameComponents::MapGenerationMode::FixedThenRandomCsvPool;
 mapSettings.csvChunkSizeX = 10;
 mapSettings.csvPools = {
     { "Area1", {
@@ -78,9 +80,11 @@ Areas/
 初期設定は `Area1` です。エリア1中はArea1の3枚をランダム順で一巡させ、
 `Area2` へ切り替えるとArea2の3枚で新しい一巡を始めます。別エリアのCSVを混ぜて抽選しません。
 サンプルでは各エリアに異なる配置の3区画を用意しています。
-CSVを追加するときは、そのエリアのフォルダーへ置き、`csvPools` の該当エリアのリストへ登録してください（フォルダーの自動走査はしません）。
+CSVを追加するときは、そのエリアのフォルダーへ置くだけで、ゲーム起動時に `.csv` をファイル名順で自動走査します。
+構成JSONに登録されていない新しいCSVも読み込まれます。
 エリアを追加する場合は、`Area3` など新しいプール定義を追加します。
-固定CSVモードではこれらのプールを使用しません。
+`FixedThenRandomCsvPool` では固定CSVの後ろにこれらのプールを使用します。
+`FixedCsv` モードではプールを使用しません。
 
 - 初期選択: `initialCsvPoolName` を変更します。空文字なら最初のプールです。
 - 実行中のコード: `mapGeneratorComponent->SelectCsvPool("Area2");` と呼びます。
@@ -150,10 +154,11 @@ Ground,,Water
 - ランダム生成で読めないCSVが選ばれても、その区画を飛ばさずVoidで埋めます。
 - CSV方式では駅・資源・水場などを後から自動配置しません。駅の正面だけは、常設レール用の地面として扱います。
 
-ランダム区画は `csvChunkSizeX × mapSizeZ` マスです（現在は10×9）。
+ランダム区画は `csvChunkSizeX × mapSizeZ` マスです（Area1は現在10×11）。
 小さいCSVはVoidで埋め、大きいCSVのはみ出した部分は切り捨てます。
 `csvChunkSizeX = 0` は1に補正します。
-固定CSVのX幅は有効な行の最大列数、Z方向は `mapSizeZ` までです。
+固定CSVのX幅は有効な行の最大列数、Z方向は `mapSizeZ` までです。`FixedThenRandomCsvPool` ではこの幅が
+そのままチャンク開始位置になります。
 描画範囲などからCSVの外を要求されてもVoidで埋めます。固定CSVを繰り返すことはありません。
 
 サンプルは初期列車位置 `(3,4)` を地面にしています。

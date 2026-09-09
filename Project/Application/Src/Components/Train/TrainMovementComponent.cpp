@@ -52,22 +52,26 @@ namespace {
     constexpr const char* kGameOverMonkeyVoicePath =
         "Application/Assets/Sounds/SE/guaaaaaaaaaaa.mp3";
 
-    // 進行方向のマス差分から Y 軸回転を求める。差分がなければ今の向きを保つ。
+    // モデルの正面が -Z のため、進行方向のマス差分から Y 軸回転を求める。
+    // 差分がなければ今の向きを保つ。
     float HeadingYawFromDelta(int32_t deltaX, int32_t deltaZ, float fallbackYaw) {
         if (deltaX > 0) {
-            return std::numbers::pi_v<float> * 0.5f;
-        }
-        if (deltaX < 0) {
             return -std::numbers::pi_v<float> * 0.5f;
         }
+        if (deltaX < 0) {
+            return std::numbers::pi_v<float> * 0.5f;
+        }
         if (deltaZ < 0) {
-            return std::numbers::pi_v<float>;
+            return 0.0f;
         }
         if (deltaZ > 0) {
-            return 0.0f;
+            return std::numbers::pi_v<float>;
         }
         return fallbackYaw;
     }
+
+    // ゲーム開始時は、まだ次のレールがないため右方向（+X）を向けておく。
+    constexpr float kInitialHeadingYaw = -std::numbers::pi_v<float> * 0.5f;
 }
 
 json GameComponents::TrainMovementComponent::OnSerialize() const {
@@ -186,6 +190,10 @@ void GameComponents::TrainMovementComponent::Start() {
     transform_->Get().translate.x = static_cast<float>(gridX_) * gridSize_;
     transform_->Get().translate.y = BlockModelLayout::GetRailTopHeight(gridSize_);
     transform_->Get().translate.z = static_cast<float>(gridZ_) * gridSize_;
+    previousHeadingYaw_ = kInitialHeadingYaw;
+    headingYaw_ = kInitialHeadingYaw;
+    nextHeadingYaw_ = kInitialHeadingYaw;
+    transform_->Get().rotate.y = kInitialHeadingYaw;
     hasHeading_ = false;
     entryTurnProgress_ = 0.0f;
     traveledCells_.clear();
