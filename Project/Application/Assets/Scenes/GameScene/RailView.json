@@ -26,6 +26,7 @@
             "enabled": true,
             "parameters": {
                 "gridSize": 1.0,
+                "bananaBuildRotationTurns": 1.0,
                 "jumpDuration": 0.3499999940395355,
                 "jumpHeight": 0.800000011920929,
                 "seBasePitch": 0.8999999761581421,

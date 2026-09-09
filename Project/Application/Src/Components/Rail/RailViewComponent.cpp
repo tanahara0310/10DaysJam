@@ -15,6 +15,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <utility>
@@ -28,6 +29,34 @@ using namespace CoreEngine;
 namespace
 {
     constexpr float kPi = 3.14159265358979323846f;
+
+    bool IsAdjacentToBananaTree(
+        const GameComponents::MapGeneratorComponent* mapGenerator,
+        int32_t gridX,
+        int32_t gridZ) {
+        if (!mapGenerator) {
+            return false;
+        }
+
+        constexpr std::array<std::pair<int32_t, int32_t>, 4> kDirections = {
+            std::pair{ 1, 0 }, std::pair{ -1, 0 },
+            std::pair{ 0, 1 }, std::pair{ 0, -1 }
+        };
+        for (const auto& [offsetX, offsetZ] : kDirections) {
+            const int32_t adjacentX = gridX + offsetX;
+            const int32_t adjacentZ = gridZ + offsetZ;
+            if (adjacentX < 0 || adjacentZ < 0) {
+                continue;
+            }
+            if (mapGenerator->GetMapChip(
+                    static_cast<std::size_t>(adjacentX),
+                    static_cast<std::size_t>(adjacentZ)) ==
+                GameComponents::MapChipType::BananaTree) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 #ifdef USE_IMGUI
@@ -40,6 +69,7 @@ json GameComponents::RailViewComponent::OnSerialize() const {
         { "viewDistanceX", viewDistanceX_ },
         { "jumpHeight", railJumpHeight_ },
         { "jumpDuration", railJumpDuration_ },
+        { "bananaBuildRotationTurns", bananaBuildRotationTurns_ },
         { "staggerInterval", confirmationStaggerInterval_ },
         { "seVolume", confirmationSeVolume_ },
         { "seBasePitch", confirmationSeBasePitch_ },
@@ -53,6 +83,8 @@ void GameComponents::RailViewComponent::OnDeserialize(const json& j) {
     viewDistanceX_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "viewDistanceX", viewDistanceX_));
     railJumpHeight_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "jumpHeight", railJumpHeight_));
     railJumpDuration_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "jumpDuration", railJumpDuration_));
+    bananaBuildRotationTurns_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(j, "bananaBuildRotationTurns", bananaBuildRotationTurns_));
     confirmationStaggerInterval_ = std::max(0.0f, JsonManager::SafeGet<float>(j, "staggerInterval", confirmationStaggerInterval_));
     confirmationSeVolume_ = std::clamp(JsonManager::SafeGet<float>(j, "seVolume", confirmationSeVolume_), 0.0f, 1.0f);
     confirmationSeBasePitch_ = std::max(0.01f, JsonManager::SafeGet<float>(j, "seBasePitch", confirmationSeBasePitch_));
@@ -70,6 +102,8 @@ bool GameComponents::RailViewComponent::DrawInspector() {
     ImGui::TextDisabled("レール底面の高さ: %.3f", BlockModelLayout::GetSurfaceHeight(gridSize_));
     changed |= ImGui::DragFloat("設置ジャンプ高さ", &railJumpHeight_, 0.01f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat("設置ジャンプ時間", &railJumpDuration_, 0.01f, 0.01f, 10.0f);
+    changed |= ImGui::DragFloat("バナナ隣接時の設置回転（周）",
+        &bananaBuildRotationTurns_, 0.1f, 0.0f, 4.0f);
     changed |= ImGui::DragFloat("確定SEの時間差", &confirmationStaggerInterval_, 0.01f, 0.0f, 5.0f);
     changed |= ImGui::SliderFloat("確定SE音量", &confirmationSeVolume_, 0.0f, 1.0f);
     changed |= ImGui::DragFloat("確定SE基準ピッチ", &confirmationSeBasePitch_, 0.01f, 0.01f, 4.0f);
@@ -179,6 +213,27 @@ float GameComponents::RailViewComponent::GetRailJumpOffset(
         0.0f,
         1.0f);
     return std::sin(progress * kPi) * railJumpHeight_;
+}
+
+float GameComponents::RailViewComponent::GetBananaBuildRotation(
+    std::size_t pathIndex, int32_t gridX, int32_t gridZ) const {
+    if (pathIndex >= railJumpTimes_.size() || bananaBuildRotationTurns_ <= 0.0f ||
+        !IsAdjacentToBananaTree(mapGenerator_, gridX, gridZ)) {
+        return 0.0f;
+    }
+
+    const float animationTime = railJumpTimes_[pathIndex];
+    if (animationTime >= railJumpDuration_) {
+        return 0.0f;
+    }
+
+    const float progress = std::clamp(
+        animationTime / railJumpDuration_,
+        0.0f,
+        1.0f);
+    // ジャンプと一緒に回り始め、最後は元のレール向きへ滑らかに戻す。
+    const float easedProgress = progress * progress * (3.0f - 2.0f * progress);
+    return easedProgress * bananaBuildRotationTurns_ * 2.0f * kPi;
 }
 
 void GameComponents::RailViewComponent::UpdateConfirmationSounds(float deltaTime) {
@@ -311,6 +366,9 @@ void GameComponents::RailViewComponent::DrawRailModels() {
         const float jumpOffset = !isStationRail
             ? GetRailJumpOffset(i)
             : 0.0f;
+        const float bananaBuildRotation = !isStationRail
+            ? GetBananaBuildRotation(i, current.first, current.second)
+            : 0.0f;
         const Vector3 position = {
             static_cast<float>(current.first) * gridSize_,
             railHeight + jumpOffset,
@@ -338,13 +396,13 @@ void GameComponents::RailViewComponent::DrawRailModels() {
             incoming.second * outgoing.first;
         if (hasPrevious && hasNext && turn > 0) {
             railLeftPool_->Draw(
-                position, { 0.0f, yawFromDirection(incoming), 0.0f }, scale);
+                position, { 0.0f, yawFromDirection(incoming) + bananaBuildRotation, 0.0f }, scale);
         } else if (hasPrevious && hasNext && turn < 0) {
             railRightPool_->Draw(
-                position, { 0.0f, yawFromDirection(incoming), 0.0f }, scale);
+                position, { 0.0f, yawFromDirection(incoming) + bananaBuildRotation, 0.0f }, scale);
         } else {
             railPool_->Draw(
-                position, { 0.0f, yawFromDirection(outgoing), 0.0f }, scale);
+                position, { 0.0f, yawFromDirection(outgoing) + bananaBuildRotation, 0.0f }, scale);
         }
     }
 }
