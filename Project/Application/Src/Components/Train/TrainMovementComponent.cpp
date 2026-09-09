@@ -12,6 +12,7 @@
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/HungerComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
+#include "Particle/ParticleSystem.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Tween/Tween.h"
@@ -442,9 +443,11 @@ void GameComponents::TrainMovementComponent::AddCarriage(
     carriageTransform->Get().TransferMatrix();
 }
 
-void GameComponents::TrainMovementComponent::AddMonkey(TransformComponent* monkeyTransform) {
+void GameComponents::TrainMovementComponent::AddMonkey(
+    TransformComponent* monkeyTransform, ParticleSystem* launchTrail) {
     if (monkeyTransform) {
         monkeyTransforms_.push_back(monkeyTransform);
+        monkeyLaunchTrails_.push_back(launchTrail);
     }
 }
 
@@ -631,7 +634,7 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
         }
     }
 
-    const auto launchMonkey = [&launchDirection](
+    const auto launchMonkey = [this, &launchDirection](
         TransformComponent* monkeyTransform,
         std::size_t monkeyIndex) {
             if (!monkeyTransform || !monkeyTransform->GetOwner()) {
@@ -673,6 +676,15 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                 startRotation.x + kGameOverLaunchSpin,
                 startRotation.y - kGameOverLaunchSpin * 0.75f,
                 startRotation.z + kGameOverLaunchSpin * 0.9f };
+            ParticleSystem* launchTrail = monkeyIndex < monkeyLaunchTrails_.size()
+                ? monkeyLaunchTrails_[monkeyIndex]
+                : nullptr;
+            if (launchTrail) {
+                launchTrail->SetEmitterPosition(startPosition);
+                launchTrail->Clear();
+                launchTrail->GetMainModule().Restart();
+                launchTrail->GetEmissionModule().Play();
+            }
 
             TweenSequence launch;
             launch
@@ -705,6 +717,17 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                 .SetId(
                     std::string("game_over_monkey_launch_")
                     + std::to_string(monkeyIndex));
+            launch.Handle().OnUpdate([launchTrail, monkeyTransform](float) {
+                if (launchTrail && monkeyTransform) {
+                    launchTrail->SetEmitterPosition(monkeyTransform->Get().translate);
+                }
+            });
+            launch.OnComplete([launchTrail]() {
+                if (launchTrail) {
+                    // 生きている粒はそのまま残し、以降の放出だけ止める。
+                    launchTrail->Stop();
+                }
+            });
         };
 
     for (std::size_t index = 0; index < monkeyTransforms_.size(); ++index) {

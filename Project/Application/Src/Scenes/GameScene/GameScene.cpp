@@ -6,7 +6,12 @@
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
-#include "EngineSystem/EngineSystem.h"
+#include "GameObject/GameObjectManager.h"
+#include "Graphics/Model/ModelManager.h"
+#include "Graphics/Model/ModelResource.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Particle/ParticleSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
 #include "PauseMenuFeature.h"
 #include "RailDirectionGuideFeature.h"
@@ -46,6 +51,54 @@ using namespace CoreEngine;
 
 namespace {
     constexpr const char* kGameBgmPath = "Application/Assets/Sounds/BGM/Game_bgm.mp3";
+    constexpr const char* kMonkeyLaunchTrailPresetPath =
+        "Application/Assets/Presets/Particle/MonkeyLaunchTrail.json";
+    constexpr const char* kMonkeyLaunchParticleModel = "particle.obj";
+    constexpr const char* kMonkeyLaunchParticleTexture = "particle.png";
+
+    CoreEngine::ParticleSystem* CreateMonkeyLaunchTrail(
+        CoreEngine::GameObjectManager* objectManager,
+        CoreEngine::EngineSystem* engine,
+        const std::string& name) {
+        if (!engine || !objectManager) {
+            return nullptr;
+        }
+
+        auto* dxCommon = engine->GetService<CoreEngine::GraphicsCore>();
+        auto* resourceFactory = engine->GetService<CoreEngine::ResourceFactory>();
+        auto* modelManager = engine->GetService<CoreEngine::ModelManager>();
+        if (!dxCommon || !resourceFactory || !modelManager) {
+            CoreEngine::Logger::GetInstance().Errorf(
+                CoreEngine::LogCategory::Game,
+                "MonkeyLaunchTrail: 必要なサービスが揃っていないのでパーティクルを作れません");
+            return nullptr;
+        }
+
+        modelManager->PreloadModels({ kMonkeyLaunchParticleModel });
+        auto* modelResource = modelManager->GetModelResource(kMonkeyLaunchParticleModel);
+        if (!modelResource) {
+            CoreEngine::Logger::GetInstance().Errorf(
+                CoreEngine::LogCategory::Game,
+                "MonkeyLaunchTrail: モデルを読めませんでした: {}",
+                kMonkeyLaunchParticleModel);
+            return nullptr;
+        }
+
+        auto* particleSystem =
+            objectManager->AddObject(std::make_unique<CoreEngine::ParticleSystem>());
+        particleSystem->Initialize(dxCommon, resourceFactory, name);
+        particleSystem->SetTexture(kMonkeyLaunchParticleTexture);
+        particleSystem->SetModelResource(modelResource);
+        if (!particleSystem->LoadPreset(kMonkeyLaunchTrailPresetPath)) {
+            CoreEngine::Logger::GetInstance().Errorf(
+                CoreEngine::LogCategory::Game,
+                "MonkeyLaunchTrail: プリセットを読めませんでした: {}",
+                kMonkeyLaunchTrailPresetPath);
+            return nullptr;
+        }
+
+        return particleSystem;
+    }
 
     uint32_t ToUInt(int value, int minimum = 0) {
         return static_cast<uint32_t>(std::max(value, minimum));
@@ -340,7 +393,9 @@ void GameScene::GameScene::OnInitialize() {
     monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
     monkeyTransform->Get().SetParent(&trainTransform->Get());
     monkeyTransform->Get().rotate.y = 3.14f;
-    trainMovement->AddMonkey(monkeyTransform);
+    auto* monkeyLaunchTrail = CreateMonkeyLaunchTrail(
+        &gameObjectManager_, engine_, "MonkeyLaunchTrail_0");
+    trainMovement->AddMonkey(monkeyTransform, monkeyLaunchTrail);
     hungerComponent->SetMonkeyAddedCallback(
         [this, trainMovement, monkeyTransform](std::size_t monkeyCount) {
             auto* carriage = CreateObject<GameSceneObject>(
@@ -369,7 +424,10 @@ void GameScene::GameScene::OnInitialize() {
                 addedTransform->Get().translate = monkeyTransform->Get().translate;
                 addedTransform->Get().rotate = monkeyTransform->Get().rotate;
                 addedTransform->Get().scale = monkeyTransform->Get().scale;
-                trainMovement->AddMonkey(addedTransform);
+                auto* monkeyLaunchTrail = CreateMonkeyLaunchTrail(
+                    &gameObjectManager_, engine_,
+                    "MonkeyLaunchTrail_" + std::to_string(monkeyCount));
+                trainMovement->AddMonkey(addedTransform, monkeyLaunchTrail);
             }
         });
 
