@@ -13,7 +13,7 @@ namespace GameComponents
         static void Reset()
         {
             horizontalProgressBlocks_ = 0;
-            monkeyCount_ = 1;
+            monkeyCount_ = 0;
             brokenRockCount_ = 0;
             bananaHarvestCount_ = 0;
         }
@@ -73,7 +73,7 @@ namespace GameComponents
 
     private:
         static inline uint32_t horizontalProgressBlocks_ = 0;
-        static inline std::size_t monkeyCount_ = 1;
+        static inline std::size_t monkeyCount_ = 0;
         static inline std::size_t brokenRockCount_ = 0;
         static inline std::size_t bananaHarvestCount_ = 0;
     };

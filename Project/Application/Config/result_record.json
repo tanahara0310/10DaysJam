@@ -1,5 +1,5 @@
 {
-    "bestMeters": 250,
-    "hasLast": true,
-    "lastMeters": 1
+    "bestMeters": 0,
+    "hasLast": false,
+    "lastMeters": 0
 }

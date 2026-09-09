@@ -77,10 +77,16 @@ namespace
     constexpr float kHangingVineX[] = {
         -420.0f, -300.0f, -160.0f, 0.0f, 160.0f, 300.0f, 420.0f };
 
-    // 画面右上に常設するポーズの操作ヒント
-    constexpr float kHudWidth = 430.0f;
+    // 画面右上に常設するポーズの操作ヒント。
+    // 板幅は固定せず、今出している文言の実寸から決める（HudPlankWidth）。
+    // ESC とゲームパッドで文言の長さが違うので、固定幅にすると片方が間延びする
     constexpr float kHudTop = 40.0f;
-    constexpr float kHudCenterX = kScreenHalfWidth - kHudWidth * 0.5f - 48.0f;
+    /// 文字の左右に空ける幅。木口（kCapWidth）に文字が乗らない値にすること
+    constexpr float kHudTextPadding = 56.0f;
+    /// 文字を取れなかったときの下限。木口 2 つぶんは要る
+    constexpr float kHudMinWidth = 200.0f;
+    /// 画面右端から板の右端まで。板幅が変わっても右肩の位置は動かない
+    constexpr float kHudRightMargin = 48.0f;
     /// 登場アニメーションで引っ込めるときに、板の左端を画面外へ出しておく余白 [px]
     constexpr float kIntroMargin = 48.0f;
 
@@ -94,13 +100,13 @@ namespace
     // ───────────────────────────────────────────────────────────────
     constexpr const char* kTitleText = "ぽーずちゅう";
     constexpr const char* kItemTexts[] = { "つづける", "さいしょから", "タイトルへ" };
-    constexpr const char* kHudKeyboard = "ESC ひとやすみ";
-    constexpr const char* kHudGamepad = "START ひとやすみ";
+    constexpr const char* kHudKeyboard = "ESC ぽーず";
+    constexpr const char* kHudGamepad = "START ぽーず";
     // ドット絵のフォントなので、字送りが崩れないよう 12px（1 文字の高さ）の
     // 整数倍に揃えてある。中途半端な値にするとドットがボケる
     constexpr float kTitleFontSize = 96.0f;
     constexpr float kItemFontSize = 48.0f;
-    constexpr float kHudFontSize = 36.0f;
+    constexpr float kHudFontSize = 48.0f;
     constexpr float kOutlineWidth = 0.05f;
 
     // ───────────────────────────────────────────────────────────────
@@ -156,7 +162,7 @@ namespace
 
     CVar<Vector4> cvTitleColor{
         "Game.PauseMenu.TitleColor", { 0.944f, 0.413f, 0.053f, 1.0f },
-        "「ひとやすみ」の文字色。画面で (230,196,62) に見える値" };
+        "「ぽーずちゅう」の文字色。画面で (230,196,62) に見える値" };
 
     CVar<Vector4> cvItemColor{
         "Game.PauseMenu.ItemColor", { 0.735f, 0.546f, 0.296f, 1.0f },
@@ -215,6 +221,13 @@ namespace
         image->SetSortOrder(sortOrder);
         image->SetActive(false);
         return image;
+    }
+
+    /// @brief 操作ヒントの板幅。今出している文言の実寸に余白を足したもの
+    float HudPlankWidth(const UIText* text)
+    {
+        const float textWidth = text ? text->GetMeasuredSize().x : 0.0f;
+        return std::max(kHudMinWidth, textWidth + kHudTextPadding * 2.0f);
     }
 
     /// @brief 生成済みのフォントで UIText を 1 つ生む
@@ -475,8 +488,10 @@ void GameComponents::PauseMenuUIComponent::Tick(float unscaledDeltaTime)
         // 画面右上のヒントだけ置き直す。
         // 突入演出あけの登場では、板の左端が画面外へ抜ける距離まで右へ寄せてから戻す。
         const float sway = std::sin(swayTimer_ * kSwaySpeed) * kSwayAngle * 0.5f;
-        const float hudX = kHudCenterX + (1.0f - introReveal_)
-            * (kScreenHalfWidth - kHudCenterX + kHudWidth * 0.5f + kIntroMargin);
+        const float hudWidth = HudPlankWidth(hudText_);
+        const float hudCenterX = kScreenHalfWidth - hudWidth * 0.5f - kHudRightMargin;
+        const float hudX = hudCenterX + (1.0f - introReveal_)
+            * (kScreenHalfWidth - hudCenterX + hudWidth * 0.5f + kIntroMargin);
         for (auto* image : { hudPlank_.mid, hudPlank_.capLeft, hudPlank_.capRight }) {
             if (image) {
                 const float b = cvBrightness.Get() * exposureScale_;
@@ -484,7 +499,7 @@ void GameComponents::PauseMenuUIComponent::Tick(float unscaledDeltaTime)
             }
         }
         PlacePlank(hudPlank_, { hudX, kHudTop + kPlankHeight * 0.5f },
-                   kHudWidth, 1.0f, 1.0f, sway);
+                   hudWidth, 1.0f, 1.0f, sway);
         const float bright = cvBrightness.Get() * exposureScale_;
         if (hudText_) {
             const Vector4 c = cvItemColor.Get();
@@ -495,7 +510,7 @@ void GameComponents::PauseMenuUIComponent::Tick(float unscaledDeltaTime)
         }
         if (hudLeaf_) {
             hudLeaf_->SetAnchoredPosition(
-                { hudX - kHudWidth * 0.5f + 6.0f, kHudTop + 4.0f });
+                { hudX - hudWidth * 0.5f + 6.0f, kHudTop + 4.0f });
             hudLeaf_->SetUIRotation(sway - 0.5f);
             hudLeaf_->SetColor({ bright, bright, bright, 1.0f });
         }
