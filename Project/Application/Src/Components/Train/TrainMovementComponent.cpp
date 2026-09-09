@@ -12,6 +12,7 @@
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/HungerComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
+#include "Particle/ParticleSystem.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Tween/Tween.h"
@@ -35,10 +36,9 @@ namespace {
 
     // ゲームオーバー時にサルを最終レールの先へ飛ばす時間と距離。
     constexpr float kGameOverLaunchRiseDuration = 0.26f;
-    constexpr float kGameOverLaunchFallDuration = 0.78f;
+    constexpr float kGameOverLaunchFlightDuration = 0.78f;
     constexpr float kGameOverLaunchDistance = 8.0f;
     constexpr float kGameOverLaunchRiseHeight = 5.5f;
-    constexpr float kGameOverLaunchEndHeight = 1.2f;
     constexpr float kGameOverLaunchSpin = 5.5f;
 
     // サルが飛び出す瞬間だけトロッコを傾け、すぐ元の姿勢へ戻す。
@@ -451,9 +451,11 @@ void GameComponents::TrainMovementComponent::AddCarriage(
     carriageTransform->Get().TransferMatrix();
 }
 
-void GameComponents::TrainMovementComponent::AddMonkey(TransformComponent* monkeyTransform) {
+void GameComponents::TrainMovementComponent::AddMonkey(
+    TransformComponent* monkeyTransform, ParticleSystem* launchTrail) {
     if (monkeyTransform) {
         monkeyTransforms_.push_back(monkeyTransform);
+        monkeyLaunchTrails_.push_back(launchTrail);
     }
 }
 
@@ -640,7 +642,7 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
         }
     }
 
-    const auto launchMonkey = [&launchDirection](
+    const auto launchMonkey = [this, &launchDirection](
         TransformComponent* monkeyTransform,
         std::size_t monkeyIndex) {
             if (!monkeyTransform || !monkeyTransform->GetOwner()) {
@@ -671,7 +673,8 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                 startPosition.z + launchDirection.z * distance * 0.42f };
             const Vector3 endPosition{
                 startPosition.x + launchDirection.x * distance,
-                startPosition.y + kGameOverLaunchEndHeight,
+                // 2 区間目も最高点の高さを保ち、落下させずに飛び続ける。
+                apexPosition.y,
                 startPosition.z + launchDirection.z * distance };
             const Vector3 midRotation{
                 startRotation.x + kGameOverLaunchSpin * 0.4f,
@@ -681,6 +684,15 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                 startRotation.x + kGameOverLaunchSpin,
                 startRotation.y - kGameOverLaunchSpin * 0.75f,
                 startRotation.z + kGameOverLaunchSpin * 0.9f };
+            ParticleSystem* launchTrail = monkeyIndex < monkeyLaunchTrails_.size()
+                ? monkeyLaunchTrails_[monkeyIndex]
+                : nullptr;
+            if (launchTrail) {
+                launchTrail->SetEmitterPosition(startPosition);
+                launchTrail->Clear();
+                launchTrail->GetMainModule().Restart();
+                launchTrail->GetEmissionModule().Play();
+            }
 
             TweenSequence launch;
             launch
@@ -700,19 +712,30 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                     Tween::MoveTo(
                         monkey,
                         endPosition,
-                        kGameOverLaunchFallDuration)
+                        kGameOverLaunchFlightDuration)
                     .SetEase(EasingUtil::Type::EaseInCubic))
                 .Join(
                     Tween::RotateTo(
                         monkey,
                         endRotation,
-                        kGameOverLaunchFallDuration)
+                        kGameOverLaunchFlightDuration)
                     .SetEase(EasingUtil::Type::EaseInCubic))
                 .SetLink(monkey)
                 .SetUpdateType(TweenUpdate::Unscaled)
                 .SetId(
                     std::string("game_over_monkey_launch_")
                     + std::to_string(monkeyIndex));
+            launch.Handle().OnUpdate([launchTrail, monkeyTransform](float) {
+                if (launchTrail && monkeyTransform) {
+                    launchTrail->SetEmitterPosition(monkeyTransform->Get().translate);
+                }
+            });
+            launch.OnComplete([launchTrail]() {
+                if (launchTrail) {
+                    // 生きている粒はそのまま残し、以降の放出だけ止める。
+                    launchTrail->Stop();
+                }
+            });
         };
 
     for (std::size_t index = 0; index < monkeyTransforms_.size(); ++index) {

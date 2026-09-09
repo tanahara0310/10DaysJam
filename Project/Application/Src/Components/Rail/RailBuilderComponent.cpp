@@ -22,6 +22,7 @@
 #include "Utility/Random/RandomGenerator.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <utility>
 
@@ -37,8 +38,10 @@ namespace {
         "Application/Assets/Sounds/SE/rock_throw.mp3";
     constexpr const char* kRockBreakSePath =
         "Application/Assets/Sounds/SE/rock_break.mp3";
+    constexpr const char* kBananaBuildSePath =
+        "Application/Assets/Sounds/SE/banana_build.mp3";
 
-    void PlayRockSe(GameObject* owner, const char* path) {
+    void PlayRandomPitchSe(GameObject* owner, const char* path) {
         if (!owner) {
             return;
         }
@@ -50,6 +53,34 @@ namespace {
                 { .bus = AudioBus::SE,
                   .pitch = RandomGenerator::GetInstance().GetFloat(1.0f, 1.3f) });
         }
+    }
+
+    bool IsAdjacentToBananaTree(
+        const GameComponents::MapGeneratorComponent* mapGenerator,
+        int32_t gridX,
+        int32_t gridZ) {
+        if (!mapGenerator) {
+            return false;
+        }
+
+        constexpr std::array<std::pair<int32_t, int32_t>, 4> kDirections = {
+            std::pair{ 1, 0 }, std::pair{ -1, 0 },
+            std::pair{ 0, 1 }, std::pair{ 0, -1 }
+        };
+        for (const auto& [offsetX, offsetZ] : kDirections) {
+            const int32_t adjacentX = gridX + offsetX;
+            const int32_t adjacentZ = gridZ + offsetZ;
+            if (adjacentX < 0 || adjacentZ < 0) {
+                continue;
+            }
+            if (mapGenerator->GetMapChip(
+                    static_cast<std::size_t>(adjacentX),
+                    static_cast<std::size_t>(adjacentZ)) ==
+                GameComponents::MapChipType::BananaTree) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
@@ -398,7 +429,11 @@ void GameComponents::RailBuilderComponent::Update() {
         return;
     }
 
-    OnBuildSE_();
+    if (IsAdjacentToBananaTree(mapGenerator_, nextX, nextZ)) {
+        PlayRandomPitchSe(GetOwner(), kBananaBuildSePath);
+    } else {
+        OnBuildSE_();
+    }
 
     gridPosX_ = nextX;
     gridPosZ_ = nextZ;
@@ -486,7 +521,7 @@ void GameComponents::RailBuilderComponent::StartNextRockThrow() {
         CompleteRockBreak();
         return;
     }
-    PlayRockSe(GetOwner(), kRockThrowSePath);
+    PlayRandomPitchSe(GetOwner(), kRockThrowSePath);
 }
 
 void GameComponents::RailBuilderComponent::CompleteRockBreak() {
@@ -501,7 +536,7 @@ void GameComponents::RailBuilderComponent::CompleteRockBreak() {
         static_cast<std::size_t>(completed.gridZ),
         MapChipType::Ground);
 
-    PlayRockSe(GetOwner(), kRockBreakSePath);
+    PlayRandomPitchSe(GetOwner(), kRockBreakSePath);
 
     // 岩が砕けた瞬間にカメラを揺らす。強さは Game.CameraShake.RockBreak.* で調整する。
     RockBreakShakeSettingsComponent::PlayRockBreak();

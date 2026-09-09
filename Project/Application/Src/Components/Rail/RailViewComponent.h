@@ -75,6 +75,9 @@ namespace GameComponents
         // 矢印で新しく置かれたレールを、その場で跳ねさせる
         void UpdateRailJumpAnimations(float deltaTime);
         float GetRailJumpOffset(std::size_t pathIndex) const;
+        // バナナの木に隣接する新設レールだけ、ジャンプ中にY軸回転させる
+        float GetBananaBuildRotation(std::size_t pathIndex,
+            int32_t gridX, int32_t gridZ) const;
         // 列車が通過して確定したレールに、確定順に少しずつ遅らせてSEを鳴らす
         void UpdateConfirmationSounds(float deltaTime);
 
@@ -95,6 +98,7 @@ namespace GameComponents
         uint32_t viewDistanceX_ = 30;
         float railJumpHeight_ = 0.8f;
         float railJumpDuration_ = 0.35f;
+        float bananaBuildRotationTurns_ = 1.0f;
         float confirmationStaggerInterval_ = 0.06f;
         float confirmationSeVolume_ = 0.45f;
         float confirmationSeBasePitch_ = 0.9f;

@@ -6,8 +6,14 @@
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
-#include "EngineSystem/EngineSystem.h"
+#include "GameObject/GameObjectManager.h"
+#include "Graphics/Model/ModelManager.h"
+#include "Graphics/Model/ModelResource.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Particle/ParticleSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
+#include "BananaTreeAuraFeature.h"
 #include "GameEntranceFeature.h"
 #include "PauseMenuFeature.h"
 #include "RailDirectionGuideFeature.h"
@@ -51,6 +57,54 @@ using namespace CoreEngine;
 
 namespace {
     constexpr const char* kGameBgmPath = "Application/Assets/Sounds/BGM/Game_bgm.mp3";
+    constexpr const char* kMonkeyLaunchTrailPresetPath =
+        "Application/Assets/Presets/Particle/MonkeyLaunchTrail.json";
+    constexpr const char* kMonkeyLaunchParticleModel = "particle.obj";
+    constexpr const char* kMonkeyLaunchParticleTexture = "particle.png";
+
+    CoreEngine::ParticleSystem* CreateMonkeyLaunchTrail(
+        CoreEngine::GameObjectManager* objectManager,
+        CoreEngine::EngineSystem* engine,
+        const std::string& name) {
+        if (!engine || !objectManager) {
+            return nullptr;
+        }
+
+        auto* dxCommon = engine->GetService<CoreEngine::GraphicsCore>();
+        auto* resourceFactory = engine->GetService<CoreEngine::ResourceFactory>();
+        auto* modelManager = engine->GetService<CoreEngine::ModelManager>();
+        if (!dxCommon || !resourceFactory || !modelManager) {
+            CoreEngine::Logger::GetInstance().Errorf(
+                CoreEngine::LogCategory::Game,
+                "MonkeyLaunchTrail: 必要なサービスが揃っていないのでパーティクルを作れません");
+            return nullptr;
+        }
+
+        modelManager->PreloadModels({ kMonkeyLaunchParticleModel });
+        auto* modelResource = modelManager->GetModelResource(kMonkeyLaunchParticleModel);
+        if (!modelResource) {
+            CoreEngine::Logger::GetInstance().Errorf(
+                CoreEngine::LogCategory::Game,
+                "MonkeyLaunchTrail: モデルを読めませんでした: {}",
+                kMonkeyLaunchParticleModel);
+            return nullptr;
+        }
+
+        auto* particleSystem =
+            objectManager->AddObject(std::make_unique<CoreEngine::ParticleSystem>());
+        particleSystem->Initialize(dxCommon, resourceFactory, name);
+        particleSystem->SetTexture(kMonkeyLaunchParticleTexture);
+        particleSystem->SetModelResource(modelResource);
+        if (!particleSystem->LoadPreset(kMonkeyLaunchTrailPresetPath)) {
+            CoreEngine::Logger::GetInstance().Errorf(
+                CoreEngine::LogCategory::Game,
+                "MonkeyLaunchTrail: プリセットを読めませんでした: {}",
+                kMonkeyLaunchTrailPresetPath);
+            return nullptr;
+        }
+
+        return particleSystem;
+    }
     constexpr const char* kStageProjectPath = "Application/Assets/Maps/stage_project.json";
 
     uint32_t ToUInt(int value, int minimum = 0) {
@@ -213,6 +267,9 @@ void GameScene::GameScene::OnInitialize() {
     // 戻る（Undo）向きだけは別の記号にしてある。
     // 見た目は「ゲーム設定」の Game.RailGuide.* から調整する。
     AddFeature(GameComponents::CreateRailDirectionGuideFeature());
+    // バナナの木の上下左右へ、レールが無い間だけ四角い波動を出して収穫範囲を示す。
+    // 見た目は「ゲーム設定」の Game.BananaTreeAura.* から調整する。
+    AddFeature(GameComponents::CreateBananaTreeAuraFeature());
 
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;
@@ -464,7 +521,10 @@ void GameScene::GameScene::OnInitialize() {
                 addedTransform->Get().translate = monkeyTransform->Get().translate;
                 addedTransform->Get().rotate = monkeyTransform->Get().rotate;
                 addedTransform->Get().scale = monkeyTransform->Get().scale;
-                trainMovement->AddMonkey(addedTransform);
+                auto* monkeyLaunchTrail = CreateMonkeyLaunchTrail(
+                    &gameObjectManager_, engine_,
+                    "MonkeyLaunchTrail_" + std::to_string(monkeyCount));
+                trainMovement->AddMonkey(addedTransform, monkeyLaunchTrail);
             }
         });
 
