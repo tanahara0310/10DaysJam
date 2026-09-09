@@ -35,10 +35,9 @@ namespace {
 
     // ゲームオーバー時にサルを最終レールの先へ飛ばす時間と距離。
     constexpr float kGameOverLaunchRiseDuration = 0.26f;
-    constexpr float kGameOverLaunchFallDuration = 0.78f;
+    constexpr float kGameOverLaunchFlightDuration = 0.78f;
     constexpr float kGameOverLaunchDistance = 8.0f;
     constexpr float kGameOverLaunchRiseHeight = 5.5f;
-    constexpr float kGameOverLaunchEndHeight = 1.2f;
     constexpr float kGameOverLaunchSpin = 5.5f;
 
     // サルが飛び出す瞬間だけトロッコを傾け、すぐ元の姿勢へ戻す。
@@ -663,7 +662,8 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                 startPosition.z + launchDirection.z * distance * 0.42f };
             const Vector3 endPosition{
                 startPosition.x + launchDirection.x * distance,
-                startPosition.y + kGameOverLaunchEndHeight,
+                // 2 区間目も最高点の高さを保ち、落下させずに飛び続ける。
+                apexPosition.y,
                 startPosition.z + launchDirection.z * distance };
             const Vector3 midRotation{
                 startRotation.x + kGameOverLaunchSpin * 0.4f,
@@ -692,13 +692,13 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                     Tween::MoveTo(
                         monkey,
                         endPosition,
-                        kGameOverLaunchFallDuration)
+                        kGameOverLaunchFlightDuration)
                     .SetEase(EasingUtil::Type::EaseInCubic))
                 .Join(
                     Tween::RotateTo(
                         monkey,
                         endRotation,
-                        kGameOverLaunchFallDuration)
+                        kGameOverLaunchFlightDuration)
                     .SetEase(EasingUtil::Type::EaseInCubic))
                 .SetLink(monkey)
                 .SetUpdateType(TweenUpdate::Unscaled)
