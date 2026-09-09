@@ -122,7 +122,7 @@
     ],
     "r.LensFlare.Enabled": false,
     "r.MotionBlur.Enabled": true,
-    "r.MotionBlur.ShutterAngle": 95.29142761230469,
+    "r.MotionBlur.ShutterAngle": 8.527750968933105,
     "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,
