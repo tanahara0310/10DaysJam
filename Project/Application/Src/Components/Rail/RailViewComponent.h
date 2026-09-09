@@ -35,7 +35,7 @@ namespace GameComponents
             GameComponents::ModelRenderPoolComponent* bridgePool = nullptr,
             GameComponents::MapGeneratorComponent* mapGenerator = nullptr,
             CoreEngine::Camera* viewCamera = nullptr,
-            std::function<void(float, float)> onRailBuildSE = nullptr,
+            std::function<void(float, float, bool)> onRailBuildSE = nullptr,
             uint32_t viewDistanceX = 30)
             : gridSize_(gridSize), railPath_(railPath),
             railPool_(railPool),
@@ -111,7 +111,7 @@ namespace GameComponents
         std::vector<float> confirmationSoundTimes_;
         std::vector<float> confirmationSoundPitches_;
 
-        // 引数は音量、ピッチの順
-        std::function<void(float, float)> onRailBuildSE_ = nullptr;
+        // 引数は音量、ピッチ、駅レールかどうかの順
+        std::function<void(float, float, bool)> onRailBuildSE_ = nullptr;
     };
 }

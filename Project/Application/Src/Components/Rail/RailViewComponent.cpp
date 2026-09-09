@@ -232,8 +232,9 @@ void GameComponents::RailViewComponent::UpdateConfirmationSounds(float deltaTime
             const auto& rail = railPath_->GetRailMap()[i];
             const bool isStationRail = mapGenerator_ && mapGenerator_->IsStationRailCell(
                 static_cast<std::size_t>(rail.first), static_cast<std::size_t>(rail.second));
-            if (previousTime <= 0.0f && animationTime > 0.0f && onRailBuildSE_ && !isStationRail) {
-                onRailBuildSE_(confirmationSeVolume_, confirmationSoundPitches_[i]);
+            if (previousTime <= 0.0f && animationTime > 0.0f && onRailBuildSE_) {
+                onRailBuildSE_(
+                    confirmationSeVolume_, confirmationSoundPitches_[i], isStationRail);
             }
         }
     }
@@ -305,9 +306,6 @@ void GameComponents::RailViewComponent::DrawRailModels() {
         if (current.first < minVisibleX || current.first > maxVisibleX) {
             continue;
         }
-        const bool isStationRail = mapGenerator_->IsStationRailCell(
-            static_cast<std::size_t>(current.first), static_cast<std::size_t>(current.second));
-
         const bool hasPrevious = i > 0;
         const bool hasNext = i + 1 < railPath.size();
         // 接続先がまだないゲーム開始時の始点レールは右方向（+X）を向ける。
@@ -326,12 +324,9 @@ void GameComponents::RailViewComponent::DrawRailModels() {
             outgoing = incoming;
         }
 
-        const float jumpOffset = !isStationRail
-            ? GetRailJumpOffset(i)
-            : 0.0f;
-        const float bananaBuildRotation = !isStationRail
-            ? GetBananaBuildRotation(i, current.first, current.second)
-            : 0.0f;
+        const float jumpOffset = GetRailJumpOffset(i);
+        const float bananaBuildRotation =
+            GetBananaBuildRotation(i, current.first, current.second);
         const Vector3 position = {
             static_cast<float>(current.first) * gridSize_,
             railHeight + jumpOffset,
