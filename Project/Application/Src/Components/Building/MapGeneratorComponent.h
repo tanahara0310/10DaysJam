@@ -13,7 +13,13 @@
 
 namespace GameComponents
 {
-    enum class MapGenerationMode { Procedural, RandomCsvPool, FixedCsv };
+    enum class MapGenerationMode {
+        Procedural,
+        RandomCsvPool,
+        FixedCsv,
+        // fixedCsvPath の全列を先頭に置き、その後ろからCSVプールを区画単位で継ぐ。
+        FixedThenRandomCsvPool,
+    };
 
     // 1エリア用の区画CSV集合。選択されたエリアのpathsからのみランダムに抽選する。
     struct CsvMapPoolSettings {
@@ -66,6 +72,9 @@ namespace GameComponents
         std::string GetSelectedCsvPoolName() const;
         std::string GetActiveCsvPoolName() const;
         std::vector<std::string> GetCsvPoolNames() const;
+
+        // 先頭の固定マップの幅。固定マップを使わない場合は0。
+        std::size_t GetFixedMapSizeX() const;
 
         // X方向に指定された列数までマップを生成する
         void CreateToX(std::size_t xCount);

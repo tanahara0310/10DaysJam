@@ -38,17 +38,135 @@
 #include "GameObjects/Effect/RockBreakDebris.h"
 #include "GameObjects/GameSceneObject.h"
 #include "UI/UIText.h"
+#include "Utility/JsonManager/JsonManager.h"
 
 #include <algorithm>
+#include <cctype>
+#include <filesystem>
 #include <string>
 
 using namespace CoreEngine;
 
 namespace {
     constexpr const char* kGameBgmPath = "Application/Assets/Sounds/BGM/Game_bgm.mp3";
+    constexpr const char* kStageProjectPath = "Application/Assets/Maps/stage_project.json";
 
     uint32_t ToUInt(int value, int minimum = 0) {
         return static_cast<uint32_t>(std::max(value, minimum));
+    }
+
+    std::string ToPortablePath(const std::filesystem::path& path) {
+        const std::u8string text = path.generic_u8string();
+        return std::string(text.begin(), text.end());
+    }
+
+    std::vector<std::string> ScanAreaCsvFiles(const std::string& areaName) {
+        const std::filesystem::path areaDirectory =
+            std::filesystem::path("Application") / "Assets" / "Maps" / "Areas" / areaName;
+        std::error_code ec;
+        if (!std::filesystem::is_directory(areaDirectory, ec)) {
+            return {};
+        }
+
+        std::vector<std::filesystem::path> csvFiles;
+        for (const auto& entry : std::filesystem::directory_iterator(areaDirectory, ec)) {
+            std::error_code fileError;
+            if (!entry.is_regular_file(fileError) || fileError) {
+                continue;
+            }
+            std::string extension = entry.path().extension().string();
+            std::transform(extension.begin(), extension.end(), extension.begin(),
+                [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+            if (extension == ".csv") {
+                csvFiles.push_back(entry.path());
+            }
+        }
+        std::sort(csvFiles.begin(), csvFiles.end(),
+            [](const std::filesystem::path& lhs, const std::filesystem::path& rhs) {
+                return lhs.filename().generic_u8string() < rhs.filename().generic_u8string();
+            });
+
+        std::vector<std::string> paths;
+        paths.reserve(csvFiles.size());
+        for (const auto& csvFile : csvFiles) {
+            paths.push_back(ToPortablePath(csvFile));
+        }
+        return paths;
+    }
+
+    void RefreshAreaCsvFiles(GameComponents::MapGenerationSettings& settings) {
+        bool hasArea1 = false;
+        for (auto& pool : settings.csvPools) {
+            const std::vector<std::string> scanned = ScanAreaCsvFiles(pool.name);
+            if (!scanned.empty()) {
+                pool.paths = scanned;
+            }
+            hasArea1 = hasArea1 || pool.name == "Area1";
+        }
+
+        // 構成JSONにArea1が無くても、フォルダーに置かれたチャンクは使えるようにする。
+        if (!hasArea1) {
+            const std::vector<std::string> area1Paths = ScanAreaCsvFiles("Area1");
+            if (!area1Paths.empty()) {
+                settings.csvPools.push_back({ "Area1", area1Paths });
+            }
+        }
+    }
+
+    GameComponents::MapGenerationSettings MakeDefaultMapSettings(std::size_t chunkSizeX) {
+        GameComponents::MapGenerationSettings settings;
+        settings.mode = GameComponents::MapGenerationMode::FixedThenRandomCsvPool;
+        settings.csvChunkSizeX = chunkSizeX;
+        settings.csvPools = {
+            { "Area1", {} },
+            { "Area2", {} },
+        };
+        settings.initialCsvPoolName = "Area1";
+        settings.fixedCsvPath = "Application/Assets/Maps/fixed.csv";
+        RefreshAreaCsvFiles(settings);
+        return settings;
+    }
+
+    void LoadStageProjectSettings(GameComponents::MapGenerationSettings& settings) {
+        const json root = JsonManager::GetInstance().LoadJson(kStageProjectPath);
+        if (root.empty() || !root.is_object()) {
+            return;
+        }
+
+        settings.csvChunkSizeX = std::max<std::size_t>(1,
+            JsonManager::SafeGet<std::size_t>(root, "chunkSizeX", settings.csvChunkSizeX));
+        settings.fixedCsvPath = JsonManager::SafeGet<std::string>(
+            root, "fixedCsvPath", settings.fixedCsvPath);
+        settings.initialCsvPoolName = JsonManager::SafeGet<std::string>(
+            root, "initialArea", settings.initialCsvPoolName);
+
+        if (root.contains("areas") && root["areas"].is_array()) {
+            std::vector<GameComponents::CsvMapPoolSettings> pools;
+            for (const auto& element : root["areas"]) {
+                if (!element.is_object()) {
+                    continue;
+                }
+                const std::string name = JsonManager::SafeGet<std::string>(
+                    element, "name", std::string{});
+                if (name.empty() || !element.contains("paths") || !element["paths"].is_array()) {
+                    continue;
+                }
+
+                GameComponents::CsvMapPoolSettings pool;
+                pool.name = name;
+                for (const auto& path : element["paths"]) {
+                    if (path.is_string()) {
+                        pool.paths.push_back(path.get<std::string>());
+                    }
+                }
+                pools.push_back(std::move(pool));
+            }
+            if (!pools.empty()) {
+                settings.csvPools = std::move(pools);
+            }
+        }
+        // Area1フォルダーを正として再走査するため、後から追加したCSVも自動で入る。
+        RefreshAreaCsvFiles(settings);
     }
 }
 
@@ -172,30 +290,11 @@ void GameScene::GameScene::OnInitialize() {
     const uint32_t renderWorldDistance = ToUInt(
         GameComponents::GameSettings::RenderDistance.Get(), 1);
 
-    // FixedCsv にすると fixedCsvPath の1枚を使用し、終端以降はVoidになる。
-    // Procedural にすると従来のチップ単位のランダム生成を使用する。
-    GameComponents::MapGenerationSettings mapSettings;
-    mapSettings.mode = GameComponents::MapGenerationMode::RandomCsvPool;
-    mapSettings.csvChunkSizeX = ToUInt(
-        GameComponents::GameSettings::CsvChunkSizeX.Get(), 1);
-    // 1プール = 1エリアで使用する複数の区画CSV。地形の種類では分けない。
-    // Area内の全区画をランダム順で一巡し、使い切ったら再シャッフルする。
-    mapSettings.csvPools = {
-        { "Area1", {
-            "Application/Assets/Maps/Areas/Area1/chunk_01.csv",
-            "Application/Assets/Maps/Areas/Area1/chunk_02.csv",
-            "Application/Assets/Maps/Areas/Area1/chunk_03.csv",
-            "Application/Assets/Maps/Areas/Area1/chunk_04.csv",
-            "Application/Assets/Maps/Areas/Area1/chunk_05.csv",
-        } },
-        { "Area2", {
-            "Application/Assets/Maps/Areas/Area2/chunk_01.csv",
-            "Application/Assets/Maps/Areas/Area2/chunk_02.csv",
-            "Application/Assets/Maps/Areas/Area2/chunk_03.csv",
-        } },
-    };
-    mapSettings.initialCsvPoolName = "Area1";
-    mapSettings.fixedCsvPath = "Application/Assets/Maps/fixed.csv";
+    // 先頭は fixed.csv の実幅ぶんをそのまま使い、その終端からArea1の
+    // チャンクCSVを開始する。構成表を読めない場合はサンプルの既定値を使う。
+    GameComponents::MapGenerationSettings mapSettings = MakeDefaultMapSettings(
+        ToUInt(GameComponents::GameSettings::CsvChunkSizeX.Get(), 1));
+    LoadStageProjectSettings(mapSettings);
 
     // ========== オブジェクトの生成 ==========
     //　ゲームマスターの追加
@@ -308,6 +407,8 @@ void GameScene::GameScene::OnInitialize() {
         railPath->GetComponent<GameComponents::RailPathComponent>(),
         gameManagerComponent,
         hungerComponent);
+    // モデルの正面（-Z）をマップ右方向（+X）へ向ける。
+    trainTransform->Get().rotate.y = -1.57079632679f;
 
     train->AddComponent< CoreEngine::MeshRendererComponent>("trolley.obj");
 
@@ -339,7 +440,8 @@ void GameScene::GameScene::OnInitialize() {
     auto* monkeyTransform = monkey->AddComponent<CoreEngine::TransformComponent>();
     monkey->AddComponent<CoreEngine::MeshRendererComponent>("monkey.obj");
     monkeyTransform->Get().SetParent(&trainTransform->Get());
-    monkeyTransform->Get().rotate.y = 3.14f;
+    // 親のトロッコが右を向くため、サルは正面向きの相対回転にする。
+    monkeyTransform->Get().rotate.y = 0.0f;
     trainMovement->AddMonkey(monkeyTransform);
     hungerComponent->SetMonkeyAddedCallback(
         [this, trainMovement, monkeyTransform](std::size_t monkeyCount) {

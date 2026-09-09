@@ -15,15 +15,15 @@ namespace GameEditors
     };
 
     /// @brief ステージ全体の構成
-    /// @details GameScene::OnInitialize が組み立てている mapSettings と同じ内容を持つ。
-    ///          ゲーム側はいまもコード内の設定で動くので、こちらは「エディタが扱う構成表」
-    ///          として使う。GameScene へ反映したいときは BuildGameSceneSnippet() の
-    ///          出力を貼り付ける。
+    /// @details GameScene::OnInitialize が読む mapSettings と同じ内容を持つ。
+    ///          固定マップのサイズ情報はエディタで新規作成・サイズ変更するときに使う。
     struct StageProject {
         std::size_t chunkSizeX = 10;                                    ///< ランダム区画のX幅
-        std::size_t mapSizeZ = 9;                                       ///< マップのZ方向マス数
+        std::size_t mapSizeZ = 11;                                      ///< チャンクのZ方向マス数
+        std::size_t fixedMapSizeX = 20;                                 ///< 先頭固定マップのX幅
+        std::size_t fixedMapSizeZ = 9;                                  ///< 先頭固定マップのZ幅
         std::string initialAreaName = "Area1";                          ///< 開始エリア
-        std::string fixedCsvPath = "Application/Assets/Maps/fixed.csv"; ///< 固定CSV方式で使う1枚
+        std::string fixedCsvPath = "Application/Assets/Maps/fixed.csv"; ///< 先頭に置く固定CSV
         std::vector<StageAreaDefinition> areas;
     };
 
@@ -59,7 +59,7 @@ namespace GameEditors
         bool MergeCsvFilesFromDisk(StageProject& project, const std::string& areasRoot);
 
         /// @brief GameScene::OnInitialize へ貼り付けられる形の設定コードを作る
-        /// @details ゲーム本体は構成JSONを読まないので、反映したいときはこれを貼る。
+        /// @details 手動で構成を埋め込みたい場合の互換用スニペット。
         std::string BuildGameSceneSnippet(const StageProject& project);
 
         /// @brief エリアを名前で探す

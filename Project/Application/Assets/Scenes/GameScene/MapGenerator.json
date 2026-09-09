@@ -26,8 +26,10 @@
             "enabled": true,
             "parameters": {
                 "csvChunkSizeX": 10,
+                "fixedCsvPath": "Application/Assets/Maps/fixed.csv",
                 "initialGenerateSizeX": 30,
                 "mapSizeZ": 11,
+                "mode": "FixedThenRandomCsvPool",
                 "selectedCsvPool": "Area1",
                 "stationBuildInterval": 5
             },
