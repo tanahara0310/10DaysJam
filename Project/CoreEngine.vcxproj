@@ -225,6 +225,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameEntranceFeature.cpp" />
@@ -838,6 +839,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClInclude Include="Application\Src\Editor\Stage\StageEditorPanel.h" />
     <ClInclude Include="Application\Src\Editor\Stage\StageProject.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h" />
