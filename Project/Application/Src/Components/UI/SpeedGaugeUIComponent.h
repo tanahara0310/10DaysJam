@@ -47,6 +47,13 @@ namespace GameComponents
         /// @brief 速度を km/h に直し、桁送りと揺れを進める
         void Update() override;
 
+        /// @brief 突入演出あけの登場アニメーションの進み具合
+        /// @param reveal 0 = 画面外へ引っ込んだ状態 ／ 1 = 定位置。
+        ///               1 を少し超える値を渡すと行き過ぎて戻る（EaseOutBack を通した値をそのまま渡す想定）
+        /// @details 誰も呼ばなければ 1 のままなので、従来どおり最初から出たままになる。
+        ///          駆動するのは GameEntranceFeature。
+        void SetIntroReveal(float reveal);
+
     private:
         /// @brief 桁 1 つぶんの表示状態
         struct Digit {
@@ -84,6 +91,7 @@ namespace GameComponents
         CoreEngine::UIText* unit_ = nullptr;  ///< "km/h"
 
         float elapsed_ = 0.0f;                    ///< 揺れ用の経過秒
+        float introReveal_ = 1.0f;                ///< 登場アニメーションの進み具合（1 = 定位置）
         /// 実際に出している値。停車中は 0 で、発車すると本来の速度まで一気に振り切る
         float displayedKilometersPerHour_ = 0.0f;
         CoreEngine::Vector3 lastTrainPosition_{}; ///< 前フレームのトロッコ位置

@@ -81,6 +81,8 @@ namespace
     constexpr float kHudWidth = 430.0f;
     constexpr float kHudTop = 40.0f;
     constexpr float kHudCenterX = kScreenHalfWidth - kHudWidth * 0.5f - 48.0f;
+    /// 登場アニメーションで引っ込めるときに、板の左端を画面外へ出しておく余白 [px]
+    constexpr float kIntroMargin = 48.0f;
 
     /// 落ちてくる前に待機している高さ。画面外へ完全に出ていること
     constexpr float kDropDistance = 1300.0f;
@@ -438,6 +440,12 @@ void GameComponents::PauseMenuUIComponent::SetExposureScale(float scale)
     exposureScale_ = std::clamp(scale, kExposureScaleMin, kExposureScaleMax);
 }
 
+/// @note 上限を 2 まで許すのは、EaseOutBack を通した「行き過ぎ」をそのまま活かすため
+void GameComponents::PauseMenuUIComponent::SetIntroReveal(float reveal)
+{
+    introReveal_ = std::clamp(reveal, 0.0f, 2.0f);
+}
+
 void GameComponents::PauseMenuUIComponent::SetHintForGamepad(bool connected)
 {
     gamepadHint_ = connected;
@@ -464,27 +472,30 @@ void GameComponents::PauseMenuUIComponent::Tick(float unscaledDeltaTime)
         if (!hudActive_) {
             SetHudActive(true);
         }
-        // 画面右上のヒントだけ置き直す
+        // 画面右上のヒントだけ置き直す。
+        // 突入演出あけの登場では、板の左端が画面外へ抜ける距離まで右へ寄せてから戻す。
         const float sway = std::sin(swayTimer_ * kSwaySpeed) * kSwayAngle * 0.5f;
+        const float hudX = kHudCenterX + (1.0f - introReveal_)
+            * (kScreenHalfWidth - kHudCenterX + kHudWidth * 0.5f + kIntroMargin);
         for (auto* image : { hudPlank_.mid, hudPlank_.capLeft, hudPlank_.capRight }) {
             if (image) {
                 const float b = cvBrightness.Get() * exposureScale_;
                 image->SetColor({ b, b, b, 1.0f });
             }
         }
-        PlacePlank(hudPlank_, { kHudCenterX, kHudTop + kPlankHeight * 0.5f },
+        PlacePlank(hudPlank_, { hudX, kHudTop + kPlankHeight * 0.5f },
                    kHudWidth, 1.0f, 1.0f, sway);
         const float bright = cvBrightness.Get() * exposureScale_;
         if (hudText_) {
             const Vector4 c = cvItemColor.Get();
-            hudText_->SetAnchoredPosition({ kHudCenterX, kHudTop + kPlankHeight * 0.5f });
+            hudText_->SetAnchoredPosition({ hudX, kHudTop + kPlankHeight * 0.5f });
             hudText_->SetUIRotation(sway);
             hudText_->SetColor({ c.x * exposureScale_, c.y * exposureScale_,
                                  c.z * exposureScale_, c.w });
         }
         if (hudLeaf_) {
             hudLeaf_->SetAnchoredPosition(
-                { kHudCenterX - kHudWidth * 0.5f + 6.0f, kHudTop + 4.0f });
+                { hudX - kHudWidth * 0.5f + 6.0f, kHudTop + 4.0f });
             hudLeaf_->SetUIRotation(sway - 0.5f);
             hudLeaf_->SetColor({ bright, bright, bright, 1.0f });
         }

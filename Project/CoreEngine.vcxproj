@@ -202,6 +202,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp" />
@@ -214,6 +215,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\GameEntranceFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\PauseMenuFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp" />
@@ -810,6 +812,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
+    <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h" />
@@ -823,6 +826,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h" />
