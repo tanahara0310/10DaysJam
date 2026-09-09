@@ -63,24 +63,9 @@ namespace CoreEngine
             "車体が前後に傾く角度",
             CVarRange{ 0.0f, 10.0f } };
 
-        CVar<float> cvWheelRadius{
-            "r.TrolleyLoading.WheelRadius", 34.0f,
-            "車輪の半径（縦 1080 基準の px）。転がる速さもこれで決まる",
-            CVarRange{ 6.0f, 90.0f } };
-
-        CVar<float> cvWheelInset{
-            "r.TrolleyLoading.WheelInset", 52.0f,
-            "車体の端から車輪中心までの距離",
-            CVarRange{ 0.0f, 200.0f } };
-
-        CVar<float> cvWheelDrop{
-            "r.TrolleyLoading.WheelDrop", 16.0f,
-            "レール上端から車輪中心までの距離（大きいほど埋まる）",
-            CVarRange{ -40.0f, 80.0f } };
-
         CVar<float> cvCartLift{
-            "r.TrolleyLoading.CartLift", 28.0f,
-            "レール上端から車体下端までの距離",
+            "r.TrolleyLoading.CartLift", 0.0f,
+            "レール上端から車体下端までの距離（0 でレールの上に載る。上げると浮く）",
             CVarRange{ -40.0f, 160.0f } };
 
         CVar<float> cvStationGoal{
@@ -182,9 +167,6 @@ namespace CoreEngine
         mappedTrolleyParams_->cartGoalX   = cvCartGoalX.Get();
         mappedTrolleyParams_->bobAmp      = cvBobAmp.Get();
         mappedTrolleyParams_->tiltDegrees = cvTiltDegrees.Get();
-        mappedTrolleyParams_->wheelRadius = cvWheelRadius.Get();
-        mappedTrolleyParams_->wheelInset  = cvWheelInset.Get();
-        mappedTrolleyParams_->wheelDrop   = cvWheelDrop.Get();
         mappedTrolleyParams_->cartLift    = cvCartLift.Get();
         mappedTrolleyParams_->stationGoal = cvStationGoal.Get();
         mappedTrolleyParams_->stationDrop = cvStationDrop.Get();

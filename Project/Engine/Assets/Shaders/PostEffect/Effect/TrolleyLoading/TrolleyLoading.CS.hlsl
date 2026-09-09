@@ -1,7 +1,7 @@
 // TrolleyLoading.CS.hlsl - トロッコが走るローディング画面 コンピュートシェーダー
 //
 // 絵は Assets/Textures/loading_*.png（.obj から正射投影で焼いたボクセルのスプライト）を
-// 奥から順に重ねるだけ。車輪だけは trolley.obj に存在しないのでここで手続き的に描く。
+// 奥から順に重ねるだけ。手続き的に描くのは「ローディング中…」の点だけ。
 //
 // ■ 「ローディング中…」
 //   画面中央にドット絵フォントを焼いた 1 枚（loading_text.png）を置き、その右へ点を
@@ -24,7 +24,7 @@
 // ■ 色空間
 //   この段（PostTonemap）の出力はリニアで、sRGB へのエンコードは最終提示で掛かる。
 //   一方 Load が返すのは PNG の生の値（sRGB）なので、スプライトも定数で書いた色
-//   （車輪）も SrgbToLinear を通してから合成する。LoadingScreen.CS.hlsl と同じ扱い。
+//   （点）も SrgbToLinear を通してから合成する。LoadingScreen.CS.hlsl と同じ扱い。
 //   これを省くと枕木の (133,87,43) が画面上で (189,158,115) まで浮く。
 
 #include "ShaderMath.hlsli" // PI / TWO_PI
@@ -50,23 +50,20 @@ cbuffer TrolleyParams : register(b0)
     float bobAmp;       // 上下の揺れ幅（1080 基準の px）
 
     float tiltDegrees;  // 前後の傾き（度）
-    float wheelRadius;  // 車輪の半径（1080 基準の px）
-    float wheelInset;   // 車体の端から車輪中心までの距離
-    float wheelDrop;    // レール上端から車輪中心までの距離
-
-    float cartLift;     // レール上端から車体下端までの距離
+    float cartLift;     // レール上端から車体下端までの距離（0 でレールに載る）
     float stationGoal;  // 進捗 1.0 で駅が来る位置（トロッコ左端からの距離）
     float stationDrop;  // レール上端から駅の下端までの距離
-    float sceneryDrop;  // レール上端から景色の下端までの距離
 
+    float sceneryDrop;  // レール上端から景色の下端までの距離
     float scale;        // 全体の拡大率。上の距離もスプライトも一括で掛かる
     float cartGoalX;    // 進捗 1 のときのトロッコ左端（画面幅に対する比率）
     float railScroll;   // レールと景色が流れる速さ（1080 基準の px/秒。0 で世界に固定）
-    float textTime;     // 「ローディング中…」用の経過時間（秒。実測のまま＝上の time とは別）
 
+    float textTime;     // 「ローディング中…」用の経過時間（秒。実測のまま＝上の time とは別）
     float textScale;    // 文字の拡大率（1.0 で焼いたままの大きさ）
     float textY;        // 文字列の中心の高さ（画面高さに対する比率）
     float dotInterval;  // 点が 1 つ増える間隔（秒）
+
     float textGap;      // 文字列の右端から最初の点までの距離（1080 基準 px）
 };
 
@@ -79,7 +76,6 @@ cbuffer ScreenParams : register(b1)
 
 static const uint  kGroupSize       = 8;
 static const float kReferenceHeight = 1080.0f; // レイアウト値の基準解像度
-static const float kEdgeWidth       = 1.5f;    // 車輪の輪郭のぼかし幅（ピクセル）
 static const float kStationEnter    = 60.0f;   // 駅が画面右外から現れる距離
 
 // 「ローディング中」の右に並べる点。大きさはフォントのドット（84px 焼き = 7px）を単位にする
@@ -89,12 +85,6 @@ static const float kDotStride    = 28.0f;  // 点の左端どうしの間隔
 static const float kDotBaseInset = 7.0f;   // 画像の下端から点の下端まで（文字のベースラインに揃える）
 static const float kTextDimMin   = 0.72f;  // 明滅の下限（1.0 との間を往復する）
 static const float3 kTextColor   = float3(1.0f, 1.0f, 1.0f); // 点の色（sRGB。文字の白と揃える）
-
-// 車輪の色（sRGB）。モデルに車輪が無いのでここで描く
-static const float3 kTireColor  = float3(0.165f, 0.165f, 0.180f);
-static const float3 kSpokeColor = float3(0.329f, 0.329f, 0.353f);
-static const float3 kHubColor   = float3(0.408f, 0.408f, 0.431f);
-static const float3 kInnerColor = float3(0.094f, 0.094f, 0.110f);
 
 float3 SrgbToLinear(float3 c)
 {
@@ -127,41 +117,6 @@ float4 LoadSprite(Texture2D<float4> tex, float2 local)
     return float4(SrgbToLinear(texel.rgb), texel.a);
 }
 
-/// 手続き的な車輪。タイヤ・スポーク・ハブの 3 層
-/// @param p   車軸を原点とした画面ピクセル座標
-/// @param ang 回転角（ラジアン）
-float3 DrawWheel(float3 base, float2 p, float r, float ang, float alpha)
-{
-    float d = length(p);
-    if (d > r + kEdgeWidth)
-    {
-        return base;
-    }
-
-    float a = atan2(p.y, p.x) - ang;
-
-    float3 c;
-    if (d > r * 0.78f)
-    {
-        c = kTireColor;
-    }
-    else if (d < r * 0.20f)
-    {
-        c = kHubColor;
-    }
-    else if (abs(cos(a * 2.0f)) > 0.95f || abs(sin(a * 2.0f)) > 0.95f)
-    {
-        c = kSpokeColor;
-    }
-    else
-    {
-        c = kInnerColor;
-    }
-
-    float cover = 1.0f - smoothstep(r - kEdgeWidth, r + kEdgeWidth, d);
-    return lerp(base, SrgbToLinear(c), cover * alpha);
-}
-
 [numthreads(kGroupSize, kGroupSize, 1)]
 void main(uint3 dispatchId : SV_DispatchThreadID)
 {
@@ -176,7 +131,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     {
         // 位置も大きさも 1080 基準の距離に uiScale を掛けて出しているので、
         // ここへ scale を畳み込むだけで全体が相似のまま拡大・縮小する。
-        // 走る速さ・跳ねる周期・車輪の転がりは 1080 基準の距離のまま計算するため、
+        // 走る速さも跳ねる周期も 1080 基準の距離のまま計算するため、
         // 縮めても「レール 1 本ぶん進むと 1 回跳ねる」の関係は崩れない
         float  uiScale = (float)screenHeight / kReferenceHeight * scale;
         float2 pix     = (float2)dispatchId.xy + 0.5f;
@@ -194,8 +149,6 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
         // トロッコは進捗ぶんだけ左から右へ進む。駅は後で travel から別に置く
         float cartStart = cartX * (float)screenWidth;
         float cartLeft  = lerp(cartStart, cartGoalX * (float)screenWidth, travel);
-        // 実際に進んだ距離（1080 基準）。車輪はこれで転がすので滑って見えない
-        float cartDist  = (cartLeft - cartStart) / uiScale;
 
         // 背景の流し（既定は 0 ＝ カメラを世界に固定する）
         float scroll = railScroll * time;
@@ -233,7 +186,7 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
             color = lerp(color, c.rgb, c.a * screenAlpha);
         }
 
-        // ---- トロッコ本体（上下に跳ねながら前後に傾く） ----
+        // ---- トロッコ本体（レールの上を、跳ねながら前後に傾いて進む） ----
         {
             float  cartTop = railTop - (cartLift + (float)cartH) * uiScale + bob;
             float2 half    = float2((float)cartW, (float)cartH) * 0.5f * uiScale;
@@ -241,21 +194,6 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
             float2 local   = (Rotate(pix - center, -tilt) + half) / uiScale;
             float4 c = LoadSprite(gCart, local);
             color = lerp(color, c.rgb, c.a * screenAlpha);
-        }
-
-        // ---- 車輪：車体の後に重ねる。ω = v / r で転がすので滑って見えない ----
-        {
-            float cy  = railTop - wheelDrop * uiScale + bob;
-            float r   = wheelRadius * uiScale;
-            float ang = cartDist / max(wheelRadius, 1.0f);
-
-            [unroll]
-            for (int i = 0; i < 2; ++i)
-            {
-                float inset = (i == 0) ? wheelInset : ((float)cartW - wheelInset);
-                float wx    = cartLeft + inset * uiScale;
-                color = DrawWheel(color, pix - float2(wx, cy), r, ang, screenAlpha);
-            }
         }
 
         // ---- 「ローディング中…」（画面中央）----
