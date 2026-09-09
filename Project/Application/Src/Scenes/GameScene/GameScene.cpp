@@ -11,6 +11,7 @@
 #include "PauseMenuFeature.h"
 #include "RailDirectionGuideFeature.h"
 #include "SkyFogFeature.h"
+#include "SpeedBlurFeature.h"
 #include "SpeedGaugeFeature.h"
 #include "StageLightsFeature.h"
 #include "StaminaGaugeFeature.h"
@@ -36,6 +37,7 @@
 #include "Components/GameCore/HungerComponent.h"
 #include "GameObjects/Effect/BananaHarvestEffect.h"
 #include "GameObjects/Effect/RockBreakDebris.h"
+#include "GameObjects/Effect/StationSlowdownEffect.h"
 #include "GameObjects/GameSceneObject.h"
 #include "UI/UIText.h"
 
@@ -98,6 +100,10 @@ void GameScene::GameScene::OnInitialize() {
     // トロッコの速さを km/h のオドメーターで見せる HUD。
     // 位置・1 マスの実距離は「ゲーム設定」の Game.SpeedGauge.* から調整する。
     AddFeature(GameComponents::CreateSpeedGaugeFeature());
+    // 速さに合わせて画面へモーションブラーを掛ける。速度計を見ていなくても
+    // 加速と、駅で速さを失う瞬間が画面全体で分かるようにするためのもの。
+    // 濃さは「ゲーム設定」の Game.SpeedBlur.* から調整する。
+    AddFeature(GameComponents::CreateSpeedBlurFeature());
     // レール先頭の上下左右へ、伸ばせる向きだけ床に矢印を出すガイド。
     // 戻る（Undo）向きだけは別の記号にしてある。
     // 見た目は「ゲーム設定」の Game.RailGuide.* から調整する。
@@ -395,6 +401,11 @@ void GameScene::GameScene::OnInitialize() {
     // スタミナ・列車・マップは Feature が自分で探して繋ぐので、ここでは登録だけでよい。
     // 見た目と時間は「ゲーム設定」の Game.BananaHarvest.* から調整する。
     AddFeature(GameComponents::CreateBananaHarvestEffectFeature());
+
+    // 駅で速度が落ちる瞬間に、駅・カメラ・速度計・音を同時に鳴らして理由を見せる演出。
+    // 速度計を掴むので CreateSpeedGaugeFeature() より後に登録すること。
+    // 強さは「ゲーム設定」の Game.StationSlowdown.* から調整する。
+    AddFeature(GameComponents::CreateStationSlowdownEffectFeature());
 
     railView->AddComponent<GameComponents::RailViewComponent>(
         gridSize,

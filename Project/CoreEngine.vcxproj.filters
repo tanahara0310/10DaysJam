@@ -106,6 +106,9 @@
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
@@ -317,6 +320,9 @@
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.cpp">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp">
@@ -1554,6 +1560,9 @@
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
@@ -1579,6 +1588,9 @@
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h">
