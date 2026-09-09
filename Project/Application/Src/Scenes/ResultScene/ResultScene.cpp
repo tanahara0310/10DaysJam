@@ -5,6 +5,7 @@
 #include "Camera/Camera.h"
 #include "Camera/CameraManager.h"
 #include "Components/GameCore/GameResultData.h"
+#include "Components/Result/ResultTipsComponent.h"
 #include "Components/Result/ResultMonkeyShakeComponent.h"
 #include "Components/Result/ResultButtonAnimationComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
@@ -13,6 +14,7 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Scenes/GameScene/SkyFogFeature.h"
 #include "Scenes/ResultScene/ResultSceneUi.h"
+#include "GameObjects/GameSceneObject.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
@@ -97,6 +99,13 @@ void ResultScene::ResultScene::OnInitialize() {
     SetSceneName("ResultScene");
     // 結果画面専用の地形を使うため、エンジン標準の床は生成しない。
     SetDefaultGroundEnabled(false);
+
+    // 結果画面の設定はシーンJSONへ保存できる空オブジェクトに集約する。
+    // OnInitialize 後にシーン復元が走るため、Tipsの表示は最初の更新で確定する。
+    auto* resultTipsObject = CreateObject<GameScene::GameSceneObject>("ResultTipsSettings");
+    if (resultTipsObject) {
+        resultTips_ = resultTipsObject->AddComponent<GameComponents::ResultTipsComponent>();
+    }
 
     const std::size_t monkeyCount = std::max<std::size_t>(
         1,
@@ -446,7 +455,7 @@ void ResultScene::ResultScene::OnInitialize() {
             { .bus = AudioBus::BGM, .loop = true, .volume = 1.0f / 3.0f });
     }
 
-    const ResultSceneUi::Elements ui = ResultSceneUi::Build(
+    ui_ = ResultSceneUi::Build(
         [this](const std::string& text,
             float fontSize,
             UIAnchor anchor,
@@ -465,12 +474,12 @@ void ResultScene::ResultScene::OnInitialize() {
                 return image;
         });
 
-    retryButton_ = ui.retryButton;
-    titleButton_ = ui.titleButton;
     SetSelection(selection_, false);
 }
 
 void ResultScene::ResultScene::OnUpdate() {
+    InitializeTipText();
+
     auto* inputManager = engine_ ? engine_->GetService<InputManager>() : nullptr;
     if (returnRequested_ || !sceneManager_ || !inputManager) {
         return;
@@ -497,6 +506,35 @@ void ResultScene::ResultScene::OnUpdate() {
     }
     if (input.IsActionTriggered(InputAction::UIConfirm)) {
         ConfirmSelection();
+    }
+}
+
+void ResultScene::ResultScene::InitializeTipText()
+{
+    if (tipInitialized_) {
+        return;
+    }
+    tipInitialized_ = true;
+
+    if (!resultTips_) {
+        return;
+    }
+
+    const auto& tips = resultTips_->GetTips();
+    if (tips.empty()) {
+        return;
+    }
+
+    // 空欄を飛ばしつつ、設定された配列順で次のTipを選ぶ。
+    for (std::size_t offset = 0; offset < tips.size(); ++offset) {
+        const std::size_t index = (nextTipIndex_ + offset) % tips.size();
+        if (tips[index].empty()) {
+            continue;
+        }
+
+        ResultSceneUi::SetTipText(ui_, tips[index]);
+        nextTipIndex_ = (index + 1) % tips.size();
+        return;
     }
 }
 
@@ -540,11 +578,11 @@ void ResultScene::ResultScene::SetSelection(Selection selection, bool playReacti
 {
     selection_ = selection;
 
-    auto* retryAnimation = retryButton_
-        ? retryButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+    auto* retryAnimation = ui_.retryButton
+        ? ui_.retryButton->GetComponent<GameComponents::ResultButtonAnimationComponent>()
         : nullptr;
-    auto* titleAnimation = titleButton_
-        ? titleButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+    auto* titleAnimation = ui_.titleButton
+        ? ui_.titleButton->GetComponent<GameComponents::ResultButtonAnimationComponent>()
         : nullptr;
 
     if (retryAnimation) {
@@ -582,19 +620,19 @@ void ResultScene::ResultScene::ConfirmSelection()
 
     const char* nextScene = selection_ == Selection::Retry ? "GameScene" : "TitleScene";
     auto* selectedAnimation = selection_ == Selection::Retry
-        ? (retryButton_
-            ? retryButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+        ? (ui_.retryButton
+            ? ui_.retryButton->GetComponent<GameComponents::ResultButtonAnimationComponent>()
             : nullptr)
-        : (titleButton_
-            ? titleButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+        : (ui_.titleButton
+            ? ui_.titleButton->GetComponent<GameComponents::ResultButtonAnimationComponent>()
             : nullptr);
 
     auto* unselectedAnimation = selection_ == Selection::Retry
-        ? (titleButton_
-            ? titleButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+        ? (ui_.titleButton
+            ? ui_.titleButton->GetComponent<GameComponents::ResultButtonAnimationComponent>()
             : nullptr)
-        : (retryButton_
-            ? retryButton_->GetComponent<GameComponents::ResultButtonAnimationComponent>()
+        : (ui_.retryButton
+            ? ui_.retryButton->GetComponent<GameComponents::ResultButtonAnimationComponent>()
             : nullptr);
 
     const auto changeScene = [this, nextScene] {
