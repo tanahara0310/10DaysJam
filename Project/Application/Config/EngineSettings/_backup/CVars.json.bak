@@ -5,6 +5,7 @@
     ],
     "Game.Rail.BuilderStartX": 1,
     "Game.Rail.TrainMoveSpeed": 2.0,
+    "Game.Stamina.BananaRecoveryMonkeyCorrectionRate": 0.3499999940395355,
     "Game.Stamina.Cost.Rail": 1.0,
     "Game.Stamina.Cost.Rock": 10.0,
     "Game.Stamina.Initial": 120.0,
