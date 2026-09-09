@@ -2,9 +2,10 @@
     "objects": [
         "GameManager",
         "GroundPoolManager",
-        "WaterPoolManager",
+        "GroundSkirtPoolManager",
         "StationPoolManager",
         "RockPoolManager",
+        "HardRockPoolManager",
         "BananaTreePoolManager",
         "GrassPoolManager",
         "BridgePoolManager",
@@ -19,6 +20,7 @@
         "RockProjectile",
         "Monkey",
         "CameraSettings",
-        "MapRenderer"
+        "MapRenderer",
+        "WaterWaveRenderer"
     ]
 }
