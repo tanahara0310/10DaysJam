@@ -15,11 +15,11 @@
     ],
     "fieldAutoFit": true,
     "fieldSize": {
-        "x": 606.6666259765625,
-        "y": 56.0
+        "x": 536.1322021484375,
+        "y": 56.93439865112305
     },
     "font": "x8y12pxDenkiChip.ttf",
-    "fontSize": 56.0,
+    "fontSize": 56.93439865112305,
     "lineSpacing": 1.0,
     "objectType": "UIText",
     "outlineColor": [
@@ -35,7 +35,7 @@
     },
     "rotation": 0.0,
     "sortOrder": 1000,
-    "text": "- SPACEキーをおしてスタート -",
+    "text": "- Aボタンをおしてスタート -",
     "weight": 0.004999999888241291,
     "wrapWidth": 0.0
 }
