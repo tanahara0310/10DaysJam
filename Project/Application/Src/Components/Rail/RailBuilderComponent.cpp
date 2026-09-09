@@ -2,6 +2,7 @@
 #include "RailBuilderComponent.h"
 #include "Components/Utility/BlockModelLayout.h"
 
+#include "Audio/AudioSystem.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
@@ -18,6 +19,7 @@
 #include "Input/InputManager.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Random/RandomGenerator.h"
 
 #include <algorithm>
 #include <cmath>
@@ -29,6 +31,27 @@
 #endif
 
 using namespace CoreEngine;
+
+namespace {
+    constexpr const char* kRockThrowSePath =
+        "Application/Assets/Sounds/SE/rock_throw.mp3";
+    constexpr const char* kRockBreakSePath =
+        "Application/Assets/Sounds/SE/rock_break.mp3";
+
+    void PlayRockSe(GameObject* owner, const char* path) {
+        if (!owner) {
+            return;
+        }
+
+        EngineSystem* engine = owner->GetEngineSystem();
+        if (auto* audioSystem = engine ? engine->GetService<AudioSystem>() : nullptr) {
+            audioSystem->PlayOneShot(
+                path,
+                { .bus = AudioBus::SE,
+                  .pitch = RandomGenerator::GetInstance().GetFloat(1.0f, 1.3f) });
+        }
+    }
+}
 
 json GameComponents::RailBuilderComponent::OnSerialize() const {
     return {
@@ -461,7 +484,9 @@ void GameComponents::RailBuilderComponent::StartNextRockThrow() {
     if (!rockThrow_->Play(
             throwStart, impactPosition, [this]() { CompleteRockBreak(); })) {
         CompleteRockBreak();
+        return;
     }
+    PlayRockSe(GetOwner(), kRockThrowSePath);
 }
 
 void GameComponents::RailBuilderComponent::CompleteRockBreak() {
@@ -475,6 +500,8 @@ void GameComponents::RailBuilderComponent::CompleteRockBreak() {
         static_cast<std::size_t>(completed.gridX),
         static_cast<std::size_t>(completed.gridZ),
         MapChipType::Ground);
+
+    PlayRockSe(GetOwner(), kRockBreakSePath);
 
     // 岩が砕けた瞬間にカメラを揺らす。強さは Game.CameraShake.RockBreak.* で調整する。
     RockBreakShakeSettingsComponent::PlayRockBreak();
