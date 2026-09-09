@@ -88,6 +88,13 @@ namespace GameComponents
         ///          明るい場所と暗い場所でメニューの色が変わってしまう。
         void SetExposureScale(float scale);
 
+        /// @brief 突入演出あけの登場アニメーションの進み具合
+        /// @param reveal 0 = 画面外へ引っ込んだ状態 ／ 1 = 定位置。
+        ///               1 を少し超える値を渡すと行き過ぎて戻る（EaseOutBack を通した値をそのまま渡す想定）
+        /// @details 誰も呼ばなければ 1 のままなので、従来どおり最初から出たままになる。
+        ///          駆動するのは GameEntranceFeature。
+        void SetIntroReveal(float reveal);
+
     private:
         /// @brief 開閉の進み具合
         enum class Phase
@@ -188,6 +195,7 @@ namespace GameComponents
         float confirmTimer_ = 0.0f;  ///< 決定演出の残り秒数
         float swayTimer_ = 0.0f;     ///< 蔦と葉を揺らす位相
         float exposureScale_ = 1.0f; ///< 自動露出を打ち消す倍率
+        float introReveal_ = 1.0f;   ///< 操作ヒントの登場アニメーションの進み具合（1 = 定位置）
         bool gamepadHint_ = false;
         bool hudActive_ = false;
         bool built_ = false;

@@ -1,0 +1,18 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "tips": [
+                    "駅に入るとトロッコが減速する。サルも増える。",
+                    "岩を壊している間はトロッコが停止する",
+                    "サルが増えるとバナナの消費量が増える",
+                    "サルはまだ、もがいている"
+                ]
+            },
+            "type": "ResultTips"
+        }
+    ],
+    "name": "ResultTipsSettings"
+}

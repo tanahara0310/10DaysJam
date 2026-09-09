@@ -31,6 +31,9 @@
     <ClCompile Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.cpp">
       <Filter>Application\Src\Components\Result</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\Result\ResultTipsComponent.cpp">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClCompile>
@@ -63,6 +66,9 @@
     </ClCompile>
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp">
       <Filter>Application\Src\Components\UI</Filter>
@@ -98,6 +104,9 @@
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\GameEntranceFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\PauseMenuFeature.cpp">
@@ -1482,6 +1491,9 @@
     <ClInclude Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.h">
       <Filter>Application\Src\Components\Result</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\Result\ResultTipsComponent.h">
+      <Filter>Application\Src\Components\Result</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h">
       <Filter>Application\Src\Components\Rail</Filter>
     </ClInclude>
@@ -1514,6 +1526,9 @@
     </ClInclude>
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h">
       <Filter>Application\Src\Components\UI</Filter>
@@ -1552,6 +1567,9 @@
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h">

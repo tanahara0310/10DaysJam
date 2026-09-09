@@ -227,6 +227,9 @@ namespace {
     /// @brief レール先頭の上下左右へ、進める向きだけ矢印を出す Feature
     /// @details 先頭の位置は RailPathComponent から読むだけで、ゲーム側の状態は変えない
     ///          （マップの生成も促さない。描画範囲ぶんは MapViewComponent が先に伸ばしている）。
+    /// 突入演出あけの登場進捗。Feature の外から渡されるので Feature の外に置く
+    float g_introReveal = 1.0f;
+
     class RailDirectionGuideFeature final : public ISceneFeature {
     public:
         const char* GetName() const override { return "RailDirectionGuide"; }
@@ -238,6 +241,8 @@ namespace {
             if (!ctx.gameObjectManager) {
                 return;
             }
+
+            g_introReveal = 1.0f;
 
             railPath_ =
                 ctx.gameObjectManager->FindFirstComponent<GameComponents::RailPathComponent>();
@@ -323,6 +328,8 @@ namespace {
 
             RailHead railHead{};
             const bool show = cvEnabled.Get() && railPath_ && mapGenerator_ && hunger_ &&
+                // 突入演出のあいだは出さない（GameEntranceFeature が 0 を渡してくる）
+                g_introReveal > 0.0f &&
                 (!railBuilder_ || railBuilder_->IsEnabled()) &&
                 // ポーズ中は操作できないので、進める向きの案内も引っ込める。
                 // 深度テストを切ってある＝看板の手前にも出てしまうので、なおさら消す
@@ -415,8 +422,11 @@ namespace {
             const bool useBackGlyph = isBack && !cvBackAsArrow.Get();
             marker->SetActive(true);
             marker->SetText(useBackGlyph ? kBackGlyph : direction.arrow);
+            // 登場アニメーション中は同じ場所で伸び上がらせる。床へ寝かせてあるので、
+            // 位置を動かすより大きさを変えたほうが「生えてきた」に見える
             marker->SetFontSize(
-                cvFontSize.Get() * gridSize * (isBack ? cvBackSizeScale.Get() : 1.0f));
+                cvFontSize.Get() * gridSize * g_introReveal
+                * (isBack ? cvBackSizeScale.Get() : 1.0f));
 
             Vector4 color = isBack ? cvBackColor.Get() : cvExtendColor.Get();
             if (state == GuideState::Shortage) {
@@ -474,7 +484,16 @@ namespace {
         /// ポーズ中に矢印を引っ込めるために見ている。無くても動く
         GameComponents::PauseMenuUIComponent* pauseMenu_ = nullptr;
         bool pauseMenuResolved_ = false;
+
+    public:
+        /// @brief 登場進捗を既定へ戻す（次のシーンへ持ち出さないため）
+        void Finalize(SceneContext&) override { g_introReveal = 1.0f; }
     };
+}
+
+void GameComponents::SetRailDirectionGuideReveal(float reveal)
+{
+    g_introReveal = std::clamp(reveal, 0.0f, 2.0f);
 }
 
 std::unique_ptr<CoreEngine::ISceneFeature> GameComponents::CreateRailDirectionGuideFeature()

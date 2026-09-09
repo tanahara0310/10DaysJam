@@ -45,6 +45,25 @@ namespace ResultSceneUi
         "Result.UI.ScorePosition", { 0.0f, -40.0f },
         "進行距離の位置", CVarRange{ -2000.0f, 2000.0f } };
 
+    CVar<float> TipFontSize{
+        "Result.UI.TipFontSize", 28.0f,
+        "リザルトTipsのフォントサイズ（ピクセル）",
+        CVarRange{ 12.0f, 96.0f } };
+
+    CVar<Vector2> TipPosition{
+        "Result.UI.TipPosition", { 0.0f, 105.0f },
+        "リザルトTipsの位置（画面中央基準・ピクセル）",
+        CVarRange{ -2000.0f, 2000.0f } };
+
+    CVar<Vector4> TipColor{
+        "Result.UI.TipColor", { 1.0f, 1.0f, 1.0f, 0.90f },
+        "リザルトTipsの文字色" };
+
+    CVar<int> TipSortOrder{
+        "Result.UI.TipSortOrder", 1000,
+        "リザルトTipsの描画順",
+        CVarRange{ 0.0f, 5000.0f } };
+
     CVar<float> BackgroundPadding{
         "Result.UI.BackgroundPadding",
         56.0f,
@@ -104,6 +123,64 @@ namespace ResultSceneUi
         "リザルトボタンの描画順",
         CVarRange{ 0.0f, 5000.0f } };
 
+    namespace
+    {
+        constexpr float kTipFieldWidth = 1200.0f;
+        constexpr float kTipFieldHeight = 100.0f;
+
+        void UpdateBackgroundBounds(Elements& elements)
+        {
+            if (!elements.background) {
+                return;
+            }
+
+            Vector2 contentMin{
+                std::numeric_limits<float>::max(),
+                std::numeric_limits<float>::max() };
+            Vector2 contentMax{
+                std::numeric_limits<float>::lowest(),
+                std::numeric_limits<float>::lowest() };
+            bool hasContent = false;
+            const auto includeTextBounds = [
+                &contentMin, &contentMax, &hasContent](UIText* text) {
+                    if (!text || !text->IsActive()) {
+                        return;
+                    }
+
+                    const Vector2 position = text->GetAnchoredPosition();
+                    const Vector2 size = text->GetFieldSize().x > 0.0f
+                        ? text->GetFieldSize()
+                        : text->GetMeasuredSize();
+                    contentMin.x = std::min(contentMin.x, position.x - size.x * 0.5f);
+                    contentMin.y = std::min(contentMin.y, position.y - size.y * 0.5f);
+                    contentMax.x = std::max(contentMax.x, position.x + size.x * 0.5f);
+                    contentMax.y = std::max(contentMax.y, position.y + size.y * 0.5f);
+                    hasContent = true;
+                };
+
+            includeTextBounds(elements.titleText);
+            includeTextBounds(elements.scoreText);
+            includeTextBounds(elements.tipText);
+            includeTextBounds(elements.retryButton);
+            includeTextBounds(elements.titleButton);
+
+            // Tips use a fixed field so long text can be wrapped without changing layout.
+            if (!hasContent) {
+                return;
+            }
+
+            const float padding = BackgroundPadding.Get();
+            const float backgroundWidth =
+                (contentMax.x - contentMin.x + padding * 2.0f) * 1.2f;
+            elements.background->SetAnchoredPosition({
+                (contentMin.x + contentMax.x) * 0.5f,
+                (contentMin.y + contentMax.y) * 0.5f });
+            elements.background->SetSize({
+                backgroundWidth,
+                contentMax.y - contentMin.y + padding * 2.0f });
+        }
+    }
+
     Elements Build(const TextFactory& createText, const ImageFactory& createImage)
     {
         Elements elements;
@@ -127,6 +204,7 @@ namespace ResultSceneUi
             resultTitle->SetPivot({ 0.5f, 0.5f });
             resultTitle->SetSortOrder(TitleSortOrder.Get());
         }
+        elements.titleText = resultTitle;
 
         const auto distanceMeters =
             GameComponents::GameResultData::GetHorizontalProgressMeters();
@@ -138,6 +216,23 @@ namespace ResultSceneUi
             scoreText->SetSerializeEnabled(false);
             scoreText->SetPivot({ 0.5f, 0.5f });
             scoreText->SetSortOrder(TitleSortOrder.Get());
+        }
+        elements.scoreText = scoreText;
+
+        elements.tipText = createText(
+            "",
+            TipFontSize.Get(),
+            UIAnchor::Center,
+            TipPosition.Get(),
+            TipColor.Get(),
+            "ResultTip");
+        if (elements.tipText) {
+            elements.tipText->SetSerializeEnabled(false);
+            elements.tipText->SetPivot({ 0.5f, 0.5f });
+            elements.tipText->SetFieldSize({ kTipFieldWidth, kTipFieldHeight });
+            elements.tipText->SetAlign(TextAlignH::Center, TextAlignV::Middle);
+            elements.tipText->SetSortOrder(TipSortOrder.Get());
+            elements.tipText->SetActive(false);
         }
 
         const Vector2 firstButtonPosition = ButtonPosition.Get();
@@ -176,55 +271,18 @@ namespace ResultSceneUi
             "ResultTitleButton",
             "result_title_button");
 
-        // 生成した文字の実サイズから、リザルトUI全体を囲う範囲を求める。
-        // 配置用の anchoredPosition はすべて Center 基準かつ pivot は中央なので、
-        // そのまま画面中央基準の矩形として扱える。
-        Vector2 contentMin{
-            std::numeric_limits<float>::max(),
-            std::numeric_limits<float>::max() };
-        Vector2 contentMax{
-            std::numeric_limits<float>::lowest(),
-            std::numeric_limits<float>::lowest() };
-        bool hasContent = false;
-        const auto includeTextBounds = [&contentMin, &contentMax, &hasContent](UIText* text) {
-            if (!text) {
-                return;
-            }
-
-            const Vector2 position = text->GetAnchoredPosition();
-            const Vector2 size = text->GetMeasuredSize();
-            contentMin.x = std::min(contentMin.x, position.x - size.x * 0.5f);
-            contentMin.y = std::min(contentMin.y, position.y - size.y * 0.5f);
-            contentMax.x = std::max(contentMax.x, position.x + size.x * 0.5f);
-            contentMax.y = std::max(contentMax.y, position.y + size.y * 0.5f);
-            hasContent = true;
-        };
-
-        includeTextBounds(resultTitle);
-        includeTextBounds(scoreText);
-        includeTextBounds(elements.retryButton);
-        includeTextBounds(elements.titleButton);
-
-        if (createImage && hasContent) {
+        if (createImage) {
             constexpr const char* kWhiteTexture =
                 "Engine/Assets/Textures/Debug/white1x1.png";
 
             elements.background = createImage(kWhiteTexture, "ResultBackground");
             if (elements.background) {
-                const float padding = BackgroundPadding.Get();
-                const float backgroundWidth =
-                    (contentMax.x - contentMin.x + padding * 2.0f) * 1.2f;
                 elements.background->SetSerializeEnabled(false);
                 elements.background->SetAnchor(UIAnchor::Center);
-                elements.background->SetAnchoredPosition({
-                    (contentMin.x + contentMax.x) * 0.5f,
-                    (contentMin.y + contentMax.y) * 0.5f });
                 elements.background->SetPivot({ 0.5f, 0.5f });
-                elements.background->SetSize({
-                    backgroundWidth,
-                    contentMax.y - contentMin.y + padding * 2.0f });
                 elements.background->SetColor({ 0.0f, 0.0f, 0.0f, BackgroundOpacity.Get() });
                 elements.background->SetSortOrder(BackgroundSortOrder.Get());
+                UpdateBackgroundBounds(elements);
             }
         }
 
@@ -269,5 +327,16 @@ namespace ResultSceneUi
         }
 
         return elements;
+    }
+
+    void SetTipText(Elements& elements, const std::string& tip)
+    {
+        if (!elements.tipText) {
+            return;
+        }
+
+        elements.tipText->SetText(tip);
+        elements.tipText->SetActive(!tip.empty());
+        UpdateBackgroundBounds(elements);
     }
 }

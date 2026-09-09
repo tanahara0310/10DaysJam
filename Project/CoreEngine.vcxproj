@@ -202,6 +202,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClCompile Include="Application\Src\Components\GameCore\HungerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Result\ResultTipsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp" />
@@ -213,6 +214,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp" />
@@ -225,6 +227,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\GameEntranceFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\PauseMenuFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.cpp" />
@@ -811,6 +814,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClInclude Include="Application\Src\Components\GameCore\HungerComponent.h" />
     <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.h" />
+    <ClInclude Include="Application\Src\Components\Result\ResultTipsComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h" />
@@ -822,6 +826,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
+    <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h" />
@@ -835,6 +840,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.h" />
