@@ -24,9 +24,10 @@ namespace GameComponents
     ///
     /// @details リザルトに足りていなかったのは飾りではなく **指標** だった。
     ///          「◯◯m 進んだ」だけでは良いのか悪いのか判断できないので、
-    ///          比べる相手を 2 つ画面に出す。
+    ///          比べる相手を 3 つ画面に出す。
     ///           - 目標（既定 500m）……画面下のゲージの終点に立つゲート
     ///           - 前回の自分  ……ゲージの上に立つ杭（`GameRecordStore`）
+    ///           - 自己最高    ……左上の板。記録が無い回でも必ず出す
     ///          距離は 0 から数えあげ、トロッコが実際にレールを敷きながら走って止まる。
     ///
     ///          絵は既存の流用のみ。板・ツタ・茂み・葉カーソルはポーズメニューと同じ
@@ -38,6 +39,10 @@ namespace GameComponents
     ///
     /// @note 位置はすべて基準解像度 1920x1080 の px。アンカーは TopCenter で統一し、
     ///       x は画面中央から、y は画面上端から測る。
+    ///
+    /// @note ゲージの刻みは 100m 固定。枕木（レールの縞）はその 100m を等分した位置に置くので、
+    ///       目盛りの杭と必ず重なる。px を直に刻むと目盛りとずれるので、
+    ///       間隔は必ず `TiePitch()` から取ること。
     ///
     /// @note 選択肢の木札は、シーンが動かす `ResultButtonAnimationComponent` 付きの
     ///       UIText に **板のほうが追従する** 作りにしてある。こうすると
@@ -123,6 +128,8 @@ namespace GameComponents
         Plank SpawnPlank(const std::string& name, int order);
         void BuildHeadline(int order);
         void BuildSideBoards(int order);
+        /// @brief 目盛り 1 つぶん（100m）を等分した、枕木 1 本ぶんの間隔 [px]
+        float TiePitch() const;
         void BuildGauge(int order);
         void BuildChoices(int order);
         void BuildFooter(int order);
@@ -158,20 +165,19 @@ namespace GameComponents
         CoreEngine::UIText* monkeyText_ = nullptr;
         Plank rankPlank_{};
         CoreEngine::UIText* rankText_ = nullptr;
+        Plank bestPlank_{};
+        CoreEngine::UIText* bestText_ = nullptr;
 
         // ゲージ
         std::vector<CoreEngine::UIImage*> railTiles_;
         std::vector<CoreEngine::UIImage*> sleepers_;
         std::vector<CoreEngine::UIImage*> railVines_;
-        std::array<CoreEngine::UIImage*, 4> tickPosts_{};
-        std::array<CoreEngine::UIText*, 4> tickTexts_{};
+        std::vector<CoreEngine::UIImage*> tickPosts_;  ///< 100m ごとの目盛り（最後は目標地点）
+        std::vector<CoreEngine::UIText*> tickTexts_;
         CoreEngine::UIImage* startPost_ = nullptr;
-        CoreEngine::UIImage* gatePostLeft_ = nullptr;
-        CoreEngine::UIImage* gatePostRight_ = nullptr;
         Plank gateBeam_{};
         std::array<CoreEngine::UIImage*, 2> gateFoliage_{};
         CoreEngine::UIText* gateText_ = nullptr;
-        CoreEngine::UIText* goalTickText_ = nullptr;
         CoreEngine::UIImage* recordPost_ = nullptr;
         Plank recordPlank_{};
         CoreEngine::UIText* recordText_ = nullptr;
@@ -194,6 +200,7 @@ namespace GameComponents
         // 進行
         std::uint32_t runMeters_ = 0;      ///< 今回の距離
         std::uint32_t previousMeters_ = 0; ///< 前回の距離（杭を立てる相手）
+        std::uint32_t bestMeters_ = 0;     ///< 今回を含めた自己最高距離
         bool hasPrevious_ = false;
         bool isNewBest_ = false;
         float countTimer_ = 0.0f;
