@@ -30,9 +30,12 @@ namespace ResultSceneUi
 
     struct Elements
     {
+        CoreEngine::UIText* titleText = nullptr;
+        CoreEngine::UIText* scoreText = nullptr;
         CoreEngine::UIImage* background = nullptr;
         CoreEngine::UIImage* cinematicTopBar = nullptr;
         CoreEngine::UIImage* cinematicBottomBar = nullptr;
+        CoreEngine::UIText* tipText = nullptr;
         CoreEngine::UIText* retryButton = nullptr;
         CoreEngine::UIText* titleButton = nullptr;
     };
@@ -44,6 +47,10 @@ namespace ResultSceneUi
     extern CoreEngine::CVar<int> TitleSortOrder;
     extern CoreEngine::CVar<float> ScoreFontSize;
     extern CoreEngine::CVar<CoreEngine::Vector2> ScorePosition;
+    extern CoreEngine::CVar<float> TipFontSize;
+    extern CoreEngine::CVar<CoreEngine::Vector2> TipPosition;
+    extern CoreEngine::CVar<CoreEngine::Vector4> TipColor;
+    extern CoreEngine::CVar<int> TipSortOrder;
     extern CoreEngine::CVar<float> BackgroundPadding;
     extern CoreEngine::CVar<float> BackgroundOpacity;
     extern CoreEngine::CVar<int> BackgroundSortOrder;
@@ -56,4 +63,7 @@ namespace ResultSceneUi
     extern CoreEngine::CVar<int> ButtonSortOrder;
 
     Elements Build(const TextFactory& createText, const ImageFactory& createImage = {});
+
+    // 復元済みのTipsを、シーン構築後に表示へ反映する。
+    void SetTipText(Elements& elements, const std::string& tip);
 }

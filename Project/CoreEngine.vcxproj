@@ -190,6 +190,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\GameCore\HungerComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Result\ResultButtonAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\Result\ResultTipsComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailBuilderComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailViewComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Rail\RailPathComponent.cpp" />
@@ -797,6 +798,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\GameCore\HungerComponent.h" />
     <ClInclude Include="Application\Src\Components\Result\ResultButtonAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Result\ResultMonkeyShakeComponent.h" />
+    <ClInclude Include="Application\Src\Components\Result\ResultTipsComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailBuilderComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailViewComponent.h" />
     <ClInclude Include="Application\Src\Components\Rail\RailPathComponent.h" />
