@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="Application\Src\Components\Building\MapGeneratorComponent.cpp">
@@ -67,6 +67,9 @@
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp">
       <Filter>Application\Src\Components\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp">
       <Filter>Application\Src\Components\UI</Filter>
     </ClCompile>
@@ -101,6 +104,9 @@
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\PauseMenuFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\OffscreenTrainIndicatorFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp">
@@ -1518,6 +1524,9 @@
     <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h">
       <Filter>Application\Src\Components\UI</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h">
       <Filter>Application\Src\Components\UI</Filter>
     </ClInclude>
@@ -1555,6 +1564,9 @@
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\OffscreenTrainIndicatorFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h">
