@@ -497,7 +497,11 @@ void GameScene::GameScene::OnInitialize() {
     monkeyTransform->Get().SetParent(&trainTransform->Get());
     // 親のトロッコが右を向くため、サルは正面向きの相対回転にする。
     monkeyTransform->Get().rotate.y = 0.0f;
-    trainMovement->AddMonkey(monkeyTransform);
+    // 先頭のサルもゲームオーバー時に飛ぶため、追加サルと同じく
+    // 飛行中の軌跡用パーティクルをあらかじめ用意しておく。
+    auto* firstMonkeyLaunchTrail = CreateMonkeyLaunchTrail(
+        &gameObjectManager_, engine_, "MonkeyLaunchTrail_0");
+    trainMovement->AddMonkey(monkeyTransform, firstMonkeyLaunchTrail);
     hungerComponent->SetMonkeyAddedCallback(
         [this, trainMovement, monkeyTransform](std::size_t monkeyCount) {
             auto* carriage = CreateObject<GameSceneObject>(

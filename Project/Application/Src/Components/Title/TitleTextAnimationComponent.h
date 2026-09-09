@@ -27,6 +27,8 @@ namespace GameComponents
         static CoreEngine::CVar<float> IntroDelay;
         static CoreEngine::CVar<float> SlideDistance;
         static CoreEngine::CVar<float> IntroDuration;
+        static CoreEngine::CVar<float> IdleScale;
+        static CoreEngine::CVar<float> IdleDuration;
         static CoreEngine::CVar<float> StartReactionScale;
         static CoreEngine::CVar<float> StartReactionDuration;
 
@@ -67,12 +69,15 @@ namespace GameComponents
 
     private:
         void NotifyIntroComplete();
+        void StartIdleAnimation();
 
         CoreEngine::UIText* text_ = nullptr;
         std::string tweenId_;
         float delay_ = 0.0f;
         float slideDistance_ = 24.0f;
         float duration_ = 0.45f;
+        float idleScale_ = 1.025f;
+        float idleDuration_ = 1.15f;
         float reactionScale_ = 1.35f;
         float reactionDuration_ = 0.25f;
         float baseFontSize_ = 32.0f;

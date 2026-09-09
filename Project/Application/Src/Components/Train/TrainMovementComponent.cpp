@@ -81,6 +81,7 @@ json GameComponents::TrainMovementComponent::OnSerialize() const {
         { "initialGridX", initialGridX_ },
         { "initialGridZ", initialGridZ_ },
         { "minimumSpeedIncreasePerRail", minimumSpeedIncreasePerRail_ },
+        { "minimumSpeedMonkeyBonusRate", minimumSpeedMonkeyBonusRate_ },
         { "acceleration", acceleration_ },
         { "accelerationMonkeyBonusRate", accelerationMonkeyBonusRate_ },
         { "maximumMoveSpeed", maximumMoveSpeed_ },
@@ -98,11 +99,15 @@ void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
     initialGridZ_ = std::max(0, JsonManager::SafeGet<int32_t>(j, "initialGridZ", initialGridZ_));
     minimumSpeedIncreasePerRail_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "minimumSpeedIncreasePerRail", minimumSpeedIncreasePerRail_));
+    // 旧シーンには最低速度用の個別設定がないため、従来の共通補正率を引き継ぐ。
     acceleration_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "acceleration", acceleration_));
     accelerationMonkeyBonusRate_ = std::max(0.0f,
         JsonManager::SafeGet<float>(
             j, "accelerationMonkeyBonusRate", accelerationMonkeyBonusRate_));
+    minimumSpeedMonkeyBonusRate_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(
+            j, "minimumSpeedMonkeyBonusRate", accelerationMonkeyBonusRate_));
     maximumMoveSpeed_ = std::max(initialMoveSpeed_,
         JsonManager::SafeGet<float>(j, "maximumMoveSpeed", maximumMoveSpeed_));
     turnBlendRatio_ = std::clamp(
@@ -133,6 +138,9 @@ bool GameComponents::TrainMovementComponent::DrawInspector() {
     }
     changed |= ImGui::DragFloat(
         "最低速度の増加量（レール1マス）", &minimumSpeedIncreasePerRail_, 0.001f, 0.0f, 10.0f);
+    changed |= ImGui::DragFloat(
+        "サル1匹追加ごとの最低速度補正率",
+        &minimumSpeedMonkeyBonusRate_, 0.01f, 0.0f, 1.0f);
     changed |= ImGui::DragFloat("加速度（速度/秒）", &acceleration_, 0.01f, 0.0f, 20.0f);
     changed |= ImGui::DragFloat(
         "サル1匹追加ごとの加速度補正率", &accelerationMonkeyBonusRate_, 0.01f, 0.0f, 1.0f);
@@ -234,17 +242,19 @@ void GameComponents::TrainMovementComponent::Update() {
 
     const std::size_t laidRailCount = railPath_->GetLaidRailCount();
     const std::size_t monkeyCount = hunger_->GetMonkeyCount();
-    // サルが増えるほど、加速度とレールによる最低速度の伸びが少しだけ強くなる。
-    // 先頭の1匹では補正なしなので、従来の走行感を維持する。
+    const float additionalMonkeyCount =
+        static_cast<float>(monkeyCount > 0 ? monkeyCount - 1 : 0);
+    // 最低速度と加速度は別々の補正率で調整できる。
     const float monkeySpeedBonus = 1.0f +
-        static_cast<float>(monkeyCount > 0 ? monkeyCount - 1 : 0) *
-        accelerationMonkeyBonusRate_;
+        additionalMonkeyCount * minimumSpeedMonkeyBonusRate_;
+    const float monkeyAccelerationBonus = 1.0f +
+        additionalMonkeyCount * accelerationMonkeyBonusRate_;
     const float effectiveMinimumSpeedIncrease =
         minimumSpeedIncreasePerRail_ * monkeySpeedBonus;
     const float dynamicMinimum = initialMoveSpeed_ +
         static_cast<float>(laidRailCount) * effectiveMinimumSpeedIncrease;
     minMoveSpeed_ = std::min(dynamicMinimum, maximumMoveSpeed_);
-    const float effectiveAcceleration = acceleration_ * monkeySpeedBonus;
+    const float effectiveAcceleration = acceleration_ * monkeyAccelerationBonus;
     // 駅で最低速度へ戻した後、猿数に応じた加速度で最高速度まで徐々に加速する。
     moveSpeed_ = std::clamp(
         moveSpeed_ + effectiveAcceleration * deltaTime,
@@ -587,17 +597,19 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
 
     // headingYaw_ は直前に走っていた最終レールの向き。まだ一度も発車して
     // いない場合だけ、履歴の最後の2マスから向きを復元する。
-    float finalYaw = hasHeading_ ? headingYaw_ : 0.0f;
+    float finalYaw = hasHeading_ ? headingYaw_ : kInitialHeadingYaw;
     if (!hasHeading_ && traveledCells_.size() >= 2) {
         const auto& [startX, startZ] = traveledCells_[traveledCells_.size() - 2];
         const auto& [endX, endZ] = traveledCells_.back();
         finalYaw = HeadingYawFromDelta(endX - startX, endZ - startZ, finalYaw);
     }
 
+    // 列車モデルの正面は -Z。HeadingYawFromDelta と同じ座標系で、
+    // 最終レールの進行方向へサルを飛ばす。
     const Vector3 launchDirection{
-        std::sin(finalYaw),
+        -std::sin(finalYaw),
         0.0f,
-        std::cos(finalYaw) };
+        -std::cos(finalYaw) };
 
     const auto playTrolleyTilt = [](GameObject* trolley,
         TransformComponent* trolleyTransform, std::size_t trolleyIndex) {
@@ -727,6 +739,7 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
                     + std::to_string(monkeyIndex));
             launch.Handle().OnUpdate([launchTrail, monkeyTransform](float) {
                 if (launchTrail && monkeyTransform) {
+                    // エミッターはサルに追従させ、生成済みパーティクルはワールド空間で残す。
                     launchTrail->SetEmitterPosition(monkeyTransform->Get().translate);
                 }
             });

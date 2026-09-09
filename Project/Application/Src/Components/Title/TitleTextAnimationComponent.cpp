@@ -56,6 +56,18 @@ namespace GameComponents
         "操作ヒントのフェード・スライド時間（秒）",
         CoreEngine::CVarRange{ 0.05f, 3.0f } };
 
+    CoreEngine::CVar<float> TitleTextAnimationComponent::IdleScale{
+        "Title.UI.HintIdleScale",
+        1.025f,
+        "操作ヒントの待機中に拡大する倍率",
+        CoreEngine::CVarRange{ 1.0f, 1.2f } };
+
+    CoreEngine::CVar<float> TitleTextAnimationComponent::IdleDuration{
+        "Title.UI.HintIdleDuration",
+        1.15f,
+        "操作ヒントの待機中アニメーションの片道時間（秒）",
+        CoreEngine::CVarRange{ 0.1f, 5.0f } };
+
     // スタート時のリアクション設定も、このアニメーションコンポーネント自身が所有する。
     CoreEngine::CVar<float> TitleTextAnimationComponent::StartReactionScale{
         "Title.UI.HintStartReactionScale",
@@ -95,6 +107,8 @@ void GameComponents::TitleTextAnimationComponent::Start()
     delay_ = IntroDelay.Get();
     slideDistance_ = SlideDistance.Get();
     duration_ = IntroDuration.Get();
+    idleScale_ = IdleScale.Get();
+    idleDuration_ = IdleDuration.Get();
     reactionScale_ = StartReactionScale.Get();
     reactionDuration_ = StartReactionDuration.Get();
 
@@ -137,7 +151,10 @@ void GameComponents::TitleTextAnimationComponent::Start()
         .SetLink(text_)
         .SetUpdateType(TweenUpdate::Unscaled)
         .SetId(tweenId_)
-        .OnComplete([this] { NotifyIntroComplete(); });
+        .OnComplete([this] {
+            StartIdleAnimation();
+            NotifyIntroComplete();
+        });
 }
 
 void GameComponents::TitleTextAnimationComponent::NotifyIntroComplete()
@@ -152,6 +169,31 @@ void GameComponents::TitleTextAnimationComponent::NotifyIntroComplete()
     }
 }
 
+void GameComponents::TitleTextAnimationComponent::StartIdleAnimation()
+{
+    if (!text_) {
+        return;
+    }
+
+    Tween::KillById(tweenId_ + "_idle");
+
+    const float idleFontSize = baseFontSize_ * idleScale_;
+    Tween::To<float>(
+        baseFontSize_,
+        idleFontSize,
+        idleDuration_,
+        [this](const float& fontSize) {
+            if (text_) {
+                text_->SetFontSize(fontSize);
+            }
+        })
+        .SetEase(EasingUtil::Type::EaseInOutSine)
+        .SetLoops(-1, TweenLoop::Yoyo)
+        .SetLink(text_)
+        .SetUpdateType(TweenUpdate::Unscaled)
+        .SetId(tweenId_ + "_idle");
+}
+
 void GameComponents::TitleTextAnimationComponent::PlayStartReaction(
     std::function<void()> onFinished)
 {
@@ -162,6 +204,8 @@ void GameComponents::TitleTextAnimationComponent::PlayStartReaction(
         return;
     }
     startReactionStarted_ = true;
+
+    Tween::KillById(tweenId_ + "_idle");
 
     if (!text_) {
         if (onFinished) {
