@@ -214,6 +214,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp" />
@@ -225,6 +226,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClCompile Include="Application\Src\Editor\Stage\StageProject.cpp" />
     <ClCompile Include="Application\Src\MyGame.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\OffscreenTrainIndicatorFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
@@ -829,6 +831,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h" />
+    <ClInclude Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\StaminaGaugeUIComponent.h" />
@@ -844,6 +847,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\OffscreenTrainIndicatorFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h" />

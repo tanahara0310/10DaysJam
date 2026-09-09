@@ -13,6 +13,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Particle/ParticleSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
+#include "OffscreenTrainIndicatorFeature.h"
 #include "BananaTreeAuraFeature.h"
 #include "GameEntranceFeature.h"
 #include "PauseMenuFeature.h"
@@ -267,6 +268,10 @@ void GameScene::GameScene::OnInitialize() {
     // 戻る（Undo）向きだけは別の記号にしてある。
     // 見た目は「ゲーム設定」の Game.RailGuide.* から調整する。
     AddFeature(GameComponents::CreateRailDirectionGuideFeature());
+    // カーソルを伸ばしすぎてトロッコが画面外へ押し出されている間、画面の端へ
+    // トロッコのアイコンと「あと○m」を出す案内。
+    // 見た目は「ゲーム設定」の Game.TrainOffscreen.* から調整する。
+    AddFeature(GameComponents::CreateOffscreenTrainIndicatorFeature());
     // バナナの木の上下左右へ、レールが無い間だけ四角い波動を出して収穫範囲を示す。
     // 見た目は「ゲーム設定」の Game.BananaTreeAura.* から調整する。
     AddFeature(GameComponents::CreateBananaTreeAuraFeature());
