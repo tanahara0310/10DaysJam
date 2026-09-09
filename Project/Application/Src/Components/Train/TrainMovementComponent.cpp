@@ -78,6 +78,7 @@ json GameComponents::TrainMovementComponent::OnSerialize() const {
         { "initialGridZ", initialGridZ_ },
         { "minimumSpeedIncreasePerRail", minimumSpeedIncreasePerRail_ },
         { "acceleration", acceleration_ },
+        { "accelerationMonkeyBonusRate", accelerationMonkeyBonusRate_ },
         { "maximumMoveSpeed", maximumMoveSpeed_ },
         { "turnBlendRatio", turnBlendRatio_ },
         { "rockThrowJumpHeight", rockThrowJumpHeight_ },
@@ -95,6 +96,9 @@ void GameComponents::TrainMovementComponent::OnDeserialize(const json& j) {
         JsonManager::SafeGet<float>(j, "minimumSpeedIncreasePerRail", minimumSpeedIncreasePerRail_));
     acceleration_ = std::max(0.0f,
         JsonManager::SafeGet<float>(j, "acceleration", acceleration_));
+    accelerationMonkeyBonusRate_ = std::max(0.0f,
+        JsonManager::SafeGet<float>(
+            j, "accelerationMonkeyBonusRate", accelerationMonkeyBonusRate_));
     maximumMoveSpeed_ = std::max(initialMoveSpeed_,
         JsonManager::SafeGet<float>(j, "maximumMoveSpeed", maximumMoveSpeed_));
     turnBlendRatio_ = std::clamp(
@@ -126,6 +130,8 @@ bool GameComponents::TrainMovementComponent::DrawInspector() {
     changed |= ImGui::DragFloat(
         "最低速度の増加量（レール1マス）", &minimumSpeedIncreasePerRail_, 0.001f, 0.0f, 10.0f);
     changed |= ImGui::DragFloat("加速度（速度/秒）", &acceleration_, 0.01f, 0.0f, 20.0f);
+    changed |= ImGui::DragFloat(
+        "サル1匹追加ごとの加速度補正率", &accelerationMonkeyBonusRate_, 0.01f, 0.0f, 1.0f);
     changed |= ImGui::DragFloat("最高速度", &maximumMoveSpeed_, 0.01f, 0.01f, 100.0f);
     maximumMoveSpeed_ = std::max(maximumMoveSpeed_, initialMoveSpeed_);
     moveSpeed_ = std::min(moveSpeed_, maximumMoveSpeed_);
@@ -219,12 +225,21 @@ void GameComponents::TrainMovementComponent::Update() {
     }
 
     const std::size_t laidRailCount = railPath_->GetLaidRailCount();
+    const std::size_t monkeyCount = hunger_->GetMonkeyCount();
+    // サルが増えるほど、加速度とレールによる最低速度の伸びが少しだけ強くなる。
+    // 先頭の1匹では補正なしなので、従来の走行感を維持する。
+    const float monkeySpeedBonus = 1.0f +
+        static_cast<float>(monkeyCount > 0 ? monkeyCount - 1 : 0) *
+        accelerationMonkeyBonusRate_;
+    const float effectiveMinimumSpeedIncrease =
+        minimumSpeedIncreasePerRail_ * monkeySpeedBonus;
     const float dynamicMinimum = initialMoveSpeed_ +
-        static_cast<float>(laidRailCount) * minimumSpeedIncreasePerRail_;
+        static_cast<float>(laidRailCount) * effectiveMinimumSpeedIncrease;
     minMoveSpeed_ = std::min(dynamicMinimum, maximumMoveSpeed_);
-    // 駅で最低速度へ戻した後、毎秒の加速度で最高速度まで徐々に加速する。
+    const float effectiveAcceleration = acceleration_ * monkeySpeedBonus;
+    // 駅で最低速度へ戻した後、猿数に応じた加速度で最高速度まで徐々に加速する。
     moveSpeed_ = std::clamp(
-        moveSpeed_ + acceleration_ * deltaTime,
+        moveSpeed_ + effectiveAcceleration * deltaTime,
         minMoveSpeed_, maximumMoveSpeed_);
 
     // 移動量を計算する前に進行方向を確定し、曲がり角なら減速を反映する。
