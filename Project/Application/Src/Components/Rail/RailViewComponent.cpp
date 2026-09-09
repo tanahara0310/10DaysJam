@@ -311,7 +311,7 @@ void GameComponents::RailViewComponent::DrawRailModels() {
         return GridPosition{ to.first - from.first, to.second - from.second };
     };
     const auto yawFromDirection = [](const GridPosition& direction) {
-        // モデルの前方が+Zなので、+Zを0ラジアンとしてY軸回転を求める。
+        // レールモデルの基準方向が+Zなので、+Zを0ラジアンとしてY軸回転を求める。
         return std::atan2(
             static_cast<float>(direction.first),
             static_cast<float>(direction.second));
@@ -348,8 +348,9 @@ void GameComponents::RailViewComponent::DrawRailModels() {
 
         const bool hasPrevious = i > 0;
         const bool hasNext = i + 1 < railPath.size();
-        GridPosition incoming = { 0, 1 };
-        GridPosition outgoing = { 0, 1 };
+        // 接続先がまだないゲーム開始時の始点レールは右方向（+X）を向ける。
+        GridPosition incoming = { 1, 0 };
+        GridPosition outgoing = { 1, 0 };
 
         if (hasPrevious) {
             incoming = directionBetween(railPath[i - 1], current);

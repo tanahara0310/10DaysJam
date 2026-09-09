@@ -55,6 +55,18 @@ namespace {
     //   幅が狭まり、柱が「白い床へ刺さった棒」に見えて厚みが出ない（4 で約 1m、
     //   6 以上はほぼ刃物の断面）。5.5m ある柱を使い切るには 2 前後。
     //
+    // ■ 雲は白ではなく灰色にする（Color / Brightness）
+    //   ステージの手前には 5m ごとの距離目盛り（MapView の「○○m」）が、地形の外＝雲だけを
+    //   背にして寝ている。雲が白いと白い文字がそのまま溶けて読めない。
+    //
+    //   ここで効くのは「見た目の値」ではなく露出後の値。昼のゲームシーンを実測すると、
+    //   リニア 0.44 で置いた雲が画面では 245/255 ＝ ほぼ白だった。ACES から逆算すると
+    //   露出込みの実効ゲインは約 4.5 倍で、リニア 0.25 を超えると何色でも白へ飽和する。
+    //   目安（Color 0.80 のときの Brightness → 画面の明るさ）:
+    //     1.2 … 245（元の値。白）／ 0.55 … 245（まだ飽和）
+    //     0.10 …  187（薄めの灰色。ここを既定にした）／ 0.05 … 141（中間の灰色）
+    //   明るくするときは MapViewComponent の目盛りの文字色・縁取りも一緒に見ること。
+    //
     // ■ 夜は雲も暗くする（NightBrightnessEV）
     //   フォグ色は Color × Brightness の絶対値で、FogManager がそのまま定数バッファへ
     //   入れる（時刻には追従しない）。一方でサーフェスは月光 80lx ＝ 太陽 100000lx の
@@ -101,13 +113,15 @@ namespace {
         CVarRange{ 0.0f, 200.0f } };
 
     CVar<Vector4> cvColor{
-        "Game.Fog.Color", Vector4{ 0.85f, 0.90f, 0.98f, 1.0f },
-        "雲の色（色味のみ。明るさは Brightness が持つ）" };
+        "Game.Fog.Color", Vector4{ 0.80f, 0.81f, 0.84f, 1.0f },
+        "雲の色（色味のみ。明るさは Brightness が持つ）。ほぼ無彩色にしてあり、"
+        "青へ寄せるほど灰色に見えなくなる。Brightness と合わせて灰色を保つこと" };
 
     CVar<float> cvBrightness{
-        "Game.Fog.Brightness", 1.2f,
-        "雲の明るさ倍率。シーンより明るくすると白飛びして見えるので、"
-        "1 前後から少しずつ上げること",
+        "Game.Fog.Brightness", 0.10f,
+        "雲の明るさ倍率。Color と掛けた値がリニアの雲色になる。"
+        "昼の露出は実効 4.5 倍ほど掛かるので、0.3 も入れると白へ飽和して"
+        "距離目盛りの「○○m」が読めなくなる。0.10 で画面上は 187/255 の灰色",
         CVarRange{ 0.0f, 20.0f } };
 
     CVar<float> cvSkyColorBlend{
@@ -132,10 +146,12 @@ namespace {
         CVarRange{ 1.0f, 128.0f } };
 
     CVar<float> cvNightBrightnessEV{
-        "Game.Fog.NightBrightnessEV", -10.0f,
+        "Game.Fog.NightBrightnessEV", -6.4f,
         "夜に Brightness を何段（EV）落とすか。0 にすると昼と同じ色のままになり、"
         "夜の自動露出に持ち上げられて雲が白飛びする。"
-        "既定 -10（≒1/1000）は月光 80lx と太陽 100000lx の比に合わせた値",
+        "落とし込み量ではなく Brightness × 2^EV の積が夜の雲色なので、"
+        "Brightness を変えたらここも同じ段数だけ逆へ動かすこと"
+        "（Brightness 1.2・EV -10 の頃と同じ積になるのが 0.10・-6.4）",
         CVarRange{ -16.0f, 0.0f } };
 
     CVar<float> cvNightStartElevationDeg{
@@ -253,6 +269,20 @@ namespace {
         FogCVars::SunScatteringExponent.Set(state.sunExponent);
     }
 
+    /// 突入演出のあいだだけ雲を持ち上げるための一時値。
+    /// CVar ではないので保存されない（保存されると次回起動のタイトルが雲の中で始まる）
+    struct CloudLift {
+        float amount = 0.0f;       ///< 0 = CVar のとおり ／ 1 = 下の 2 つ
+        float baseHeight = 0.0f;
+        float heightFalloff = 1.0f;
+    };
+    CloudLift g_cloudLift{};
+
+    float MixToLift(float normal, float lifted, float amount)
+    {
+        return normal + (lifted - normal) * amount;
+    }
+
     /// @brief 調整値から、このシーンで使う r.Fog.* を組み立てる
     /// @param nightBrightnessScale 夜の落とし込み倍率（1 = 昼。ComputeNightBrightnessScale）
     EngineFogState BuildGameFog(float nightBrightnessScale)
@@ -264,8 +294,11 @@ namespace {
         // 分からなくなり、インスペクターで昼の色を決められなくなる
         state.colorIntensity = cvBrightness.Get() * nightBrightnessScale;
         state.density = cvDensity.Get();
-        state.heightFalloff = cvHeightFalloff.Get();
-        state.heightRef = cvBaseHeight.Get();
+        // 突入演出のあいだだけ、雲の高さと柔らかさを一時値へ寄せる
+        state.heightFalloff = MixToLift(
+            cvHeightFalloff.Get(), g_cloudLift.heightFalloff, g_cloudLift.amount);
+        state.heightRef = MixToLift(
+            cvBaseHeight.Get(), g_cloudLift.baseHeight, g_cloudLift.amount);
         state.startDistance = cvStartDistance.Get();
         state.maxOpacity = cvMaxOpacity.Get();
         // ステージの外（描画物が無いピクセル）にも掛ける。ここが雲の本体で、
@@ -315,6 +348,8 @@ namespace {
 
         void Initialize(SceneContext& ctx) override
         {
+            // 前のシーンの演出値を持ち越さない
+            g_cloudLift = {};
             savedFog_ = ReadEngineFog();
             initialized_ = true;
             RefreshNightBrightnessScale(ctx);
@@ -336,7 +371,11 @@ namespace {
         /// @brief 停止中も回す（止めると「ゲーム設定」で値を変えても画面が変わらない）
         bool RunsWhileStopped() const override { return true; }
 
-        void Finalize(SceneContext&) override { WriteEngineFog(savedFog_); }
+        void Finalize(SceneContext&) override
+        {
+            g_cloudLift = {};
+            WriteEngineFog(savedFog_);
+        }
 
     private:
         /// @brief 太陽高度から夜の落とし込み倍率を求め直す
@@ -381,4 +420,11 @@ std::unique_ptr<GameComponents::ISkyFogFeature>
 GameComponents::CreateSkyFogFeature(bool enabled)
 {
     return std::make_unique<SkyFogFeature>(enabled);
+}
+
+void GameComponents::SetSkyFogCloudLift(float lift, float baseHeight, float heightFalloff)
+{
+    g_cloudLift.amount = std::clamp(lift, 0.0f, 1.0f);
+    g_cloudLift.baseHeight = baseHeight;
+    g_cloudLift.heightFalloff = std::max(0.01f, heightFalloff);
 }

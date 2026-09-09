@@ -191,8 +191,21 @@ namespace GameEditors
         }
         initialized_ = true;
         ReloadProject();
-        NewDocument(project_.chunkSizeX, project_.mapSizeZ);
-        SetStatus("ステージエディタを開きました");
+        // ステージの入口をすぐ編集できるよう、固定マップを最初に開く。
+        // ファイルがまだ無い場合だけ、従来どおり新規チャンクを作る。
+        selectedBrowseIndex_ = 0;
+        selectedCsvIndex_ = project_.fixedCsvPath.empty() ? -1 : 0;
+        if (project_.fixedCsvPath.empty() || !document_.Load(project_.fixedCsvPath)) {
+            NewDocument(project_.chunkSizeX, project_.mapSizeZ);
+        } else {
+            std::snprintf(saveAsBuffer_, sizeof(saveAsBuffer_), "%s",
+                project_.fixedCsvPath.c_str());
+            project_.fixedMapSizeX = std::max<std::size_t>(1, document_.GetSizeX());
+            project_.fixedMapSizeZ = std::max<std::size_t>(1, document_.GetSizeZ());
+            newSizeX_ = static_cast<int>(document_.GetSizeX());
+            newSizeZ_ = static_cast<int>(document_.GetSizeZ());
+            SetStatus("固定マップを開きました: " + project_.fixedCsvPath);
+        }
     }
 
     // ──────────────────────────────────────────────────────────
@@ -258,6 +271,13 @@ namespace GameEditors
         newSizeX_ = static_cast<int>(document_.GetSizeX());
         newSizeZ_ = static_cast<int>(document_.GetSizeZ());
 
+        if (!project_.fixedCsvPath.empty()
+            && NormalizePathForCompare(path)
+                == NormalizePathForCompare(project_.fixedCsvPath)) {
+            project_.fixedMapSizeX = std::max<std::size_t>(1, document_.GetSizeX());
+            project_.fixedMapSizeZ = std::max<std::size_t>(1, document_.GetSizeZ());
+        }
+
         std::string message = "読み込みました: " + path;
         const std::size_t invalidCount = document_.GetInvalidCellCount();
         if (invalidCount > 0) {
@@ -279,7 +299,21 @@ namespace GameEditors
         std::snprintf(saveAsBuffer_, sizeof(saveAsBuffer_), "%s", path.c_str());
         const int areaIndex = FindAreaIndexForCsvPath(path);
         if (areaIndex < 0) {
-            SetStatus("保存しました: " + path);
+            const bool isFixedMap = !project_.fixedCsvPath.empty()
+                && NormalizePathForCompare(path)
+                    == NormalizePathForCompare(project_.fixedCsvPath);
+            if (isFixedMap) {
+                project_.fixedMapSizeX = std::max<std::size_t>(1, document_.GetSizeX());
+                project_.fixedMapSizeZ = std::max<std::size_t>(1, document_.GetSizeZ());
+                if (!StageProjectIO::Save(projectPath_, project_)) {
+                    SetStatus("固定マップは保存しましたが、サイズ情報を保存できません: "
+                        + projectPath_, true);
+                    return;
+                }
+                SetStatus("固定マップを保存しました: " + path);
+            } else {
+                SetStatus("保存しました: " + path);
+            }
             return;
         }
 
@@ -400,15 +434,40 @@ namespace GameEditors
     {
         const std::size_t chunkSize = std::max<std::size_t>(1, project_.chunkSizeX);
         const std::size_t generated = generator ? generator->GetMapChips().size() : 0;
+        const std::size_t fixedSize = GetInitialMapSizeX();
         // 遠い区画を指定すると、そこへ届くまでの地形を SetMapChip が一気に作ってしまう。
         // 生成済みの先端から4区画先までに抑える。
-        return generated / chunkSize + 4;
+        return generated <= fixedSize ? 4 : (generated - fixedSize) / chunkSize + 4;
     }
 
     std::size_t StageEditorPanel::GetChunkStartX() const
     {
         const std::size_t chunkSize = std::max<std::size_t>(1, project_.chunkSizeX);
-        return static_cast<std::size_t>(std::max(0, applyChunkIndex_)) * chunkSize;
+        if (IsEditingFixedMap()) {
+            return 0;
+        }
+        return GetInitialMapSizeX()
+            + static_cast<std::size_t>(std::max(0, applyChunkIndex_)) * chunkSize;
+    }
+
+    bool StageEditorPanel::IsEditingFixedMap() const
+    {
+        return !project_.fixedCsvPath.empty() && !document_.GetPath().empty()
+            && NormalizePathForCompare(document_.GetPath())
+                == NormalizePathForCompare(project_.fixedCsvPath);
+    }
+
+    std::size_t StageEditorPanel::GetInitialMapSizeX() const
+    {
+        return project_.fixedCsvPath.empty()
+            ? 0 : std::max<std::size_t>(1, project_.fixedMapSizeX);
+    }
+
+    std::size_t StageEditorPanel::GetInitialMapSizeZ() const
+    {
+        return project_.fixedCsvPath.empty()
+            ? std::max<std::size_t>(1, project_.mapSizeZ)
+            : std::max<std::size_t>(1, project_.fixedMapSizeZ);
     }
 
     void StageEditorPanel::ApplyToRuntime(
@@ -441,7 +500,9 @@ namespace GameEditors
         if (!generator) {
             return;
         }
-        const std::size_t sizeX = std::max<std::size_t>(1, project_.chunkSizeX);
+        const std::size_t sizeX = IsEditingFixedMap()
+            ? std::max<std::size_t>(1, document_.GetSizeX())
+            : std::max<std::size_t>(1, project_.chunkSizeX);
         // まだ生成していない範囲を求められても、読む前に作らせておく。
         generator->CreateToX(startX + sizeX);
 
@@ -459,17 +520,28 @@ namespace GameEditors
         document_.SetGrid(grid);
         newSizeX_ = static_cast<int>(document_.GetSizeX());
         newSizeZ_ = static_cast<int>(document_.GetSizeZ());
-        SetStatus("X=" + std::to_string(startX) + " からの区画を実行中マップから取り込みました");
+        SetStatus(IsEditingFixedMap()
+            ? "先頭の固定マップを実行中マップから取り込みました"
+            : "X=" + std::to_string(startX) + " からの区画を実行中マップから取り込みました");
     }
 
     void StageEditorPanel::ResizeDocumentToProjectSize()
     {
-        const std::size_t sizeX = std::max<std::size_t>(1, project_.chunkSizeX);
-        const std::size_t sizeZ = std::max<std::size_t>(1, project_.mapSizeZ);
+        const bool fixedMap = IsEditingFixedMap();
+        const std::size_t sizeX = fixedMap ? GetInitialMapSizeX()
+            : std::max<std::size_t>(1, project_.chunkSizeX);
+        const std::size_t sizeZ = fixedMap ? GetInitialMapSizeZ()
+            : std::max<std::size_t>(1, project_.mapSizeZ);
         document_.Resize(sizeX, sizeZ);
+        if (fixedMap) {
+            project_.fixedMapSizeX = sizeX;
+            project_.fixedMapSizeZ = sizeZ;
+        }
         newSizeX_ = static_cast<int>(sizeX);
         newSizeZ_ = static_cast<int>(sizeZ);
-        SetStatus("編集中のCSVをステージ構成のサイズへ変更しました（増えた分は空白です）");
+        SetStatus(fixedMap
+            ? "固定マップを設定した初期マップサイズへ変更しました（増えた分は空白です）"
+            : "編集中のCSVをチャンクサイズへ変更しました（増えた分は空白です）");
     }
 
     void StageEditorPanel::SetStatus(const std::string& message, bool isError)
@@ -619,7 +691,8 @@ namespace GameEditors
             SetStatus("マス数を変えました（増えた分は空白です）");
         }
         UI::SameLine();
-        UI::HelpMarker("ゲームは区画を 区画の幅X × マップの高さZ で読みます。"
+        UI::HelpMarker("固定CSVは先頭マップとして実際のサイズで読みます。"
+            "エリアのCSVは 区画の幅X × マップの高さZ に揃えて読みます。"
             "小さいCSVは空白で埋められ、大きいCSVははみ出した分が捨てられます。");
 
         UI::InputText("保存先", saveAsBuffer_, sizeof(saveAsBuffer_));
@@ -690,7 +763,7 @@ namespace GameEditors
         UI::SameLine();
         ImGui::Checkbox("開始位置", &showStartMarker_);
         UI::SameLine();
-        UI::HelpMarker("GameScene が列車とビルダーを置くマス。X=0 の区画に置いたときだけ意味を持ちます。"
+        UI::HelpMarker("GameScene が列車とビルダーを置くマス。固定マップを編集中はこの位置が表示されます。"
             "ゲームの手前（-Z側）は画面下、Z=0です。");
         UI::SameLine();
         ImGui::BeginDisabled(!document_.CanUndo());
@@ -788,8 +861,10 @@ namespace GameEditors
         }
 
         // ── 開始位置 ──
-        const std::size_t startZ = std::max<std::size_t>(1, project_.mapSizeZ) / 2;
-        if (showStartMarker_ && kStartPositionX < sizeX && startZ < sizeZ) {
+        const std::size_t startZ = std::max<std::size_t>(1,
+            IsEditingFixedMap() ? project_.fixedMapSizeZ : project_.mapSizeZ) / 2;
+        const bool showFixedStart = IsEditingFixedMap();
+        if (showStartMarker_ && showFixedStart && kStartPositionX < sizeX && startZ < sizeZ) {
             const std::size_t displayStartZ = DataZFromDisplayRow(startZ, sizeZ);
             const ImVec2 center(
                 gridOrigin.x + cell * (static_cast<float>(kStartPositionX) + 0.5f),
@@ -895,28 +970,39 @@ namespace GameEditors
 
         UI::SectionHeader("適用先");
 
+        const bool fixedMap = IsEditingFixedMap();
         const std::size_t maxChunk = GetMaxApplyChunkIndex(generator);
-        ImGui::SetNextItemWidth(150.0f);
-        ImGui::InputInt("区画番号", &applyChunkIndex_);
-        applyChunkIndex_ = std::clamp(applyChunkIndex_, 0, static_cast<int>(maxChunk));
-        UI::SameLine();
-        if (ImGui::Button("生成済みの先端へ")) {
-            const std::size_t chunkSize = std::max<std::size_t>(1, project_.chunkSizeX);
-            applyChunkIndex_ = generated >= chunkSize
-                ? static_cast<int>(generated / chunkSize) - 1 : 0;
+        if (fixedMap) {
+            ImGui::TextUnformatted("先頭の固定マップを X=0 へ適用します。");
+            UI::SameLine();
+            UI::HelpMarker("固定CSVはチャンク列より前に置かれるため、適用位置は常にX=0です。");
+        } else {
+            ImGui::SetNextItemWidth(150.0f);
+            ImGui::InputInt("区画番号", &applyChunkIndex_);
+            applyChunkIndex_ = std::clamp(applyChunkIndex_, 0, static_cast<int>(maxChunk));
+            UI::SameLine();
+            if (ImGui::Button("生成済みの先端へ")) {
+                const std::size_t chunkSize = std::max<std::size_t>(1, project_.chunkSizeX);
+                const std::size_t generatedChunks = generated > GetInitialMapSizeX()
+                    ? (generated - GetInitialMapSizeX()) / chunkSize : 0;
+                applyChunkIndex_ = generatedChunks > 0
+                    ? static_cast<int>(generatedChunks - 1) : 0;
+            }
+            UI::SameLine();
+            UI::HelpMarker("マップはカメラの少し先まで作られています。"
+                "先端の1つ手前のチャンクへ書けば、走っている列車のすぐ前に出ます。");
         }
-        UI::SameLine();
-        UI::HelpMarker("マップはカメラの少し先まで作られています。"
-            "先端の1つ手前の区画へ書けば、走っている列車のすぐ前に出ます。");
 
         const std::size_t startX = GetChunkStartX();
         const std::size_t sizeX = document_.GetSizeX();
         if (sizeX > 0) {
             ImGui::Text("書き込むX範囲: %zu 〜 %zu", startX, startX + sizeX - 1);
         }
-        ImGui::TextDisabled("指定できるのは 0 〜 %zu 区画です", maxChunk);
-        UI::SameLine();
-        UI::HelpMarker("遠すぎる区画を指定すると、そこへ届くまでの地形がまとめて生成されてしまいます。");
+        if (!fixedMap) {
+            ImGui::TextDisabled("指定できるのは 0 〜 %zu チャンクです", maxChunk);
+            UI::SameLine();
+            UI::HelpMarker("遠すぎるチャンクを指定すると、そこへ届くまでの地形がまとめて生成されてしまいます。");
+        }
 
         if (ImGui::Button("実行中マップへ適用")) {
             ApplyToRuntime(generator, startX);
@@ -950,6 +1036,8 @@ namespace GameEditors
 
         int chunkSizeX = static_cast<int>(project_.chunkSizeX);
         int mapSizeZ = static_cast<int>(project_.mapSizeZ);
+        int fixedMapSizeX = static_cast<int>(project_.fixedMapSizeX);
+        int fixedMapSizeZ = static_cast<int>(project_.fixedMapSizeZ);
         ImGui::SetNextItemWidth(130.0f);
         if (ImGui::InputInt("区画の幅X", &chunkSizeX)) {
             project_.chunkSizeX = static_cast<std::size_t>(std::clamp(chunkSizeX, 1, 512));
@@ -962,12 +1050,28 @@ namespace GameEditors
             newSizeZ_ = static_cast<int>(project_.mapSizeZ);
         }
 
+        ImGui::SetNextItemWidth(130.0f);
+        if (ImGui::InputInt("初期固定マップの幅X", &fixedMapSizeX)) {
+            project_.fixedMapSizeX = static_cast<std::size_t>(std::clamp(fixedMapSizeX, 1, 2048));
+            if (IsEditingFixedMap()) {
+                newSizeX_ = static_cast<int>(project_.fixedMapSizeX);
+            }
+        }
+        UI::SameLine();
+        ImGui::SetNextItemWidth(130.0f);
+        if (ImGui::InputInt("初期固定マップの高さZ", &fixedMapSizeZ)) {
+            project_.fixedMapSizeZ = static_cast<std::size_t>(std::clamp(fixedMapSizeZ, 1, 128));
+            if (IsEditingFixedMap()) {
+                newSizeZ_ = static_cast<int>(project_.fixedMapSizeZ);
+            }
+        }
+
         if (ImGui::Button("編集中のCSVをこのサイズへ変更")) {
             ResizeDocumentToProjectSize();
         }
         UI::SameLine();
-        UI::HelpMarker("上の構成サイズを変更しただけではCSVの中身は切り詰めません。"
-            "編集中のCSVへ反映すると、増えた分は空白になります。");
+        UI::HelpMarker("固定CSVを編集中なら初期固定マップのサイズ、チャンクCSVを編集中なら"
+            "チャンクのサイズへ変更します。増えた分は空白になります。");
 
         if (ImGui::BeginCombo("開始エリア",
             project_.initialAreaName.empty() ? "(なし)" : project_.initialAreaName.c_str())) {
@@ -1154,8 +1258,8 @@ namespace GameEditors
 
         UI::SectionHeader("GameScene へ反映する");
         ImGui::TextWrapped(
-            "ゲーム本体はこの構成ファイルを読みません。エリアの増減をゲームへ効かせるときは、"
-            "下のコードを GameScene::OnInitialize の mapSettings と差し替えてください。");
+            "ゲームは起動時にこの構成ファイルを読み込みます。エリアの増減をすぐに確認するには、"
+            "ゲームシーンを再読み込みしてください。下のコードは手動埋め込み用です。");
 
         const std::string snippet = StageProjectIO::BuildGameSceneSnippet(project_);
         snippetBuffer_.assign(snippet.begin(), snippet.end());

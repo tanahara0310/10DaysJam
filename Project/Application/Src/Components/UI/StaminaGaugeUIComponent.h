@@ -59,6 +59,13 @@ namespace GameComponents
         ///       粒は既に実っているので、生え際から数粒を「もう一度伸び上がらせる」形で弾ませる。
         void PlayGainPop(float staminaAmount);
 
+        /// @brief 突入演出あけの登場アニメーションの進み具合
+        /// @param reveal 0 = 画面外へ引っ込んだ状態 ／ 1 = 定位置。
+        ///               1 を少し超える値を渡すと行き過ぎて戻る（EaseOutBack を通した値をそのまま渡す想定）
+        /// @details 誰も呼ばなければ 1 のままなので、従来どおり最初から出たままになる。
+        ///          駆動するのは GameEntranceFeature。
+        void SetIntroReveal(float reveal);
+
     private:
         /// @brief 粒 1 つぶんの表示状態
         struct Pip {
@@ -99,6 +106,7 @@ namespace GameComponents
         float gainPopElapsed_ = 0.0f;     ///< バナナが入った反応の経過秒
         bool  gainPopActive_ = false;
         float lowPulse_ = 0.0f;   ///< 次の 1 マスも払えないときの警告演出（0〜1）
+        float introReveal_ = 1.0f;  ///< 登場アニメーションの進み具合（1 = 定位置）
         std::size_t previewPipCount_ = 0; ///< 次の 1 マスで食べられる粒の数
         bool  built_ = false;
     };

@@ -67,6 +67,9 @@
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp">
       <Filter>Application\Src\Components\Title</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp">
       <Filter>Application\Src\Components\UI</Filter>
     </ClCompile>
@@ -106,10 +109,16 @@
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\GameEntranceFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\PauseMenuFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp">
@@ -323,6 +332,9 @@
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.cpp">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp">
@@ -1518,6 +1530,9 @@
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h">
       <Filter>Application\Src\Components\Title</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h">
+      <Filter>Application\Src\Components\UI</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h">
       <Filter>Application\Src\Components\UI</Filter>
     </ClInclude>
@@ -1560,10 +1575,16 @@
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h">
@@ -1591,6 +1612,9 @@
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h">
+      <Filter>Application\Src\GameObjects\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.h">
       <Filter>Application\Src\GameObjects\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h">
