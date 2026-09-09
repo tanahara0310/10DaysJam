@@ -4,6 +4,7 @@
 #include "Components/Building/MapChipData.h"
 #include "Components/Building/MapGeneratorComponent.h"
 #include "Components/GameCore/GameManagerComponent.h"
+#include "Components/GameCore/GameResultData.h"
 #include "Components/GameCore/GameSettingsComponent.h"
 #include "Utility/Logger/Logger.h"
 
@@ -127,6 +128,7 @@ void GameComponents::HungerComponent::OnMonkeyEnteredCell(
     const float recovery = std::max(0.0f, GameSettings::BananaRecovery.Get()) *
         static_cast<float>(triggeredCount) * monkeyRecoveryCorrection;
     AddStamina(recovery);
+    GameResultData::AddBananaHarvestCount(triggeredCount);
 
     // 回復を確定させてから演出へ渡す。木1本につき1回で、同じ瞬間の複数本には通し番号を振る。
     if (onBananaHarvest_) {

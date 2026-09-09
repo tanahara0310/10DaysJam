@@ -50,18 +50,6 @@ CVar<float> ResultCameraOrbitSpeed{
     "リザルトカメラの周回速度（ラジアン/秒）",
     CVarRange{ -2.0f, 2.0f } };
 
-CVar<int> ResultRockCount{
-    "Result.Decoration.RockCount",
-    8,
-    "リザルト画面に配置する石の数",
-    CVarRange{ 0.0f, 64.0f } };
-
-CVar<int> ResultBananaTreeCount{
-    "Result.Decoration.BananaTreeCount",
-    5,
-    "リザルト画面に配置するバナナの木の数",
-    CVarRange{ 0.0f, 32.0f } };
-
 constexpr float kResultMonkeyY = 7.8f;
 constexpr float kResultDecorationY = kResultMonkeyY;
 constexpr float kResultGroundGridSize = 1.0f;
@@ -110,9 +98,15 @@ void ResultScene::ResultScene::OnInitialize() {
     const std::size_t monkeyCount = std::max<std::size_t>(
         1,
         GameComponents::GameResultData::GetMonkeyCount());
+    const std::size_t resultRockCount =
+        GameComponents::GameResultData::GetBrokenRockCount() / 4;
+    const std::size_t resultBananaTreeCount =
+        GameComponents::GameResultData::GetBananaHarvestCount() / 4;
     const std::uint32_t seed =
         0x9E3779B9u
         ^ static_cast<std::uint32_t>(monkeyCount) * 0x85EBCA6Bu
+        ^ static_cast<std::uint32_t>(resultRockCount) * 0xC2B2AE35u
+        ^ static_cast<std::uint32_t>(resultBananaTreeCount) * 0x27D4EB2Fu
         ^ GameComponents::GameResultData::GetHorizontalProgressBlocks();
 
     // ゲームシーンと同じ ground.obj を1マスずつ敷き、タイルごとに
@@ -212,9 +206,7 @@ void ResultScene::ResultScene::OnInitialize() {
         };
 
     std::vector<Vector3> occupiedPositions;
-    const std::size_t decorationCount = static_cast<std::size_t>(
-        std::max(0, ResultRockCount.Get())
-        + std::max(0, ResultBananaTreeCount.Get()));
+    const std::size_t decorationCount = resultRockCount + resultBananaTreeCount;
     occupiedPositions.reserve(monkeyCount + decorationCount);
     // 中央のサルも配置判定に含める（Yは使わず、XZの距離だけを判定する）。
     occupiedPositions.push_back({ 0.0f, 0.0f, 0.0f });
@@ -440,11 +432,11 @@ void ResultScene::ResultScene::OnInitialize() {
     placeDecorations(
         "rock.obj",
         "Result_rock_",
-        static_cast<std::size_t>(std::max(0, ResultRockCount.Get())));
+        resultRockCount);
     placeDecorations(
         "banana_tree.obj",
         "Result_banana_tree_",
-        static_cast<std::size_t>(std::max(0, ResultBananaTreeCount.Get())));
+        resultBananaTreeCount);
 
     // ゲームシーンと同じ雲（高さフォグ）。設定は「ゲーム設定」の Game.Fog.* を共有する。
     AddFeature(GameComponents::CreateSkyFogFeature());

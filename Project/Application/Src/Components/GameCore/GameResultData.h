@@ -14,6 +14,8 @@ namespace GameComponents
         {
             horizontalProgressBlocks_ = 0;
             monkeyCount_ = 1;
+            brokenRockCount_ = 0;
+            bananaHarvestCount_ = 0;
         }
 
         static void SetHorizontalProgressBlocks(uint32_t blocks)
@@ -47,8 +49,32 @@ namespace GameComponents
             return monkeyCount_;
         }
 
+        static void AddBrokenRockCount(std::size_t count = 1)
+        {
+            brokenRockCount_ += count;
+        }
+
+        /// @brief 直前のゲームシーンで破壊した岩の数を取得する。
+        static std::size_t GetBrokenRockCount()
+        {
+            return brokenRockCount_;
+        }
+
+        static void AddBananaHarvestCount(std::size_t count = 1)
+        {
+            bananaHarvestCount_ += count;
+        }
+
+        /// @brief 直前のゲームシーンで回収したバナナの数を取得する。
+        static std::size_t GetBananaHarvestCount()
+        {
+            return bananaHarvestCount_;
+        }
+
     private:
         static inline uint32_t horizontalProgressBlocks_ = 0;
         static inline std::size_t monkeyCount_ = 1;
+        static inline std::size_t brokenRockCount_ = 0;
+        static inline std::size_t bananaHarvestCount_ = 0;
     };
 }

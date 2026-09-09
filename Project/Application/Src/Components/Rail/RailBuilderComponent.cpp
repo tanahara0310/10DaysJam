@@ -11,6 +11,7 @@
 #include "Components/Building/RockThrowComponent.h"
 #include "Components/Camera/RockBreakShakeSettingsComponent.h"
 #include "Components/GameCore/HungerComponent.h"
+#include "Components/GameCore/GameResultData.h"
 #include "Components/GameCore/GameSettingsComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "GameObjects/Effect/RockBreakDebris.h"
@@ -535,6 +536,7 @@ void GameComponents::RailBuilderComponent::CompleteRockBreak() {
         static_cast<std::size_t>(completed.gridX),
         static_cast<std::size_t>(completed.gridZ),
         MapChipType::Ground);
+    GameResultData::AddBrokenRockCount();
 
     PlayRandomPitchSe(GetOwner(), kRockBreakSePath);
 
