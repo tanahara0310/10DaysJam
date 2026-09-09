@@ -34,7 +34,7 @@ namespace {
     //   ゲームが進むほど「落ちても以前より速い」ことが、そのまま画に出る。
 
     CVar<bool> cvEnabled{
-        "Game.SpeedBlur.Enabled", true,
+        "Game.SpeedBlur.Enabled", false,
         "トロッコの速さに合わせて画面にモーションブラーを掛ける" };
 
     CVar<float> cvStartSpeedCells{

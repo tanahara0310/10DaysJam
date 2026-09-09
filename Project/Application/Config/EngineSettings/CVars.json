@@ -11,6 +11,7 @@
     ],
     "Game.Rail.BuilderStartX": 1,
     "Game.Rail.TrainMoveSpeed": 2.0,
+    "Game.SpeedBlur.Enabled": false,
     "Game.Stamina.BananaRecoveryMonkeyCorrectionRate": 0.3499999940395355,
     "Game.Stamina.Cost.Rail": 1.0,
     "Game.Stamina.Cost.Rock": 10.0,
@@ -121,6 +122,7 @@
         1.0
     ],
     "r.LensFlare.Enabled": false,
+    "r.MotionBlur.Enabled": false,
     "r.RTShadow.DenoisePhiDepth": 1.034000039100647,
     "r.RTShadow.MaxRayDistance": 2682.326904296875,
     "r.RTShadow.ShadowBias": 0.15800000727176666,
