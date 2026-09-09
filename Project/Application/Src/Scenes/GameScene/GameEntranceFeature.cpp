@@ -5,11 +5,14 @@
 #include "Camera/Rig/CameraRig.h"
 #include "Camera/Shake/CameraShake.h"
 #include "Camera/Shake/CameraShakePresets.h"
+#include "Components/GameCore/GameSettingsComponent.h"
+#include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "Components/UI/ObjectiveSignComponent.h"
 #include "Components/UI/PauseMenuUIComponent.h"
 #include "Components/UI/SpeedGaugeUIComponent.h"
 #include "Components/UI/StaminaGaugeUIComponent.h"
+#include "Components/Utility/BlockModelLayout.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
@@ -156,6 +159,14 @@ namespace
                     LogCategory::Game,
                     "GameEntranceFeature: 列車が見つからないので目標の進行は止まります");
             }
+            railBuilder_ = ctx.gameObjectManager
+                ->FindFirstComponent<GameComponents::RailBuilderComponent>();
+            if (!railBuilder_) {
+                Logger::GetInstance().Warnf(
+                    LogCategory::Game,
+                    "GameEntranceFeature: レールカーソルが見つからないので"
+                    "雲の中でも操作できてしまいます");
+            }
             // UI もトーンマップ前のバッファへ描かれるので、掛かる露出を打ち消す
             if (auto* postEffects = engine_ ? engine_->GetService<PostEffectManager>() : nullptr) {
                 toneMapping_ = postEffects->GetEffect<ToneMapping>(PostEffectNames::ToneMapping);
@@ -192,6 +203,7 @@ namespace
             }
             if (cvEnabled.Get()) {
                 ApplyWhiteout(0.0f);
+                SetControlLocked(true);
             }
         }
 
@@ -244,6 +256,43 @@ namespace
             whiteout_->SetColor({ 1.0f, 1.0f, 1.0f, alpha });
         }
 
+        /// @brief 雲の中にいる間、プレイヤーの操作を止める
+        ///
+        /// @details 止めるのはレールカーソル（RailBuilderComponent）だけでよい。
+        ///          列車はプレイヤーが最初のレールを敷くまで発車しないので、
+        ///          カーソルを止めればゲームの進行ごと待たせられる。
+        ///          コンポーネントごと切るため、移動・敷設・Undo・投石がまとめて
+        ///          効かなくなり、長押しの溜め（buildPushTimer_ など）も進まない。
+        ///          ゲームオーバー時に GameManagerComponent がやっているのと同じ止め方。
+        void SetControlLocked(bool locked)
+        {
+            if (!railBuilder_ || controlLocked_ == locked) {
+                return;
+            }
+            controlLocked_ = locked;
+            railBuilder_->SetEnabled(!locked);
+            if (locked) {
+                PrimeCursorScale();
+            }
+        }
+
+        /// @brief 止めている間ぶんだけ、カーソルの大きさを先に入れておく
+        ///
+        /// @details RailBuilderComponent は毎フレーム自分で拡縮を書くが、止めている間は
+        ///          それが回らず、Transform の初期値（1 倍）のまま小さく映ってしまう。
+        ///          白幕は終わりぎわがほとんど透けるので、そこで小さい矢印が見えないよう
+        ///          1 マスぶんの大きさをここで入れておく（脈打ちは操作を返してから始まる）。
+        void PrimeCursorScale()
+        {
+            auto* transform = railBuilder_->Sibling<TransformComponent>();
+            if (!transform) {
+                return;
+            }
+            const float scale = GameComponents::BlockModelLayout::GetScale(
+                GameComponents::GameSettings::GridSize.Get());
+            transform->Get().scale = { scale, scale, scale };
+        }
+
         void UpdateEntrance(SceneContext& ctx)
         {
             if (sign_) {
@@ -285,6 +334,16 @@ namespace
                     options.blendSeconds = std::max(0.01f, cvCameraBlendSeconds.Get());
                     CameraRig::Activate(kPlayRigName, options);
                 }
+            }
+
+            // ---- 操作を返す ----
+            // 白幕が晴れて（＝ワールドが見えて）からカーソルを動かせるようにする。
+            // 「つなげ！！」や HUD の登場まで待たせると、見えているのに動かせない
+            // 間ができてしまうので、締めの演出より先に返す。
+            // 演出を切っている（Game.Entrance.Enabled が false）ときは白幕自体が
+            // 出ないため、ここは初回で素通りする
+            if (controlLocked_ && !whiteoutActive_) {
+                SetControlLocked(false);
             }
 
             // ---- もくひょう看板 ----
@@ -452,6 +511,7 @@ namespace
         AudioSystem* audioSystem_ = nullptr;
         ToneMapping* toneMapping_ = nullptr;
         GameComponents::TrainMovementComponent* train_ = nullptr;
+        GameComponents::RailBuilderComponent* railBuilder_ = nullptr;
         GameComponents::ObjectiveSignComponent* sign_ = nullptr;
         GameComponents::StaminaGaugeUIComponent* stamina_ = nullptr;
         GameComponents::SpeedGaugeUIComponent* speedGauge_ = nullptr;
@@ -465,6 +525,7 @@ namespace
         int reachedMeters_ = 0;
 
         bool whiteoutActive_ = false;
+        bool controlLocked_ = false;
         bool skyRigStarted_ = false;
         bool playRigStarted_ = false;
         bool signShown_ = false;
