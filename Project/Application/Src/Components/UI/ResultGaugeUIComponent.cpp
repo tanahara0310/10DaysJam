@@ -635,9 +635,9 @@ void GameComponents::ResultGaugeUIComponent::BuildFooter(int order)
     auto* engine = GetOwner() ? GetOwner()->GetEngineSystem() : nullptr;
     auto* fontManager = engine ? engine->GetService<FontManager>() : nullptr;
 
-    // Tips は任意の漢字が来るので既定フォントに任せる（ドットフォントには漢字が無い）
+    // Tips もタイトルのスタート表示と同じドットフォントを使う。
     MsdfFont* tipFont = fontManager
-        ? fontManager->AcquireNamed(FontManager::kDefaultFontName)
+        ? fontManager->AcquireNamed("x8y12pxDenkiChip.ttf")
         : nullptr;
     tipText_ = SpawnText(tipFont, "", "ResultTip", kTipFontSize, order);
     if (tipText_) {

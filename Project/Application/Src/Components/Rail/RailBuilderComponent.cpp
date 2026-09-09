@@ -225,35 +225,6 @@ void GameComponents::RailBuilderComponent::Update() {
     // 入力クエリを取得する
     const InputQuery& input = inputManager->GetQuery();
 
-    // レールを撤去する（Undo）。移動入力とは同じフレームに処理しない
-    if (input.IsActionTriggered(InputAction::Interact)) {
-        if (!isBreakingRock_) {
-            TryUndoLastRail();
-        }
-        return;
-    }
-    // 連続削除のためのタイマー処理
-    if (input.IsActionPressed(InputAction::Interact)) {
-        undoPushTimer_ += Time::DeltaTime();
-        // 連続削除ボタンを押し続けている時間が一定時間を超えた場合、連続削除を行う
-        if (undoPushTimer_ >= undoPushMaxTime_) {
-            // 連続削除の間隔タイマーを更新する
-            if (undoIntervalTimer_ <= 0.0f) {
-                if (!isBreakingRock_) {
-                    TryUndoLastRail();
-                }
-                undoIntervalTimer_ = undoInterval_;
-                // 移動入力とは同じフレームに処理しない
-                return;
-
-            } else {
-                undoIntervalTimer_ -= Time::DeltaTime();
-            }
-        }
-    } else {
-        undoPushTimer_ = 0.0f;
-    }
-
     // 移動入力は押した瞬間に1回処理し、長押し時はUndoと同じように
     // 一定時間経過後、一定間隔で繰り返す。
     bool isContinuousBuild = false;
