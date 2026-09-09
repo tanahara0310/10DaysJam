@@ -73,6 +73,10 @@ namespace GameComponents
         void StopTweens();
         void StartSelectedIdle();
         void PlayScaleReaction(std::function<void()> onFinished);
+        /// @brief 文字色とアウトラインへ同じアルファを反映する。
+        /// @note アウトラインは文字と別の色として持っているため、文字だけフェードさせると
+        ///       「輪郭だけ残って消えない」見え方になる。決定・非選択フェードは必ずこれを使うこと
+        void ApplyColor(const CoreEngine::Vector4& color);
 
         CoreEngine::UIText* text_ = nullptr;
         std::string tweenId_;
