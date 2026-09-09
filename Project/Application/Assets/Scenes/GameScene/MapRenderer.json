@@ -44,8 +44,17 @@
                 "groundTintFadeStart": 16.0,
                 "groundTintHueSwing": 0.11999999731779099,
                 "groundTintStrength": 0.20000000298023224,
+                "stationIdleBreath": 0.019999999552965164,
+                "stationIdleSpeed": 0.44999998807907104,
+                "stationMonkeyHop": 0.1599999964237213,
+                "stationMonkeyLeap": 0.699999988079071,
+                "stationMonkeyScale": 0.8500000238418579,
                 "stationPopDuration": 0.44999998807907104,
                 "stationPopSquash": 0.2199999988079071,
+                "stationUsedTint": 0.7799999713897705,
+                "stationWakeBreath": 0.07000000029802322,
+                "stationWakeRange": 7.0,
+                "stationWakeSpeed": 1.5,
                 "viewDistanceX": 20
             },
             "type": "MapView"
