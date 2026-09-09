@@ -36,7 +36,7 @@ namespace GameComponents
         // 全オブジェクトの移動後にゲーム進行を更新する
         void LateUpdate() override;
 
-        // ゲームオーバーを要求する。時間はカメラ演出完了後の待機秒数。
+        // ゲームオーバーを要求する。時間は終了演出後の待機秒数。
         void RequestGameOver(float changeDelayTime = -1.0f);
         // ゲームクリアを要求する。時間はカメラ演出完了後の待機秒数。
         void RequestGameClear(float changeDelayTime = -1.0f);

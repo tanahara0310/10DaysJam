@@ -109,17 +109,21 @@ void GameComponents::GameManagerComponent::BeginEnding(bool isClear, float chang
         builder_->SetEnabled(false);
     }
 
-    // 構図は Presets/CameraRigs/Train_CloseUp.json 側が持つ。ここは名前で呼ぶだけ。
-    CameraRigActivateOptions closeUpOptions;
-    closeUpOptions.blendSeconds = kEndingCloseUpSeconds;
-    closeUpOptions.useUnscaledTime = true;
-    closeUpTimer_ = CameraRig::Activate(kEndingCloseUpRigName, closeUpOptions)
-        ? kEndingCloseUpSeconds
-        : 0.0f;
+    // ゲームクリア時だけ列車へ寄る。ゲームオーバー時は通常のゲームカメラを維持する。
+    closeUpTimer_ = 0.0f;
+    if (isClear) {
+        // 構図は Presets/CameraRigs/Train_CloseUp.json 側が持つ。ここは名前で呼ぶだけ。
+        CameraRigActivateOptions closeUpOptions;
+        closeUpOptions.blendSeconds = kEndingCloseUpSeconds;
+        closeUpOptions.useUnscaledTime = true;
+        closeUpTimer_ = CameraRig::Activate(kEndingCloseUpRigName, closeUpOptions)
+            ? kEndingCloseUpSeconds
+            : 0.0f;
+    }
 
     Logger::GetInstance().Infof(
         LogCategory::Game,
-        "GameManager: {}。カメラ演出後 {:.2f} 秒でリザルトへ",
+        "GameManager: {}。終了演出後 {:.2f} 秒でリザルトへ",
         isClear ? "ゲームクリア" : "ゲームオーバー", changeDelayTimer_);
 }
 
@@ -127,7 +131,7 @@ void GameComponents::GameManagerComponent::UpdateEnding() {
     // ゲームプレイ側のポーズ・スローでも終了処理が止まらない時間を使う。
     const float deltaTime = std::max(0.0f, Time::UnscaledDeltaTime());
 
-    // 列車へ寄り切ってから待機を開始する。リグが無ければ待たずに進む。
+    // 寄り演出がある場合は、列車へ寄り切ってから待機を開始する。
     if (closeUpTimer_ > 0.0f) {
         closeUpTimer_ -= deltaTime;
         return;
