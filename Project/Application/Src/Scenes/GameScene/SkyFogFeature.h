@@ -43,4 +43,19 @@ namespace GameComponents
     /// @note 調整値は SkyFogFeature.cpp のファイルスコープにある `Game.Fog.*` の CVar 群。
     ///       CVars.json へ自動保存され、インスペクターの「ゲーム設定」から編集できる。
     std::unique_ptr<ISkyFogFeature> CreateSkyFogFeature(bool enabled = true);
+
+    /// @brief 突入演出のあいだだけ、雲を持ち上げて「雲の中」を作る
+    /// @param lift 0 = CVar のとおり（通常）／1 = 下の 2 つで指定した開幕の雲。間は補間する
+    /// @param baseHeight lift = 1 のときの雲のいちばん濃い高さ [m]
+    /// @param heightFalloff lift = 1 のときの高さ減衰（小さいほど厚くぼんやりする）
+    ///
+    /// @details **CVar は一切書き換えない。** ここが肝心で、`Game.Fog.*` を毎フレーム
+    ///          書き換えると CVar の自動保存が演出の途中で走り、掃引中の値
+    ///          （雲の高さ 56m など）が CVars.json へ焼き付く。そうなると次回起動から
+    ///          タイトル画面が雲の中＝真っ白で始まる。実際にそれを踏んだので、
+    ///          演出用の値は保存されないここへ置いてある。
+    ///
+    /// @note シーンの出入りで自動的に 0 へ戻る。Feature が登録されていないシーンでは
+    ///       値を覚えるだけで何も起きない。駆動するのは GameEntranceFeature。
+    void SetSkyFogCloudLift(float lift, float baseHeight, float heightFalloff);
 }

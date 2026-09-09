@@ -269,6 +269,20 @@ namespace {
         FogCVars::SunScatteringExponent.Set(state.sunExponent);
     }
 
+    /// 突入演出のあいだだけ雲を持ち上げるための一時値。
+    /// CVar ではないので保存されない（保存されると次回起動のタイトルが雲の中で始まる）
+    struct CloudLift {
+        float amount = 0.0f;       ///< 0 = CVar のとおり ／ 1 = 下の 2 つ
+        float baseHeight = 0.0f;
+        float heightFalloff = 1.0f;
+    };
+    CloudLift g_cloudLift{};
+
+    float MixToLift(float normal, float lifted, float amount)
+    {
+        return normal + (lifted - normal) * amount;
+    }
+
     /// @brief 調整値から、このシーンで使う r.Fog.* を組み立てる
     /// @param nightBrightnessScale 夜の落とし込み倍率（1 = 昼。ComputeNightBrightnessScale）
     EngineFogState BuildGameFog(float nightBrightnessScale)
@@ -280,8 +294,11 @@ namespace {
         // 分からなくなり、インスペクターで昼の色を決められなくなる
         state.colorIntensity = cvBrightness.Get() * nightBrightnessScale;
         state.density = cvDensity.Get();
-        state.heightFalloff = cvHeightFalloff.Get();
-        state.heightRef = cvBaseHeight.Get();
+        // 突入演出のあいだだけ、雲の高さと柔らかさを一時値へ寄せる
+        state.heightFalloff = MixToLift(
+            cvHeightFalloff.Get(), g_cloudLift.heightFalloff, g_cloudLift.amount);
+        state.heightRef = MixToLift(
+            cvBaseHeight.Get(), g_cloudLift.baseHeight, g_cloudLift.amount);
         state.startDistance = cvStartDistance.Get();
         state.maxOpacity = cvMaxOpacity.Get();
         // ステージの外（描画物が無いピクセル）にも掛ける。ここが雲の本体で、
@@ -331,6 +348,8 @@ namespace {
 
         void Initialize(SceneContext& ctx) override
         {
+            // 前のシーンの演出値を持ち越さない
+            g_cloudLift = {};
             savedFog_ = ReadEngineFog();
             initialized_ = true;
             RefreshNightBrightnessScale(ctx);
@@ -352,7 +371,11 @@ namespace {
         /// @brief 停止中も回す（止めると「ゲーム設定」で値を変えても画面が変わらない）
         bool RunsWhileStopped() const override { return true; }
 
-        void Finalize(SceneContext&) override { WriteEngineFog(savedFog_); }
+        void Finalize(SceneContext&) override
+        {
+            g_cloudLift = {};
+            WriteEngineFog(savedFog_);
+        }
 
     private:
         /// @brief 太陽高度から夜の落とし込み倍率を求め直す
@@ -397,4 +420,11 @@ std::unique_ptr<GameComponents::ISkyFogFeature>
 GameComponents::CreateSkyFogFeature(bool enabled)
 {
     return std::make_unique<SkyFogFeature>(enabled);
+}
+
+void GameComponents::SetSkyFogCloudLift(float lift, float baseHeight, float heightFalloff)
+{
+    g_cloudLift.amount = std::clamp(lift, 0.0f, 1.0f);
+    g_cloudLift.baseHeight = baseHeight;
+    g_cloudLift.heightFalloff = std::max(0.01f, heightFalloff);
 }

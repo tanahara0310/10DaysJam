@@ -21,9 +21,9 @@
 #include "Math/Easing/EasingUtil.h"
 #include "RailDirectionGuideFeature.h"
 #include "Scene/Feature/ISceneFeature.h"
+#include "SkyFogFeature.h"
 #include "UI/UIImage.h"
 #include "Utility/CVar/CVar.h"
-#include "Utility/CVar/CVarRegistry.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -77,7 +77,8 @@ namespace
     CVar<float> cvCloudTopHeight{
         "Game.Entrance.CloudTopHeight", 56.0f,
         "開幕の雲海の高さ [m]。開始カメラ（Entrance_Sky の y）より上にすること。"
-        "下げると開幕から島が見えてしまう",
+        "下げると開幕から島が見えてしまう。この値は CVar 経由で雲へ渡すのではなく、"
+        "SkyFogFeature の一時値として渡すので CVars.json へは焼き付かない",
         CVarRange{ 0.0f, 200.0f } };
 
     CVar<float> cvCloudFalloff{
@@ -129,44 +130,6 @@ namespace
     CVar<Vector4> cvTargetColor{
         "Game.Goal.MarkerTargetColor", { 0.25f, 0.18f, 0.010f, 1.0f },
         "次の目標地点の目盛りの色（脈打つ）。同じくリニア値で入れること" };
-
-    /// @brief 名前で借りた float の CVar（TimeOfDayFeature と同じ手）
-    struct BorrowedCVar {
-        ICVar* cvar = nullptr;
-        float original = 0.0f;
-        bool held = false;
-    };
-
-    void BorrowFloatCVar(BorrowedCVar& slot, const char* name)
-    {
-        if (slot.held) {
-            return;  // 既に借りている（original は最初に見た値のまま保つ）
-        }
-        slot.cvar = CVarRegistry::Get().Find(name);
-        const float* current = slot.cvar ? slot.cvar->AsFloat() : nullptr;
-        if (!current) {
-            slot.cvar = nullptr;  // 名前違い・型違い。黙って手を出さない
-            return;
-        }
-        slot.original = *current;
-        slot.held = true;
-    }
-
-    void WriteFloatCVar(BorrowedCVar& slot, float value)
-    {
-        if (slot.held && slot.cvar) {
-            // CVar 側が同値の書き込みを弾くので、毎フレーム呼んでも通知は走らない
-            slot.cvar->SetFromPointer(&value);
-        }
-    }
-
-    void ReleaseFloatCVar(BorrowedCVar& slot)
-    {
-        if (slot.held && slot.cvar) {
-            slot.cvar->SetFromPointer(&slot.original);
-        }
-        slot = {};
-    }
 
     Vector4 Lerp(const Vector4& from, const Vector4& to, float t)
     {
@@ -223,13 +186,18 @@ namespace
 
             goalMeters_ = GoalStep();
 
-            // 開幕を雲の中にする。この 2 つは SkyFogFeature が毎フレーム読むので、
-            // 借りて上書きしている間はこちらの値が画に出る
-            if (cvEnabled.Get()) {
-                BorrowFloatCVar(fogBaseHeight_, "Game.Fog.BaseHeight");
-                BorrowFloatCVar(fogFalloff_, "Game.Fog.HeightFalloff");
-                ApplyCloud(0.0f);
-            }
+            // 雲はここでは触らない。最初の Update（FrameStart）で入れる。
+            //
+            // ここで持ち上げてしまうと、ローディングが終わって最初のフレームが回るまで
+            // 雲の高さが 56m のまま静止する。SkyFogFeature はこの値を r.Fog.HeightRef へ
+            // 流し込み、CVar の自動保存は「最後の変更から 0.3 秒後」に走るので、
+            // その静止中に必ず 56 が CVars.json へ焼き付く。そうなると次回起動から
+            // タイトル画面が雲の中＝真っ白で始まる（実際にそれを踏んだ）。
+            //
+            // 演出が動いている間は毎フレーム値が変わってデバウンスが張り直されるため、
+            // 保存が走るのは掃引が終わって通常値へ戻った 0.3 秒後になる。
+            // GameEntranceFeature は SkyFogFeature より先に登録してあるので、
+            // 1 フレーム目の FrameStart で入れれば描画には間に合う。
         }
 
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override
@@ -248,27 +216,27 @@ namespace
 
         void Finalize(SceneContext&) override
         {
-            // 借りたフォグは必ず返す。返さないと次のシーンや次回起動まで雲が持ち出される
-            ReleaseFloatCVar(fogBaseHeight_);
-            ReleaseFloatCVar(fogFalloff_);
+            // 演出の途中でシーンを抜けても、雲は必ず通常へ戻す
+            GameComponents::SetSkyFogCloudLift(0.0f, 0.0f, 1.0f);
+            cloudLifted_ = false;
         }
 
     private:
         int GoalStep() const { return std::max(1, cvGoalStep.Get()); }
 
-        /// @brief 雲海の高さと柔らかさを、演出の進み具合に合わせて書き込む
+        /// @brief 雲海の高さと柔らかさを、演出の進み具合に合わせて渡す
         /// @param progress 0 = 開幕（雲の中）／1 = 通常のフォグへ戻り切った
+        /// @details 渡す先は SkyFogFeature の一時値で、CVar は 1 つも書き換えない。
+        ///          CVar を毎フレーム動かすと自動保存が演出の途中で走り、掃引中の値が
+        ///          CVars.json へ焼き付いて、次回起動のタイトルが雲の中で始まる。
         void ApplyCloud(float progress)
         {
             const float eased =
                 EasingUtil::Apply(std::clamp(progress, 0.0f, 1.0f),
                                   EasingUtil::Type::EaseInOutCubic);
-            WriteFloatCVar(fogBaseHeight_,
-                fogBaseHeight_.original
-                + (cvCloudTopHeight.Get() - fogBaseHeight_.original) * (1.0f - eased));
-            WriteFloatCVar(fogFalloff_,
-                fogFalloff_.original
-                + (cvCloudFalloff.Get() - fogFalloff_.original) * (1.0f - eased));
+            GameComponents::SetSkyFogCloudLift(
+                1.0f - eased, cvCloudTopHeight.Get(), cvCloudFalloff.Get());
+            cloudLifted_ = eased < 1.0f;
         }
 
         void UpdateEntrance(SceneContext& ctx)
@@ -280,9 +248,13 @@ namespace
             if (entranceDone_) {
                 return;
             }
-            elapsed_ += std::clamp(Time::DeltaTime(), 0.0f, kMaxStepSeconds);
-
             const bool playCinematic = cvEnabled.Get();
+            if (playCinematic && !cloudStarted_) {
+                // 1 フレーム目。まだ時間を進める前に雲を持ち上げて、この frame から雲の中にする
+                cloudStarted_ = true;
+                ApplyCloud(0.0f);
+            }
+            elapsed_ += std::clamp(Time::DeltaTime(), 0.0f, kMaxStepSeconds);
 
             // ---- 雲海ブレイク ----
             if (playCinematic) {
@@ -290,9 +262,8 @@ namespace
                 const float progress = elapsed_ / cloudSeconds;
                 if (progress < 1.0f) {
                     ApplyCloud(progress);
-                } else if (fogBaseHeight_.held) {
-                    ReleaseFloatCVar(fogBaseHeight_);
-                    ReleaseFloatCVar(fogFalloff_);
+                } else if (cloudLifted_) {
+                    ApplyCloud(1.0f);   // 通常のフォグへ戻し切る
                 }
 
                 // ---- カメラ：真上のリグ → ゲーム構図 ----
@@ -339,7 +310,7 @@ namespace
             // ---- HUD の登場 ----
             UpdateHudReveal(ctx, callDelay);
 
-            if (callPlayed_ && hudRevealDone_ && !fogBaseHeight_.held
+            if (callPlayed_ && hudRevealDone_ && !cloudLifted_
                 && elapsed_ >= callDelay + kFogReleaseMargin) {
                 entranceDone_ = true;
             }
@@ -486,15 +457,14 @@ namespace
         GameComponents::SpeedGaugeUIComponent* speedGauge_ = nullptr;
         GameComponents::PauseMenuUIComponent* pauseMenu_ = nullptr;
 
-        BorrowedCVar fogBaseHeight_{};
-        BorrowedCVar fogFalloff_{};
-
         float elapsed_ = 0.0f;
         float pulseTimer_ = 0.0f;
         float reachedFlash_ = kReachedFlashSeconds;
         int goalMeters_ = 200;
         int reachedMeters_ = 0;
 
+        bool cloudStarted_ = false;
+        bool cloudLifted_ = false;
         bool skyRigStarted_ = false;
         bool playRigStarted_ = false;
         bool signShown_ = false;

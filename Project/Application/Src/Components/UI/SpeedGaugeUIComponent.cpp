@@ -625,15 +625,13 @@ void GameComponents::SpeedGaugeUIComponent::LayoutParts(float time)
         std::lerp(kDigitColor.z, kSlowdownDigitColor.z, slowdownRed),
         1.0f };
 
-    // スタミナゲージと同じ TopLeft アンカー。左上からの距離をそのまま使う
-    const Vector2 anchor = cvPosition.Get();
-    const Vector2 origin{ anchor.x, anchor.y + slowdownDip };
     // スタミナゲージと同じ TopLeft アンカー。左上からの距離をそのまま使う。
-    // 突入演出あけの登場では、板の右端が画面外へ抜ける距離まで左へ寄せてから戻す。
+    // 横は突入演出あけの登場で、板の右端が画面外へ抜ける距離まで左へ寄せてから戻す。
+    // 縦は駅の減速で板ごと沈める。両方同時に起きても軸が違うのでそのまま足せる
     const Vector2 basePosition = cvPosition.Get();
     const Vector2 origin{
         basePosition.x - (1.0f - introReveal_) * (basePosition.x + panelWidth + kIntroMargin),
-        basePosition.y };
+        basePosition.y + slowdownDip };
 
     // 板と端木は濃いめに落として緑へ寄せる。湿ったジャングルの木らしい色みにする
     const float brightness = cvBoardBrightness.Get();
