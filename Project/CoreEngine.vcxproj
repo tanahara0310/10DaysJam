@@ -106,10 +106,14 @@
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>assimp-vc143-mtd.lib</AdditionalDependencies>
     </Link>
+    <!-- Config も Assets と同じく出力へ配る。exe を単体起動すると CWD が出力ディレクトリになり、
+         これが無いと Application/Config/EngineSettings/CVars.json を読めず CVar が全て既定値になる -->
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 xcopy "$(ProjectDir)Application\Assets" "$(TargetDir)Application\Assets\" /E /I /Y /D
 xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
+xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I /Y
+xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -139,10 +143,14 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
       <AdditionalLibraryDirectories>$(ProjectDir)externals\assimp\lib\Release</AdditionalLibraryDirectories>
       <AdditionalDependencies>assimp-vc143-mt.lib</AdditionalDependencies>
     </Link>
+    <!-- Config も Assets と同じく出力へ配る。exe を単体起動すると CWD が出力ディレクトリになり、
+         これが無いと Application/Config/EngineSettings/CVars.json を読めず CVar が全て既定値になる -->
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 xcopy "$(ProjectDir)Application\Assets" "$(TargetDir)Application\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Command>
+xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
+xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I /Y
+xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
@@ -173,10 +181,14 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
       <AdditionalDependencies>assimp-vc143-mt.lib</AdditionalDependencies>
       <LinkTimeCodeGeneration />
     </Link>
+    <!-- Config も Assets と同じく出力へ配る。exe を単体起動すると CWD が出力ディレクトリになり、
+         これが無いと Application/Config/EngineSettings/CVars.json を読めず CVar が全て既定値になる -->
     <PostBuildEvent>
       <Command>copy "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\x64\dxcompiler.dll" "$(TargetDir)dxcompiler.dll"
 xcopy "$(ProjectDir)Application\Assets" "$(TargetDir)Application\Assets\" /E /I /Y /D
-xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Command>
+xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D
+xcopy "$(ProjectDir)Application\Config" "$(TargetDir)Application\Config\" /E /I /Y
+xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -202,6 +214,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\Title\TitleTextAnimationComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp" />
@@ -214,8 +227,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SkyFogFeature.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\GameEntranceFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\PauseMenuFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
@@ -290,6 +305,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     </ClCompile>
     <ClCompile Include="Application\Src\GameObjects\Effect\HitEffect.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.cpp" />
+    <ClCompile Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.cpp" />
     <ClCompile Include="Application\Src\GameObjects\Effect\RockBreakDebris.cpp" />
     <ClCompile Include="Application\Src\GameObjects\GameSceneObject.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterPlaneObject.cpp" />
@@ -810,6 +826,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Components\Title\TitleMonkeyAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleTrolleyAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
+    <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h" />
@@ -823,8 +840,10 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SkyFogFeature.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\GameEntranceFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\PauseMenuFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
@@ -834,6 +853,7 @@ xcopy "$(ProjectDir)Engine\Assets" "$(TargetDir)Engine\Assets\" /E /I /Y /D</Com
     <ClInclude Include="Application\Src\Scenes\TitleScene\TitleSceneUi.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\HitEffect.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\BananaHarvestEffect.h" />
+    <ClInclude Include="Application\Src\GameObjects\Effect\StationSlowdownEffect.h" />
     <ClInclude Include="Application\Src\GameObjects\Effect\RockBreakDebris.h" />
     <ClInclude Include="Application\Src\GameObjects\GameSceneObject.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Render\WaterRenderFeature.h" />

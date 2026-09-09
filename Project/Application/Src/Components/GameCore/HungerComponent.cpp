@@ -69,6 +69,10 @@ bool GameComponents::HungerComponent::OnTrainEnteredCell(int32_t gridX, int32_t 
         stationActivated = true;
         // 駅チップはレールの1マス奥にある。サルが増えたときに弾ませる。
         pendingMonkeyStations_.emplace_back(gridX, gridZ + 1);
+        // 減速はこの直後に起きる。演出へは「今この駅で落ちる」として同じ瞬間に渡す。
+        if (onStationEntered_) {
+            onStationEntered_(gridX, gridZ + 1);
+        }
     }
 
     OnMonkeyEnteredCell(0, gridX, gridZ);

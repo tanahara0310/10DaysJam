@@ -47,6 +47,20 @@ namespace GameComponents
         /// @brief 速度を km/h に直し、桁送りと揺れを進める
         void Update() override;
 
+        /// @brief 駅の減速に合わせて、速度計を赤く点滅させながら沈ませる
+        /// @param droppedCellsPerSecond これから落ちる速度差［マス/秒］。
+        ///        km/h への換算はこのコンポーネントが持っている（`MetersPerCell`）ので、
+        ///        呼び出し側は列車の単位のまま渡してよい。0 以下なら何も起きない。
+        /// @note 桁が下向きに転がるのは元からの挙動で、これはその上に乗せる色と沈み込み。
+        ///       数字を読んでいないプレイヤーにも、画面の端の動きで減速を気づかせるためのもの。
+        void PlaySlowdownFlash(float droppedCellsPerSecond);
+        /// @brief 突入演出あけの登場アニメーションの進み具合
+        /// @param reveal 0 = 画面外へ引っ込んだ状態 ／ 1 = 定位置。
+        ///               1 を少し超える値を渡すと行き過ぎて戻る（EaseOutBack を通した値をそのまま渡す想定）
+        /// @details 誰も呼ばなければ 1 のままなので、従来どおり最初から出たままになる。
+        ///          駆動するのは GameEntranceFeature。
+        void SetIntroReveal(float reveal);
+
     private:
         /// @brief 桁 1 つぶんの表示状態
         struct Digit {
@@ -66,6 +80,11 @@ namespace GameComponents
         void UpdateDigits(float kilometersPerHour, float deltaTime);
         /// @brief マス/秒を km/h に直す
         float CalculateKilometersPerHour() const;
+        /// @brief 減速フラッシュの進み具合を 0（始まり）〜1（終わり）で返す。再生していなければ 1
+        float GetSlowdownProgress() const;
+        /// @brief 「▼18.4」を板の下へ置き、浮き上がりながら消えるまでを進める
+        void LayoutDropLabel(
+            const CoreEngine::Vector2& anchor, float panelWidth, float panelHeight, float scale);
         /// @brief トロッコが実際に進んでいるかを、水平方向の位置の変化から判定する
         /// @details 発車前（レールが規定数そろうまで）と投石中の停止を、どちらも停車として扱う。
         ///          TrainMovementComponent には走行中かを返す口が無いので、外から見て判断する。
@@ -82,12 +101,21 @@ namespace GameComponents
         std::array<Digit, kDigitCount> digits_{};
         CoreEngine::UIText* dot_ = nullptr;   ///< 小数点
         CoreEngine::UIText* unit_ = nullptr;  ///< "km/h"
+        /// 減速したときだけ板の下へ出る「▼18.4」。落ちた量そのものを名指しする
+        CoreEngine::UIText* dropLabel_ = nullptr;
 
         float elapsed_ = 0.0f;                    ///< 揺れ用の経過秒
+        float introReveal_ = 1.0f;                ///< 登場アニメーションの進み具合（1 = 定位置）
         /// 実際に出している値。停車中は 0 で、発車すると本来の速度まで一気に振り切る
         float displayedKilometersPerHour_ = 0.0f;
         CoreEngine::Vector3 lastTrainPosition_{}; ///< 前フレームのトロッコ位置
         bool hasTrainPosition_ = false;           ///< 1 フレーム目は差分が取れない
+        /// 減速フラッシュの経過秒。負のあいだは再生していない
+        float slowdownElapsed_ = -1.0f;
+        /// 落差から決めた強さ 0〜1。沈む深さと赤の濃さに掛かる
+        float slowdownStrength_ = 0.0f;
+        /// 直近の落差 [km/h]。そのまま「▼18.4」として出す
+        float slowdownDropKmh_ = 0.0f;
         bool built_ = false;
     };
 }

@@ -548,8 +548,20 @@ void GameComponents::MapViewComponent::UpdateDistanceMarkers(
             marker->SetAlign(TextAlignH::Center, TextAlignV::Top);
             marker->SetPivot({ 0.5f, 0.0f });
             marker->SetLineSpacing(0.9f);
-            marker->SetColor({ 1.0f, 1.0f, 1.0f, 1.0f });
-            marker->SetOutline({ 0.05f, 0.05f, 0.05f, 0.8f }, 0.025f);
+            // 目盛りは地形の外へ寝かせてあるので、背景は雲（SkyFogFeature）だけになる。
+            // 純白のままだと雲へ溶けるため、文字は薄い山吹へ、縁取りは黒へ寄せる。
+            //
+            // 色はリニアで、そのままシーンの HDR バッファへ書く。昼のゲームシーンでは
+            // 露出が実効 4.5 倍ほど掛かるので、0.25 を超えた成分は何色を入れても白へ
+            // 飽和する（1.0, 0.94, 0.66 は画面では純白と見分けが付かない）。
+            // 目安: 0.45 → 247 ／ 0.36 → 242 ／ 0.05 → 155 ／ 0.012 → 67。
+            // 下の値で画面上は (247, 242, 155) の淡い山吹、縁は 67 の黒に出る。
+            //
+            // 縁取りの上限は kMaxOutlineSd * pxRange / glyphPixelSize = 0.45 * 12 / 56
+            // ≒ 0.096em。em はフォントサイズ 0.45m ＝ 1080p で約 22px なので、
+            // 元の 0.025em では 1px を割っていて縁として見えていなかった。
+            marker->SetColor({ 0.45f, 0.36f, 0.05f, 1.0f });
+            marker->SetOutline({ 0.012f, 0.012f, 0.018f, 1.0f }, 0.07f);
             marker->SetBillboard(Text3DBillboard::None);
             marker->SetDepthMode(Text3DDepthMode::Test);
             distanceMarkers_.push_back(marker);

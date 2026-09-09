@@ -70,6 +70,16 @@ namespace GameComponents
         {
             onStationPop_ = std::move(callback);
         }
+        /// @brief 先頭が未訪問の駅前レールへ入った瞬間に、駅チップの位置を通知する。
+        /// @details トロッコの速度が最低速度まで落ちるのはこの直後（TrainMovementComponent が
+        ///          この関数の戻り値を見て落とす）なので、減速の演出はここで受けること。
+        /// @note 連結（サルが増える）は最後尾が駅を抜けてからで、車両数ぶん遅れて起きる。
+        ///       そちらは SetStationPopCallback / SetMonkeyAddedCallback で、
+        ///       原因（減速）と結果（連結）が別の瞬間であることを承知のうえで使い分ける。
+        void SetStationEnteredCallback(std::function<void(int32_t, int32_t)> callback)
+        {
+            onStationEntered_ = std::move(callback);
+        }
         /// @brief バナナを1本収穫するたびに通知する。回復量の計算とは切り離した演出用の口。
         /// @note 通知先はスタミナを書き換えないこと。回復はこのコンポーネントが確定済み。
         void SetBananaHarvestCallback(std::function<void(const BananaHarvestEvent&)> callback)
@@ -93,6 +103,7 @@ namespace GameComponents
         std::size_t monkeyCount_ = 1;
         std::function<void(std::size_t)> onMonkeyAdded_;
         std::function<void(int32_t, int32_t)> onStationPop_;
+        std::function<void(int32_t, int32_t)> onStationEntered_;
         std::function<void(const BananaHarvestEvent&)> onBananaHarvest_;
         // 発動した駅チップの位置。サルが増えるたびに古い順へ取り出す
         std::deque<std::pair<int32_t, int32_t>> pendingMonkeyStations_;

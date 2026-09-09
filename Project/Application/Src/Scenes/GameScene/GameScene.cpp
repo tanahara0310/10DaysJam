@@ -8,9 +8,11 @@
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
+#include "GameEntranceFeature.h"
 #include "PauseMenuFeature.h"
 #include "RailDirectionGuideFeature.h"
 #include "SkyFogFeature.h"
+#include "SpeedBlurFeature.h"
 #include "SpeedGaugeFeature.h"
 #include "StageLightsFeature.h"
 #include "StaminaGaugeFeature.h"
@@ -28,7 +30,6 @@
 #include "Components/Rail/RailViewComponent.h"
 #include "Components/Train/SpawnPopComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
-#include "Components/UI/GameStartPromptAnimationComponent.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
 #include "Components/GameCore/GameResultData.h"
@@ -36,6 +37,7 @@
 #include "Components/GameCore/HungerComponent.h"
 #include "GameObjects/Effect/BananaHarvestEffect.h"
 #include "GameObjects/Effect/RockBreakDebris.h"
+#include "GameObjects/Effect/StationSlowdownEffect.h"
 #include "GameObjects/GameSceneObject.h"
 #include "UI/UIText.h"
 #include "Utility/JsonManager/JsonManager.h"
@@ -181,29 +183,16 @@ void GameScene::GameScene::OnInitialize() {
     // SkyFogFeature の雲で埋めるので、板を出すと雲も水場の滝も板に隠れてしまう。
     SetDefaultGroundEnabled(false);
 
-    // ゲーム開始時の目標距離を、右から中央へ入り、2秒滞在してから
-    // 左へ抜ける案内として表示する。
-    auto* startPrompt = CreateText(
-        "200ｍすすめ！",
-        72.0f,
-        UIAnchor::Center,
-        { 0.0f, 0.0f },
-        { 1.0f, 0.92f, 0.58f, 1.0f },
-        "GameStartDistancePrompt");
-    if (startPrompt) {
-        startPrompt->SetSerializeEnabled(false);
-        startPrompt->SetPivot({ 0.5f, 0.5f });
-        startPrompt->SetOutline({ 0.04f, 0.02f, 0.0f, 1.0f }, 0.045f);
-        startPrompt->SetSortOrder(1000);
-        startPrompt->AddComponent<GameComponents::GameStartPromptAnimationComponent>();
-    }
-
     // ========== 昼夜サイクル ==========
     // 時刻を進めて空と太陽・月を昼→夕→夜と変えるだけの Feature。
     // 進み方（1 周の秒数・開始時刻）は Engine Settings の "Time of Day" から調整する。
     AddFeature(std::make_unique<CoreEngine::TimeOfDayFeature>());
     // 夕方から夜にかけて灯る、ビルダーとトロッコの灯り（ポイントライト）
     AddFeature(std::make_unique<StageLightsFeature>());
+    // 突入演出（雲海ブレイク → もくひょう看板 → つなげ！！）と、200m 刻みの目標提示。
+    // 開幕の雲は Game.Fog.* を借りて書き換えるので、SkyFogFeature より先に登録すること
+    // （同じ FrameStart では登録順に回る。後にすると雲の反映が 1 フレーム遅れる）。
+    AddFeature(GameComponents::CreateGameEntranceFeature());
     // ステージのブロックより下を埋める雲（高さフォグ）。
     // 濃さ・色・高さは「ゲーム設定」の Game.Fog.* から調整する。
     AddFeature(GameComponents::CreateSkyFogFeature());
@@ -216,6 +205,10 @@ void GameScene::GameScene::OnInitialize() {
     // トロッコの速さを km/h のオドメーターで見せる HUD。
     // 位置・1 マスの実距離は「ゲーム設定」の Game.SpeedGauge.* から調整する。
     AddFeature(GameComponents::CreateSpeedGaugeFeature());
+    // 速さに合わせて画面へモーションブラーを掛ける。速度計を見ていなくても
+    // 加速と、駅で速さを失う瞬間が画面全体で分かるようにするためのもの。
+    // 濃さは「ゲーム設定」の Game.SpeedBlur.* から調整する。
+    AddFeature(GameComponents::CreateSpeedBlurFeature());
     // レール先頭の上下左右へ、伸ばせる向きだけ床に矢印を出すガイド。
     // 戻る（Undo）向きだけは別の記号にしてある。
     // 見た目は「ゲーム設定」の Game.RailGuide.* から調整する。
@@ -497,6 +490,11 @@ void GameScene::GameScene::OnInitialize() {
     // スタミナ・列車・マップは Feature が自分で探して繋ぐので、ここでは登録だけでよい。
     // 見た目と時間は「ゲーム設定」の Game.BananaHarvest.* から調整する。
     AddFeature(GameComponents::CreateBananaHarvestEffectFeature());
+
+    // 駅で速度が落ちる瞬間に、駅・カメラ・速度計・音を同時に鳴らして理由を見せる演出。
+    // 速度計を掴むので CreateSpeedGaugeFeature() より後に登録すること。
+    // 強さは「ゲーム設定」の Game.StationSlowdown.* から調整する。
+    AddFeature(GameComponents::CreateStationSlowdownEffectFeature());
 
     railView->AddComponent<GameComponents::RailViewComponent>(
         gridSize,
