@@ -18,6 +18,39 @@
 using namespace CoreEngine;
 
 namespace {
+    bool UsesCsvPool(GameComponents::MapGenerationMode mode) {
+        return mode == GameComponents::MapGenerationMode::RandomCsvPool
+            || mode == GameComponents::MapGenerationMode::FixedThenRandomCsvPool;
+    }
+
+    bool HasFixedPrefix(GameComponents::MapGenerationMode mode) {
+        return mode == GameComponents::MapGenerationMode::FixedCsv
+            || mode == GameComponents::MapGenerationMode::FixedThenRandomCsvPool;
+    }
+
+    const char* ModeToString(GameComponents::MapGenerationMode mode) {
+        using GameComponents::MapGenerationMode;
+        switch (mode) {
+        case MapGenerationMode::RandomCsvPool: return "RandomCsvPool";
+        case MapGenerationMode::FixedCsv: return "FixedCsv";
+        case MapGenerationMode::FixedThenRandomCsvPool: return "FixedThenRandomCsvPool";
+        case MapGenerationMode::Procedural:
+        default: return "Procedural";
+        }
+    }
+
+    GameComponents::MapGenerationMode ModeFromString(
+        const std::string& value, GameComponents::MapGenerationMode fallback) {
+        using GameComponents::MapGenerationMode;
+        if (value == "RandomCsvPool") return MapGenerationMode::RandomCsvPool;
+        if (value == "FixedCsv") return MapGenerationMode::FixedCsv;
+        if (value == "FixedThenRandomCsvPool") {
+            return MapGenerationMode::FixedThenRandomCsvPool;
+        }
+        if (value == "Procedural") return MapGenerationMode::Procedural;
+        return fallback;
+    }
+
     // 地形セルは単一行。引用符で囲まれたセル・エスケープされた引用符も扱う。
     std::vector<std::string> SplitCsvRow(const std::string& line) {
         std::vector<std::string> cells;
@@ -72,9 +105,10 @@ GameComponents::MapGeneratorComponent::MapGeneratorComponent(
     uint32_t mapSizeZ, uint32_t startGenerateX, MapGenerationSettings settings)
     : mapSizeZ_(mapSizeZ), initialGenerateSizeX_(startGenerateX),
       settings_(std::move(settings)) {
-    if (settings_.mode == MapGenerationMode::FixedCsv) {
+    if (HasFixedPrefix(settings_.mode)) {
         fixedCsv_ = LoadCsv(settings_.fixedCsvPath);
-    } else if (settings_.mode == MapGenerationMode::RandomCsvPool) {
+    }
+    if (UsesCsvPool(settings_.mode)) {
         settings_.csvChunkSizeX = std::max<std::size_t>(1, settings_.csvChunkSizeX);
         csvRandom_.seed(settings_.randomSeed ? *settings_.randomSeed : std::random_device{}());
         LoadCsvPools();
@@ -87,22 +121,43 @@ json GameComponents::MapGeneratorComponent::OnSerialize() const {
     return {
         { "mapSizeZ", mapSizeZ_ },
         { "initialGenerateSizeX", initialGenerateSizeX_ },
+        { "mode", ModeToString(settings_.mode) },
         { "csvChunkSizeX", settings_.csvChunkSizeX },
+        { "fixedCsvPath", settings_.fixedCsvPath },
         { "stationBuildInterval", stationBuildInterval_ },
         { "selectedCsvPool", GetSelectedCsvPoolName() }
     };
 }
 
 void GameComponents::MapGeneratorComponent::OnDeserialize(const json& j) {
+    // GameScene がコードから渡したステージ構成を、シーン保存値で上書きしない。
+    // 逆に、設定なしでプレハブを復元した場合はJSONの値を使えるようにする。
+    const bool hasExplicitMapSource = settings_.mode != MapGenerationMode::Procedural
+        || !settings_.fixedCsvPath.empty()
+        || !settings_.csvPoolPaths.empty()
+        || !settings_.csvPools.empty();
     mapSizeZ_ = std::max<uint32_t>(1, JsonManager::SafeGet<uint32_t>(j, "mapSizeZ", mapSizeZ_));
     initialGenerateSizeX_ = std::max<uint32_t>(1,
         JsonManager::SafeGet<uint32_t>(j, "initialGenerateSizeX", initialGenerateSizeX_));
-    settings_.csvChunkSizeX = std::max<std::size_t>(1,
-        JsonManager::SafeGet<std::size_t>(j, "csvChunkSizeX", settings_.csvChunkSizeX));
+    if (!hasExplicitMapSource) {
+        settings_.csvChunkSizeX = std::max<std::size_t>(1,
+            JsonManager::SafeGet<std::size_t>(j, "csvChunkSizeX", settings_.csvChunkSizeX));
+    }
+    const std::string serializedMode = JsonManager::SafeGet<std::string>(
+        j, "mode", std::string{});
+    if (!serializedMode.empty() && !hasExplicitMapSource) {
+        settings_.mode = ModeFromString(serializedMode, settings_.mode);
+    }
+    if (settings_.fixedCsvPath.empty()) {
+        settings_.fixedCsvPath = JsonManager::SafeGet<std::string>(
+            j, "fixedCsvPath", settings_.fixedCsvPath);
+    }
     stationBuildInterval_ = std::max<uint32_t>(1,
         JsonManager::SafeGet<uint32_t>(j, "stationBuildInterval", stationBuildInterval_));
     const std::string selectedPool = JsonManager::SafeGet<std::string>(
-        j, "selectedCsvPool", settings_.initialCsvPoolName);
+        j, "selectedCsvPool", std::string{});
+    const std::string initialPoolName = settings_.initialCsvPoolName.empty()
+        ? selectedPool : settings_.initialCsvPoolName;
 
     mapChips_.clear();
     fixedCsv_.clear();
@@ -111,11 +166,12 @@ void GameComponents::MapGeneratorComponent::OnDeserialize(const json& j) {
     activeCsvPoolIndex_.reset();
     activeCsvIndex_ = 0;
     activeCsvColumn_ = 0;
-    if (settings_.mode == MapGenerationMode::FixedCsv) {
+    if (HasFixedPrefix(settings_.mode)) {
         fixedCsv_ = LoadCsv(settings_.fixedCsvPath);
-    } else if (settings_.mode == MapGenerationMode::RandomCsvPool) {
+    }
+    if (UsesCsvPool(settings_.mode)) {
         csvRandom_.seed(settings_.randomSeed ? *settings_.randomSeed : std::random_device{}());
-        settings_.initialCsvPoolName = selectedPool;
+        settings_.initialCsvPoolName = initialPoolName;
         LoadCsvPools();
     }
     AddMapChips(initialGenerateSizeX_);
@@ -178,7 +234,7 @@ void GameComponents::MapGeneratorComponent::LoadCsvPools() {
 }
 
 bool GameComponents::MapGeneratorComponent::SelectCsvPool(const std::string& name) {
-    if (settings_.mode != MapGenerationMode::RandomCsvPool) {
+    if (!UsesCsvPool(settings_.mode)) {
         return false;
     }
     for (std::size_t i = 0; i < csvPools_.size(); ++i) {
@@ -221,6 +277,10 @@ std::vector<std::string> GameComponents::MapGeneratorComponent::GetCsvPoolNames(
     return names;
 }
 
+std::size_t GameComponents::MapGeneratorComponent::GetFixedMapSizeX() const {
+    return HasFixedPrefix(settings_.mode) ? fixedCsv_.size() : 0;
+}
+
 #ifdef USE_IMGUI
 bool GameComponents::MapGeneratorComponent::DrawInspector() {
     bool changed = false;
@@ -228,12 +288,13 @@ bool GameComponents::MapGeneratorComponent::DrawInspector() {
     int initialSize = static_cast<int>(initialGenerateSizeX_);
     int chunkSize = static_cast<int>(settings_.csvChunkSizeX);
     int stationInterval = static_cast<int>(stationBuildInterval_);
+    ImGui::Text("生成方式: %s", ModeToString(settings_.mode));
     if (ImGui::DragInt("Z方向マップサイズ", &mapSize, 1.0f, 1, 100)) { mapSizeZ_ = static_cast<uint32_t>(std::max(mapSize, 1)); changed = true; }
     if (ImGui::DragInt("初期生成Xサイズ", &initialSize, 1.0f, 1, 500)) { initialGenerateSizeX_ = static_cast<uint32_t>(std::max(initialSize, 1)); changed = true; }
     if (ImGui::DragInt("CSV区画幅", &chunkSize, 1.0f, 1, 200)) { settings_.csvChunkSizeX = static_cast<std::size_t>(std::max(chunkSize, 1)); changed = true; }
     if (ImGui::DragInt("駅生成間隔", &stationInterval, 1.0f, 1, 200)) { stationBuildInterval_ = static_cast<uint32_t>(std::max(stationInterval, 1)); changed = true; }
 
-    if (settings_.mode == MapGenerationMode::RandomCsvPool) {
+    if (UsesCsvPool(settings_.mode)) {
         const std::string selectedName = GetSelectedCsvPoolName();
         if (ImGui::BeginCombo("エリアプール", selectedName.empty() ? "未選択" : selectedName.c_str())) {
             for (const auto& pool : csvPools_) {
@@ -245,11 +306,17 @@ bool GameComponents::MapGeneratorComponent::DrawInspector() {
             }
             ImGui::EndCombo();
         }
-        const std::size_t nextBoundary = mapChips_.size() +
-            (activeCsvColumn_ == 0 ? 0 : settings_.csvChunkSizeX - activeCsvColumn_);
+        const std::size_t fixedSize = GetFixedMapSizeX();
+        const std::size_t nextBoundary = mapChips_.size() < fixedSize
+            ? fixedSize
+            : mapChips_.size()
+                + (activeCsvColumn_ == 0 ? 0 : settings_.csvChunkSizeX - activeCsvColumn_);
+        if (fixedSize > 0) {
+            ImGui::Text("先頭固定マップ: X = 0 〜 %zu", fixedSize - 1);
+        }
         ImGui::Text("次の区画開始X: %zu", nextBoundary);
     } else {
-        ImGui::TextUnformatted("プール切替はRandomCsvPool方式で使用できます。");
+        ImGui::TextUnformatted("プール切替はCSVプール方式で使用できます。");
     }
     ImGui::TextWrapped("数値設定は保存後、ゲームシーンの再読み込み時に反映されます。");
     return changed;
@@ -323,9 +390,9 @@ GameComponents::MapGeneratorComponent::LoadCsv(const std::string& path, std::siz
 
 void GameComponents::MapGeneratorComponent::AddCsvMapChips(std::size_t count) {
     for (std::size_t i = 0; i < count; ++i) {
-        if (settings_.mode == MapGenerationMode::FixedCsv && mapChips_.size() < fixedCsv_.size()) {
+        if (HasFixedPrefix(settings_.mode) && mapChips_.size() < fixedCsv_.size()) {
             mapChips_.push_back(fixedCsv_[mapChips_.size()]);
-        } else if (settings_.mode == MapGenerationMode::RandomCsvPool) {
+        } else if (UsesCsvPool(settings_.mode)) {
             // 描画側とレール側から小刻みに延長されても、区画の途中で再抽選しない。
             if (activeCsvColumn_ == 0) {
                 activeCsvPoolIndex_ = selectedCsvPoolIndex_;

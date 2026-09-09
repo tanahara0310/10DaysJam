@@ -21,6 +21,8 @@
     ],
     "chunkSizeX": 10,
     "fixedCsvPath": "Application/Assets/Maps/fixed.csv",
+    "fixedMapSizeX": 20,
+    "fixedMapSizeZ": 11,
     "initialArea": "Area1",
-    "mapSizeZ": 9
+    "mapSizeZ": 11
 }

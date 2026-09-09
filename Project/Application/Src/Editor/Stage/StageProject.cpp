@@ -61,6 +61,10 @@ namespace GameEditors
         StageProject loaded;
         loaded.chunkSizeX = JsonManager::SafeGet<std::size_t>(root, "chunkSizeX", loaded.chunkSizeX);
         loaded.mapSizeZ = JsonManager::SafeGet<std::size_t>(root, "mapSizeZ", loaded.mapSizeZ);
+        loaded.fixedMapSizeX = JsonManager::SafeGet<std::size_t>(
+            root, "fixedMapSizeX", loaded.fixedMapSizeX);
+        loaded.fixedMapSizeZ = JsonManager::SafeGet<std::size_t>(
+            root, "fixedMapSizeZ", loaded.fixedMapSizeZ);
         loaded.initialAreaName = JsonManager::SafeGet<std::string>(root, "initialArea", loaded.initialAreaName);
         loaded.fixedCsvPath = JsonManager::SafeGet<std::string>(root, "fixedCsvPath", loaded.fixedCsvPath);
 
@@ -88,6 +92,8 @@ namespace GameEditors
         // 区画幅0はゲーム側で1へ補正される。編集画面が0マスにならないよう、ここで揃えておく。
         loaded.chunkSizeX = std::max<std::size_t>(1, loaded.chunkSizeX);
         loaded.mapSizeZ = std::max<std::size_t>(1, loaded.mapSizeZ);
+        loaded.fixedMapSizeX = std::max<std::size_t>(1, loaded.fixedMapSizeX);
+        loaded.fixedMapSizeZ = std::max<std::size_t>(1, loaded.fixedMapSizeZ);
 
         out = std::move(loaded);
         return true;
@@ -98,6 +104,8 @@ namespace GameEditors
         json root = json::object();
         root["chunkSizeX"] = project.chunkSizeX;
         root["mapSizeZ"] = project.mapSizeZ;
+        root["fixedMapSizeX"] = project.fixedMapSizeX;
+        root["fixedMapSizeZ"] = project.fixedMapSizeZ;
         root["initialArea"] = project.initialAreaName;
         root["fixedCsvPath"] = project.fixedCsvPath;
 
@@ -215,7 +223,7 @@ namespace GameEditors
     {
         std::ostringstream out;
         out << "GameComponents::MapGenerationSettings mapSettings;\n";
-        out << "mapSettings.mode = GameComponents::MapGenerationMode::RandomCsvPool;\n";
+        out << "mapSettings.mode = GameComponents::MapGenerationMode::FixedThenRandomCsvPool;\n";
         out << "mapSettings.csvChunkSizeX = " << project.chunkSizeX << ";\n";
         out << "mapSettings.csvPools = {\n";
         for (const auto& area : project.areas) {
