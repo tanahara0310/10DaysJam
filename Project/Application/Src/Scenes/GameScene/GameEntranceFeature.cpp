@@ -21,7 +21,6 @@
 #include "Math/Easing/EasingUtil.h"
 #include "RailDirectionGuideFeature.h"
 #include "Scene/Feature/ISceneFeature.h"
-#include "SkyFogFeature.h"
 #include "UI/UIImage.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/FrameRate/Time.h"
@@ -42,14 +41,19 @@ namespace
     constexpr const char* kPlayRigName = "GamePlay";
     /// MapViewComponent が置く距離目盛りのオブジェクト名の頭
     constexpr const char* kMarkerNamePrefix = "DistanceMarker";
-    /// 看板の入れ物に使う 1x1 の透明画像（ポーズメニューと同じ手）
+    /// 看板の入れ物に使う透明画像と、開幕の白幕に使う白一色の画像（どちらも同じ dim.png）
     constexpr const char* kSignRootTexture = "Application/Assets/Textures/Pause/dim.png";
+    /// 白幕の描画順。ポーズメニュー（2000）より手前へ出す
+    constexpr int kWhiteoutSortOrder = 3000;
+    /// 基準解像度。白幕はこの大きさで画面を覆う（変更禁止）
+    constexpr float kCanvasWidth = 1920.0f;
+    constexpr float kCanvasHeight = 1080.0f;
 
     constexpr const char* kGoalSePath = "Application/Assets/Sounds/SE/decision.mp3";
     constexpr const char* kCallSePath = "Application/Assets/Sounds/SE/title_bound.mp3";
 
-    /// 借りたフォグを戻し切ったと見なす余白。演出終了後は一切触らない
-    constexpr float kFogReleaseMargin = 0.05f;
+    /// 白幕が晴れ切ったと見なす余白
+    constexpr float kWhiteoutClearMargin = 0.05f;
     /// 1 フレームで進める上限 [秒]。シーン読み込み直後の跳ねで演出が飛ぶのを防ぐ
     constexpr float kMaxStepSeconds = 0.1f;
     /// 到達した目盛りが白から達成色へ落ち着くまでの秒数
@@ -71,20 +75,8 @@ namespace
 
     CVar<float> cvCloudSeconds{
         "Game.Entrance.CloudSeconds", 2.05f,
-        "雲海が島の下まで沈み切るまでの秒数",
+        "開幕の白幕（雲の中）が晴れるまでの秒数",
         CVarRange{ 0.2f, 8.0f } };
-
-    CVar<float> cvCloudTopHeight{
-        "Game.Entrance.CloudTopHeight", 56.0f,
-        "開幕の雲海の高さ [m]。開始カメラ（Entrance_Sky の y）より上にすること。"
-        "下げると開幕から島が見えてしまう。この値は CVar 経由で雲へ渡すのではなく、"
-        "SkyFogFeature の一時値として渡すので CVars.json へは焼き付かない",
-        CVarRange{ 0.0f, 200.0f } };
-
-    CVar<float> cvCloudFalloff{
-        "Game.Entrance.CloudFalloff", 0.30f,
-        "開幕の雲の柔らかさ（高さ減衰）。小さいほど厚くぼんやりした雲になる",
-        CVarRange{ 0.05f, 4.0f } };
 
     CVar<float> cvCameraDelay{
         "Game.Entrance.CameraDelay", 0.20f,
@@ -186,18 +178,21 @@ namespace
 
             goalMeters_ = GoalStep();
 
-            // 雲はここでは触らない。最初の Update（FrameStart）で入れる。
-            //
-            // ここで持ち上げてしまうと、ローディングが終わって最初のフレームが回るまで
-            // 雲の高さが 56m のまま静止する。SkyFogFeature はこの値を r.Fog.HeightRef へ
-            // 流し込み、CVar の自動保存は「最後の変更から 0.3 秒後」に走るので、
-            // その静止中に必ず 56 が CVars.json へ焼き付く。そうなると次回起動から
-            // タイトル画面が雲の中＝真っ白で始まる（実際にそれを踏んだ）。
-            //
-            // 演出が動いている間は毎フレーム値が変わってデバウンスが張り直されるため、
-            // 保存が走るのは掃引が終わって通常値へ戻った 0.3 秒後になる。
-            // GameEntranceFeature は SkyFogFeature より先に登録してあるので、
-            // 1 フレーム目の FrameStart で入れれば描画には間に合う。
+            // 開幕の白幕。1 フレーム目から白いよう、ここで作って濃さも入れておく
+            if (auto* sheet = ctx.gameObjectManager->AddObject(std::make_unique<UIImage>())) {
+                sheet->Initialize(kSignRootTexture, "EntranceWhiteout");
+                sheet->SetSerializeEnabled(false);
+                sheet->SetAnchor(UIAnchor::Center);
+                sheet->SetPivot({ 0.5f, 0.5f });
+                sheet->SetAnchoredPosition({ 0.0f, 0.0f });
+                sheet->SetSize({ kCanvasWidth, kCanvasHeight });
+                sheet->SetSortOrder(kWhiteoutSortOrder);
+                sheet->SetActive(false);
+                whiteout_ = sheet;
+            }
+            if (cvEnabled.Get()) {
+                ApplyWhiteout(0.0f);
+            }
         }
 
         void Update(SceneContext& ctx, SceneUpdatePhase phase) override
@@ -216,27 +211,37 @@ namespace
 
         void Finalize(SceneContext&) override
         {
-            // 演出の途中でシーンを抜けても、雲は必ず通常へ戻す
-            GameComponents::SetSkyFogCloudLift(0.0f, 0.0f, 1.0f);
-            cloudLifted_ = false;
+            // 白幕はシーンの GameObject なのでシーンと一緒に消える。
+            // CVar は 1 つも借りていないので、ここで戻すものは無い。
+            whiteout_ = nullptr;
+            whiteoutActive_ = false;
         }
 
     private:
         int GoalStep() const { return std::max(1, cvGoalStep.Get()); }
 
-        /// @brief 雲海の高さと柔らかさを、演出の進み具合に合わせて渡す
-        /// @param progress 0 = 開幕（雲の中）／1 = 通常のフォグへ戻り切った
-        /// @details 渡す先は SkyFogFeature の一時値で、CVar は 1 つも書き換えない。
-        ///          CVar を毎フレーム動かすと自動保存が演出の途中で走り、掃引中の値が
-        ///          CVars.json へ焼き付いて、次回起動のタイトルが雲の中で始まる。
-        void ApplyCloud(float progress)
+        /// @brief 開幕の白幕の濃さを、演出の進み具合に合わせて更新する
+        /// @param progress 0 = 開幕（雲の中）／1 = 晴れ切った
+        ///
+        /// @details **ここで CVar を 1 つも触らないのが肝心。** 最初はフォグ（Game.Fog.*）を
+        ///          毎フレーム書き換えて雲を沈める作りにしていたが、CVar の自動保存が
+        ///          「最後の変更から 0.3 秒後」に走るため、演出中に保存が起きて
+        ///          `r.Fog.*` 一式（`r.Fog.Enabled: true` を含む）が CVars.json へ焼き付いた。
+        ///          既定では `r.Fog.Enabled` は false なので、以降タイトル画面まで
+        ///          フォグが掛かって白っぽくなる。白幕は UIImage の色なので保存されない。
+        void ApplyWhiteout(float progress)
         {
+            if (!whiteout_) {
+                return;
+            }
             const float eased =
                 EasingUtil::Apply(std::clamp(progress, 0.0f, 1.0f),
                                   EasingUtil::Type::EaseInOutCubic);
-            GameComponents::SetSkyFogCloudLift(
-                1.0f - eased, cvCloudTopHeight.Get(), cvCloudFalloff.Get());
-            cloudLifted_ = eased < 1.0f;
+            const float alpha = 1.0f - eased;
+            whiteoutActive_ = alpha > 0.0f;
+            whiteout_->SetActive(whiteoutActive_);
+            // 自動露出の打ち消しは掛けない。白飛びさせたいので飽和したままでよい
+            whiteout_->SetColor({ 1.0f, 1.0f, 1.0f, alpha });
         }
 
         void UpdateEntrance(SceneContext& ctx)
@@ -249,11 +254,6 @@ namespace
                 return;
             }
             const bool playCinematic = cvEnabled.Get();
-            if (playCinematic && !cloudStarted_) {
-                // 1 フレーム目。まだ時間を進める前に雲を持ち上げて、この frame から雲の中にする
-                cloudStarted_ = true;
-                ApplyCloud(0.0f);
-            }
             elapsed_ += std::clamp(Time::DeltaTime(), 0.0f, kMaxStepSeconds);
 
             // ---- 雲海ブレイク ----
@@ -261,9 +261,9 @@ namespace
                 const float cloudSeconds = std::max(0.01f, cvCloudSeconds.Get());
                 const float progress = elapsed_ / cloudSeconds;
                 if (progress < 1.0f) {
-                    ApplyCloud(progress);
-                } else if (cloudLifted_) {
-                    ApplyCloud(1.0f);   // 通常のフォグへ戻し切る
+                    ApplyWhiteout(progress);
+                } else if (whiteoutActive_) {
+                    ApplyWhiteout(1.0f);
                 }
 
                 // ---- カメラ：真上のリグ → ゲーム構図 ----
@@ -310,8 +310,8 @@ namespace
             // ---- HUD の登場 ----
             UpdateHudReveal(ctx, callDelay);
 
-            if (callPlayed_ && hudRevealDone_ && !cloudLifted_
-                && elapsed_ >= callDelay + kFogReleaseMargin) {
+            if (callPlayed_ && hudRevealDone_ && !whiteoutActive_
+                && elapsed_ >= callDelay + kWhiteoutClearMargin) {
                 entranceDone_ = true;
             }
         }
@@ -456,6 +456,7 @@ namespace
         GameComponents::StaminaGaugeUIComponent* stamina_ = nullptr;
         GameComponents::SpeedGaugeUIComponent* speedGauge_ = nullptr;
         GameComponents::PauseMenuUIComponent* pauseMenu_ = nullptr;
+        UIImage* whiteout_ = nullptr;
 
         float elapsed_ = 0.0f;
         float pulseTimer_ = 0.0f;
@@ -463,8 +464,7 @@ namespace
         int goalMeters_ = 200;
         int reachedMeters_ = 0;
 
-        bool cloudStarted_ = false;
-        bool cloudLifted_ = false;
+        bool whiteoutActive_ = false;
         bool skyRigStarted_ = false;
         bool playRigStarted_ = false;
         bool signShown_ = false;
