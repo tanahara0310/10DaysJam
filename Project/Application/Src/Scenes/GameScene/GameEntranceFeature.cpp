@@ -113,8 +113,8 @@ namespace
         CVarRange{ 0.05f, 3.0f } };
 
     CVar<int> cvGoalStep{
-        "Game.Goal.StepMeters", 200,
-        "目標距離の刻み [m]。200 なら 200 → 400 → 600 … と続く",
+        "Game.Goal.StepMeters", 500,
+        "目標距離の刻み [m]。500 なら 500 → 1000 → 1500 … と続く",
         CVarRange{ 10.0f, 2000.0f } };
 
     CVar<Vector4> cvReachedColor{
@@ -123,8 +123,9 @@ namespace
         "0.25 を超えた成分は昼の露出で白へ飽和する" };
 
     CVar<Vector4> cvTargetColor{
-        "Game.Goal.MarkerTargetColor", { 0.25f, 0.18f, 0.010f, 1.0f },
-        "次の目標地点の目盛りの色（脈打つ）。同じくリニア値で入れること" };
+        "Game.Goal.MarkerTargetColor", { 0.25f, 0.010f, 0.008f, 1.0f },
+        "次の目標地点の目盛りの色（脈打つ）。同じくリニア値で入れること。"
+        "既定は赤（画面では (230, 60, 55) ほど）で、脈の山では白へ寄って光る" };
 
     Vector4 Lerp(const Vector4& from, const Vector4& to, float t)
     {
@@ -138,7 +139,7 @@ namespace
     // Feature
     // ──────────────────────────────────────────────────────────
 
-    /// @brief 突入演出と、200m 刻みの目標提示をまとめて指揮する Feature
+    /// @brief 突入演出と、500m 刻みの目標提示をまとめて指揮する Feature
     class GameEntranceFeature final : public ISceneFeature
     {
     public:
@@ -521,7 +522,7 @@ namespace
         float elapsed_ = 0.0f;
         float pulseTimer_ = 0.0f;
         float reachedFlash_ = kReachedFlashSeconds;
-        int goalMeters_ = 200;
+        int goalMeters_ = 500;
         int reachedMeters_ = 0;
 
         bool whiteoutActive_ = false;

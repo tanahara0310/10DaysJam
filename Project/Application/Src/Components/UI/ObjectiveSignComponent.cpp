@@ -60,7 +60,7 @@ namespace
     // ───────────────────────────────────────────────────────────────
     constexpr const char* kLabelText = "もくひょう";
     constexpr const char* kCallText = "つなげ！！";
-    /// 焼く字。距離は 200 → 400 → … と桁が伸びるので数字は 0-9 すべて要る
+    /// 焼く字。距離は 500 → 1000 → … と桁が伸びるので数字は 0-9 すべて要る
     constexpr const char* kCharset = "もくひょうつなげ！0123456789ｍm";
     // ドット絵のフォントなので、字送りが崩れないよう 12px（1 文字の高さ）の
     // 整数倍に揃えてある。中途半端な値にするとドットがボケる
@@ -560,7 +560,7 @@ bool GameComponents::ObjectiveSignComponent::DrawInspector()
     ImGui::Text("状態: %s", phase_ == Phase::Hidden ? "しまってある" : "出ている");
     ImGui::Text("目標: %u m", meters_);
     if (ImGui::Button("看板を出す（確認用）")) {
-        Show(meters_ > 0 ? meters_ : 200u);
+        Show(meters_ > 0 ? meters_ : 500u);
     }
     ImGui::SameLine();
     if (ImGui::Button("つなげ！！")) {
