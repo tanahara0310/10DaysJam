@@ -13,6 +13,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Particle/ParticleSystem.h"
 #include "Scene/Feature/TimeOfDayFeature.h"
+#include "BananaTreeAuraFeature.h"
 #include "PauseMenuFeature.h"
 #include "RailDirectionGuideFeature.h"
 #include "SkyFogFeature.h"
@@ -155,6 +156,9 @@ void GameScene::GameScene::OnInitialize() {
     // 戻る（Undo）向きだけは別の記号にしてある。
     // 見た目は「ゲーム設定」の Game.RailGuide.* から調整する。
     AddFeature(GameComponents::CreateRailDirectionGuideFeature());
+    // バナナの木の上下左右へ、レールが無い間だけ四角い波動を出して収穫範囲を示す。
+    // 見た目は「ゲーム設定」の Game.BananaTreeAura.* から調整する。
+    AddFeature(GameComponents::CreateBananaTreeAuraFeature());
 
     // ========== BGMの再生 ==========
     auto* audioSystem = engine_ ? engine_->GetService<AudioSystem>() : nullptr;

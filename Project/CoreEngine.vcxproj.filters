@@ -97,6 +97,9 @@
     <ClCompile Include="Application\Src\Scenes\GameScene\GameScene.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
+    <ClCompile Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.cpp">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClCompile>
     <ClCompile Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.cpp">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClCompile>
@@ -1546,6 +1549,9 @@
       <Filter>Application\Src\Editor\Stage</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\GameScene.h">
+      <Filter>Application\Src\Scenes\GameScene</Filter>
+    </ClInclude>
+    <ClInclude Include="Application\Src\Scenes\GameScene\BananaTreeAuraFeature.h">
       <Filter>Application\Src\Scenes\GameScene</Filter>
     </ClInclude>
     <ClInclude Include="Application\Src\Scenes\GameScene\RailDirectionGuideFeature.h">
