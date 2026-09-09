@@ -155,6 +155,7 @@ namespace GameComponents
 
         float minMoveSpeed_ = 0.5f; // 線路長から計算された現在の最低移動速度
         float minimumSpeedIncreasePerRail_ = 0.05f; // レール1マスあたりの最低速度増加量
+        float minimumSpeedMonkeyBonusRate_ = 0.05f; // サル1匹追加ごとの最低速度補正率
         float acceleration_ = 0.5f; // 毎秒の加速度（速度/秒）
         float accelerationMonkeyBonusRate_ = 0.05f; // サル1匹追加ごとの加速度増加率
         float maximumMoveSpeed_ = 8.0f;
