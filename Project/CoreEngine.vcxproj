@@ -217,6 +217,8 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClCompile Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\ObjectiveSignComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\PauseMenuUIComponent.cpp" />
+    <ClCompile Include="Application\Src\Components\GameCore\GameRecordStore.cpp" />
+    <ClCompile Include="Application\Src\Components\UI\ResultGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\SpeedGaugeUIComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.cpp" />
     <ClCompile Include="Application\Src\Components\UI\StaminaGaugeUIComponent.cpp" />
@@ -831,6 +833,8 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClInclude Include="Application\Src\Components\Title\TitleTextAnimationComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\ObjectiveSignComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\PauseMenuUIComponent.h" />
+    <ClInclude Include="Application\Src\Components\GameCore\GameRecordStore.h" />
+    <ClInclude Include="Application\Src\Components\UI\ResultGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\OffscreenTrainIndicatorUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\SpeedGaugeUIComponent.h" />
     <ClInclude Include="Application\Src\Components\UI\GameStartPromptAnimationComponent.h" />

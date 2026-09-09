@@ -3,7 +3,6 @@
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector4.h"
 #include "UI/UIAnchor.h"
-#include "Utility/CVar/CVar.h"
 
 #include <functional>
 #include <string>
@@ -28,42 +27,26 @@ namespace ResultSceneUi
         const std::string& texturePath,
         const std::string& name)>;
 
+    /// @brief シーンが握っておく必要のある UI だけを返す。
+    /// @details 板・ツタ・レール・トロッコといった中身は
+    ///          `GameComponents::ResultGaugeUIComponent` が丸ごと持つ。
+    ///          ここに出てくるのは、シーンが直接動かすもの
+    ///          （選択肢の文字と Tips）だけに絞ってある。
     struct Elements
     {
-        CoreEngine::UIText* titleText = nullptr;
-        CoreEngine::UIText* scoreText = nullptr;
-        CoreEngine::UIImage* background = nullptr;
-        CoreEngine::UIImage* cinematicTopBar = nullptr;
-        CoreEngine::UIImage* cinematicBottomBar = nullptr;
+        CoreEngine::UIImage* root = nullptr;      ///< ゲージ一式の入れ物
         CoreEngine::UIText* tipText = nullptr;
         CoreEngine::UIText* retryButton = nullptr;
         CoreEngine::UIText* titleButton = nullptr;
     };
 
-    // リザルト画面の配置・文字・色は CVar から変更できる。
-    extern CoreEngine::CVar<float> TitleFontSize;
-    extern CoreEngine::CVar<CoreEngine::Vector2> TitlePosition;
-    extern CoreEngine::CVar<CoreEngine::Vector4> TitleColor;
-    extern CoreEngine::CVar<int> TitleSortOrder;
-    extern CoreEngine::CVar<float> ScoreFontSize;
-    extern CoreEngine::CVar<CoreEngine::Vector2> ScorePosition;
-    extern CoreEngine::CVar<float> TipFontSize;
-    extern CoreEngine::CVar<CoreEngine::Vector2> TipPosition;
-    extern CoreEngine::CVar<CoreEngine::Vector4> TipColor;
-    extern CoreEngine::CVar<int> TipSortOrder;
-    extern CoreEngine::CVar<float> BackgroundPadding;
-    extern CoreEngine::CVar<float> BackgroundOpacity;
-    extern CoreEngine::CVar<int> BackgroundSortOrder;
-    extern CoreEngine::CVar<float> CinematicBarHeight;
-    extern CoreEngine::CVar<int> CinematicBarSortOrder;
-    extern CoreEngine::CVar<float> ButtonFontSize;
-    extern CoreEngine::CVar<CoreEngine::Vector2> ButtonPosition;
-    extern CoreEngine::CVar<float> ButtonSpacing;
-    extern CoreEngine::CVar<CoreEngine::Vector4> ButtonColor;
-    extern CoreEngine::CVar<int> ButtonSortOrder;
-
+    /// @brief リザルトの UI を組み立てる。
+    /// @param createText  未使用（文字はドットフォントで組むため中で作る）。互換のため残す
+    /// @param createImage 入れ物になる UIImage を 1 つ作る
+    /// @details 見た目の調整は CVar `Result.Goal.*` / `Result.Gauge.*`
+    ///          （インスペクターの「リザルトゲージ」）で行う。
     Elements Build(const TextFactory& createText, const ImageFactory& createImage = {});
 
-    // 復元済みのTipsを、シーン構築後に表示へ反映する。
+    /// @brief 復元済みのTipsを、シーン構築後に表示へ反映する。
     void SetTipText(Elements& elements, const std::string& tip);
 }
