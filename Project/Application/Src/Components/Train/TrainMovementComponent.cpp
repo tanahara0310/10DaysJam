@@ -597,17 +597,19 @@ void GameComponents::TrainMovementComponent::PlayGameOverLaunch() {
 
     // headingYaw_ は直前に走っていた最終レールの向き。まだ一度も発車して
     // いない場合だけ、履歴の最後の2マスから向きを復元する。
-    float finalYaw = hasHeading_ ? headingYaw_ : 0.0f;
+    float finalYaw = hasHeading_ ? headingYaw_ : kInitialHeadingYaw;
     if (!hasHeading_ && traveledCells_.size() >= 2) {
         const auto& [startX, startZ] = traveledCells_[traveledCells_.size() - 2];
         const auto& [endX, endZ] = traveledCells_.back();
         finalYaw = HeadingYawFromDelta(endX - startX, endZ - startZ, finalYaw);
     }
 
+    // 列車モデルの正面は -Z。HeadingYawFromDelta と同じ座標系で、
+    // 最終レールの進行方向へサルを飛ばす。
     const Vector3 launchDirection{
-        std::sin(finalYaw),
+        -std::sin(finalYaw),
         0.0f,
-        std::cos(finalYaw) };
+        -std::cos(finalYaw) };
 
     const auto playTrolleyTilt = [](GameObject* trolley,
         TransformComponent* trolleyTransform, std::size_t trolleyIndex) {
