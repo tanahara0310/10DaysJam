@@ -5,6 +5,7 @@
     ],
     "Game.Rail.BuilderStartX": 1,
     "Game.Rail.TrainMoveSpeed": 2.0,
+    "Game.Stamina.BananaRecoveryMonkeyCorrectionRate": 0.3499999940395355,
     "Game.Stamina.Cost.Rail": 1.0,
     "Game.Stamina.Cost.Rock": 10.0,
     "Game.Stamina.Initial": 120.0,
@@ -96,11 +97,12 @@
     ],
     "r.AtmosphereLights.MoonSurfaceIntensity": 80.0,
     "r.AtmosphereLights.SunDirection": [
-        -0.6597630381584167,
-        -0.43073102831840515,
-        0.6157788038253784
+        0.5735764503479004,
+        -0.8191520571708679,
+        -6.839830923865975e-09
     ],
     "r.AutoExposure.Enabled": true,
+    "r.AutoExposure.MaxEV": 7.5,
     "r.Bloom.Intensity": 0.9480000138282776,
     "r.Bloom.SoftKnee": 0.35100001096725464,
     "r.Blur.Intensity": 2.5290000438690186,

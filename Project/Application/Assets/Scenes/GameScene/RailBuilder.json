@@ -6,17 +6,17 @@
             "parameters": {
                 "rotate": [
                     0.0,
-                    247.88954162597656,
+                    172.57015991210938,
                     0.0
                 ],
                 "scale": [
                     0.625,
-                    0.40774810314178467,
+                    0.39301687479019165,
                     0.625
                 ],
                 "translate": [
+                    0.0,
                     1.0,
-                    2.0,
                     3.0
                 ]
             },
@@ -27,6 +27,7 @@
             "parameters": {
                 "buildHoldTime": 0.30000001192092896,
                 "buildInterval": 0.05000000074505806,
+                "cursorEdgeRadiusRatio": 0.5,
                 "gridSize": 1.0,
                 "height": 1.0,
                 "horizontalPrioritize": true,
