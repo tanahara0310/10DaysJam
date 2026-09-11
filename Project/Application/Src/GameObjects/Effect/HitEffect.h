@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Particle/ParticleSystem.h"
 #include "Math/MathCore.h"
@@ -24,7 +24,7 @@ public:
     void Initialize(ParticleSystem* particleSystem,
                     GraphicsCore* dxCommon,
                     ResourceFactory* factory,
-                    const std::string& texturePath = "Application/Assets/Textures/circle.png");
+                    const std::string& texturePath = "Application/Assets/Textures/Particle/circle.png");
 
     /// @brief 指定位置でヒットエフェクトを再生する
     /// @param position ワールド空間の再生位置

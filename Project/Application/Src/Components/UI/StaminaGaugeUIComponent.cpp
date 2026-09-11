@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "StaminaGaugeUIComponent.h"
 
 #include "Components/GameCore/GameSettingsComponent.h"
@@ -28,13 +28,13 @@ namespace
     // ───────────────────────────────────────────────────────────────
     // テクスチャ（基準解像度 1920x1080 の等倍で描いてある）
     // ───────────────────────────────────────────────────────────────
-    constexpr const char* kTexPip = "Application/Assets/Textures/Stamina/pip.png";
-    constexpr const char* kTexPipEmpty = "Application/Assets/Textures/Stamina/pip_empty.png";
-    constexpr const char* kTexBoardMid = "Application/Assets/Textures/Stamina/board_mid.png";
-    constexpr const char* kTexBoardCapL = "Application/Assets/Textures/Stamina/board_cap_l.png";
-    constexpr const char* kTexBoardCapR = "Application/Assets/Textures/Stamina/board_cap_r.png";
-    constexpr const char* kTexLeaf = "Application/Assets/Textures/Stamina/leaf.png";
-    constexpr const char* kTexVine = "Application/Assets/Textures/Stamina/vine.png";
+    constexpr const char* kTexPip = "Application/Assets/Textures/UI/Gauge/pip.png";
+    constexpr const char* kTexPipEmpty = "Application/Assets/Textures/UI/Gauge/pip_empty.png";
+    constexpr const char* kTexBoardMid = "Application/Assets/Textures/UI/Board/board_mid.png";
+    constexpr const char* kTexBoardCapL = "Application/Assets/Textures/UI/Board/board_cap_l.png";
+    constexpr const char* kTexBoardCapR = "Application/Assets/Textures/UI/Board/board_cap_r.png";
+    constexpr const char* kTexLeaf = "Application/Assets/Textures/UI/Plant/leaf.png";
+    constexpr const char* kTexVine = "Application/Assets/Textures/UI/Plant/vine.png";
 
     // ───────────────────────────────────────────────────────────────
     // 版下の寸法。テクスチャの実サイズと一致させること（伸ばすとドットがボケる）

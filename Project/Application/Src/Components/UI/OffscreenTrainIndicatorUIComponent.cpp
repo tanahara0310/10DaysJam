@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "OffscreenTrainIndicatorUIComponent.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
@@ -34,15 +34,15 @@ namespace
     // テクスチャ。アイコンはローディング画面のトロッコ、板はスタミナゲージの
     // 版下をそのまま使うので、新規アセットは無い
     // ───────────────────────────────────────────────────────────────
-    constexpr const char* kTexIcon = "Application/Assets/Textures/loading_cart.png";
-    constexpr const char* kTexBoardMid = "Application/Assets/Textures/Stamina/board_mid.png";
-    constexpr const char* kTexBoardCapL = "Application/Assets/Textures/Stamina/board_cap_l.png";
-    constexpr const char* kTexBoardCapR = "Application/Assets/Textures/Stamina/board_cap_r.png";
+    constexpr const char* kTexIcon = "Application/Assets/Textures/Loading/cart.png";
+    constexpr const char* kTexBoardMid = "Application/Assets/Textures/UI/Board/board_mid.png";
+    constexpr const char* kTexBoardCapL = "Application/Assets/Textures/UI/Board/board_cap_l.png";
+    constexpr const char* kTexBoardCapR = "Application/Assets/Textures/UI/Board/board_cap_r.png";
 
     // ───────────────────────────────────────────────────────────────
     // 版下の寸法（倍率 1.0 のときの px。基準解像度 1920x1080）
     // ───────────────────────────────────────────────────────────────
-    /// loading_cart.png の実寸は 231x240。縦を決めて横をこの比で合わせる
+    /// Loading/cart.png の実寸は 231x240。縦を決めて横をこの比で合わせる
     constexpr float kIconAspect = 231.0f / 240.0f;
     constexpr float kIconHeight = 104.0f;
     constexpr float kIconWidth = kIconHeight * kIconAspect;
@@ -99,7 +99,7 @@ namespace
         "Game.TrainOffscreen.IconBrightness", 0.18f,
         "トロッコのアイコンの明るさ。UI は色補正前の HDR バッファへ描かれるので、"
         "露出（昼は約 4.5 倍）とブルームがそのまま乗る。"
-        "loading_cart.png はトーンマップ後に合成されるローディング画面用の版下で、"
+        "Loading/cart.png は旧ローディング画面の版下（トーンマップ後に合成される側）で、"
         "画面に出る明るさで描かれている（本体の灰色が linear 0.09、サルの顔が 0.54）。"
         "スタミナゲージ・速度計の版下は HDR 用に linear 0.002〜0.02 で描かれていて、"
         "そこへさらに 0.6〜0.7 を掛けている。等倍で貼ると 1 桁明るくなり白へ飛ぶ。"

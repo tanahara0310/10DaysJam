@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ObjectiveSignComponent.h"
 
 #include "EngineSystem/EngineSystem.h"
@@ -27,12 +27,12 @@ namespace
     // テクスチャ（ポーズメニューと同じ版下を流用する。新規アセットは無い）
     // 版下は Project/Build/Scripts/gen_pause_tex.py
     // ───────────────────────────────────────────────────────────────
-    constexpr const char* kTexPlankMid = "Application/Assets/Textures/Pause/plank_mid.png";
-    constexpr const char* kTexPlankCapL = "Application/Assets/Textures/Pause/plank_cap_l.png";
-    constexpr const char* kTexPlankCapR = "Application/Assets/Textures/Pause/plank_cap_r.png";
-    constexpr const char* kTexVineV = "Application/Assets/Textures/Pause/vine_v.png";
-    constexpr const char* kTexVineH = "Application/Assets/Textures/Pause/vine_h.png";
-    constexpr const char* kTexFoliage = "Application/Assets/Textures/Pause/foliage.png";
+    constexpr const char* kTexPlankMid = "Application/Assets/Textures/UI/Board/plank_mid.png";
+    constexpr const char* kTexPlankCapL = "Application/Assets/Textures/UI/Board/plank_cap_l.png";
+    constexpr const char* kTexPlankCapR = "Application/Assets/Textures/UI/Board/plank_cap_r.png";
+    constexpr const char* kTexVineV = "Application/Assets/Textures/UI/Plant/vine_v.png";
+    constexpr const char* kTexVineH = "Application/Assets/Textures/UI/Plant/vine_h.png";
+    constexpr const char* kTexFoliage = "Application/Assets/Textures/UI/Plant/foliage.png";
 
     // ───────────────────────────────────────────────────────────────
     // テクスチャの実寸（gen_pause_tex.py の出力と一致させること）

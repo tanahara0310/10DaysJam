@@ -16,9 +16,9 @@ namespace CoreEngine
     ///          ―― シーン構築が 1 フレーム 1 ステップで、所要時間が読めないため。
     ///          画面中央には「ローディング中…」を出す。点は 0→1→2→3 個と増えて戻り、
     ///          文字は同じ周期でゆっくり明滅する（どちらも進捗ではなく時間で回る）。
-    /// @note 絵は Assets/Textures/loading/*.png（手描きのドット絵。4 テクセル =
+    /// @note 絵は Assets/Textures/Loading/*.png（手描きのドット絵。4 テクセル =
     ///       ボクセル 1 個で、どれも 64 テクセル幅のマス目に描かれている）と
-    ///       loading_text.png（ドット絵フォントを焼いた「ローディング中」）。
+    ///       Loading/text.png（ドット絵フォントを焼いた「ローディング中」）。
     ///       手続き的に描くのは「ローディング中…」の点と、奥に並べる木の配置だけ。
     ///       レイアウト値は CVar（"r.TrolleyLoading.*"）が保持する。
     class TrolleyLoading : public PostEffectComputeBase, public ILoadingScreenEffect {

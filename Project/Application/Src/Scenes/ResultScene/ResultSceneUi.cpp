@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ResultSceneUi.h"
 
 #include "Components/UI/ResultGaugeUIComponent.h"
@@ -13,7 +13,7 @@ namespace ResultSceneUi
     {
         /// 入れ物にするだけの 1x1 透明画像（ポーズメニューの暗幕と同じ版下）。
         /// @note Models/Box/white1x1.png はアルファチャンネルを持たないので使えない
-        constexpr const char* kRootTexture = "Application/Assets/Textures/Pause/dim.png";
+        constexpr const char* kRootTexture = "Application/Assets/Textures/UI/dim.png";
     }
 
     // リザルトの見た目は ResultGaugeUIComponent が丸ごと持つ。

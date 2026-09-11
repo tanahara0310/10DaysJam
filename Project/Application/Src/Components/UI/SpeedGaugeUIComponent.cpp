@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "SpeedGaugeUIComponent.h"
 
 #include "Components/Train/TrainMovementComponent.h"
@@ -28,10 +28,10 @@ namespace
     // ───────────────────────────────────────────────────────────────
     // テクスチャ。スタミナゲージと同じ版下を流用するので新規アセットは無い
     // ───────────────────────────────────────────────────────────────
-    constexpr const char* kTexBoardMid = "Application/Assets/Textures/Stamina/board_mid.png";
-    constexpr const char* kTexBoardCapL = "Application/Assets/Textures/Stamina/board_cap_l.png";
-    constexpr const char* kTexBoardCapR = "Application/Assets/Textures/Stamina/board_cap_r.png";
-    constexpr const char* kTexVine = "Application/Assets/Textures/Stamina/vine.png";
+    constexpr const char* kTexBoardMid = "Application/Assets/Textures/UI/Board/board_mid.png";
+    constexpr const char* kTexBoardCapL = "Application/Assets/Textures/UI/Board/board_cap_l.png";
+    constexpr const char* kTexBoardCapR = "Application/Assets/Textures/UI/Board/board_cap_r.png";
+    constexpr const char* kTexVine = "Application/Assets/Textures/UI/Plant/vine.png";
 
     // ───────────────────────────────────────────────────────────────
     // 版下の寸法。スタミナゲージの kArtScale と揃えること

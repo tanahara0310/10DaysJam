@@ -129,13 +129,13 @@ namespace CoreEngine
         // スプライト。手描きのドット絵で、4 テクセル = ボクセル 1 個。
         // ファイル名だけで指定すると Models/Monkey/monkey.png などの同名アセットと
         // 区別が付かない（どちらが返るかがスキャン順任せになる）ので相対パスで指定する
-        constexpr const char* kCartTexture    = "Application/Assets/Textures/loading/monkey.png";
-        constexpr const char* kRailTexture    = "Application/Assets/Textures/loading/rail.png";
-        constexpr const char* kStationTexture = "Application/Assets/Textures/loading/station.png";
-        constexpr const char* kTreeTexture    = "Application/Assets/Textures/loading/tree.png";
+        constexpr const char* kCartTexture    = "Application/Assets/Textures/Loading/monkey.png";
+        constexpr const char* kRailTexture    = "Application/Assets/Textures/Loading/rail.png";
+        constexpr const char* kStationTexture = "Application/Assets/Textures/Loading/station.png";
+        constexpr const char* kTreeTexture    = "Application/Assets/Textures/Loading/tree.png";
         // 「ローディング中」。ドット絵フォント（x8y12pxDenkiChip）を 84px で焼いたもの。
         // 縦 1080 基準の大きさなので、他のスプライトと同じ扱いで置ける
-        constexpr const char* kTextTexture    = "loading_text.png";
+        constexpr const char* kTextTexture    = "Application/Assets/Textures/Loading/text.png";
 
         // 1 フレームで進める時間の上限。読み込み中はコマ落ちするので、
         // 大きなデルタをそのまま積むとトロッコが飛ぶ。

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
 #include "Math/Vector/Vector2.h"
@@ -35,7 +35,8 @@ namespace GameComponents
     ///       画面の端で大きく見切れていても案内が出ない。
     /// @note 1 ワールド単位 = 1m。地面の 5m 目盛り（MapViewComponent）と
     ///       リザルトの進行距離（GameResultData）と同じ換算にしてある。
-    /// @note アイコンはローディング画面のトロッコ（loading_cart.png）、板と端木は
+    /// @note アイコンは旧ローディング画面のトロッコ（Loading/cart.png。今はこの案内だけが使う。
+    ///       ローディング画面自体は Loading/monkey.png へ移行済み）、板と端木は
     ///       スタミナゲージのものを流用しているので、新規アセットは無い。
     ///       見た目の調整は CVar `Game.TrainOffscreen.*`（インスペクターの「画面外トロッコ案内」）で行う。
     class OffscreenTrainIndicatorUIComponent final : public CoreEngine::IComponent

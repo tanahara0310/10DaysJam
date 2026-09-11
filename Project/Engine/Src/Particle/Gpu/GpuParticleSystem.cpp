@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "GpuParticleSystem.h"
 
 #include "Graphics/RHI/GraphicsCore.h"
@@ -189,7 +189,7 @@ void GpuParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* reso
     *paramsData_ = GpuParticleParams{};
 
     // デフォルトテクスチャ
-    SetTexture("Textures/circle.png");
+    SetTexture("Textures/Particle/circle.png");
 
     // 起動時再生（CPU版 MainModule.playOnAwake と同じ既定動作）
     if (mainModule_->GetMainData().playOnAwake) {

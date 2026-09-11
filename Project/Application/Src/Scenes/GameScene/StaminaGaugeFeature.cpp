@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "StaminaGaugeFeature.h"
 
 #include "Components/GameCore/HungerComponent.h"
@@ -14,7 +14,7 @@ using namespace CoreEngine;
 namespace
 {
     constexpr const char* kBoardTexture =
-        "Application/Assets/Textures/Stamina/board_mid.png";
+        "Application/Assets/Textures/UI/Board/board_mid.png";
 
     /// @brief バナナゲージの土台だけを生成し、あとは StaminaGaugeUIComponent に任せる
     class StaminaGaugeFeature final : public ISceneFeature

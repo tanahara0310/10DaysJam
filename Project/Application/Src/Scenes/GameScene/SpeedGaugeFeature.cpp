@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "SpeedGaugeFeature.h"
 
 #include "Components/Train/TrainMovementComponent.h"
@@ -13,7 +13,7 @@ using namespace CoreEngine;
 namespace
 {
     constexpr const char* kBoardTexture =
-        "Application/Assets/Textures/Stamina/board_mid.png";
+        "Application/Assets/Textures/UI/Board/board_mid.png";
 
     /// @brief 速度計の土台だけを生成し、あとは SpeedGaugeUIComponent に任せる
     class SpeedGaugeFeature final : public ISceneFeature
