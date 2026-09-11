@@ -16,9 +16,10 @@ namespace CoreEngine
     ///          ―― シーン構築が 1 フレーム 1 ステップで、所要時間が読めないため。
     ///          画面中央には「ローディング中…」を出す。点は 0→1→2→3 個と増えて戻り、
     ///          文字は同じ周期でゆっくり明滅する（どちらも進捗ではなく時間で回る）。
-    /// @note 絵は Assets/Textures/loading_*.png（.obj から焼いたスプライト）と
+    /// @note 絵は Assets/Textures/loading/*.png（手描きのドット絵。4 テクセル =
+    ///       ボクセル 1 個で、どれも 64 テクセル幅のマス目に描かれている）と
     ///       loading_text.png（ドット絵フォントを焼いた「ローディング中」）。
-    ///       手続き的に描くのは「ローディング中…」の点だけ。
+    ///       手続き的に描くのは「ローディング中…」の点と、奥に並べる木の配置だけ。
     ///       レイアウト値は CVar（"r.TrolleyLoading.*"）が保持する。
     class TrolleyLoading : public PostEffectComputeBase, public ILoadingScreenEffect {
     public:
@@ -29,20 +30,20 @@ namespace CoreEngine
             float screenAlpha = 0.0f;   // 表示強度（実行時値）
             float time        = 0.0f;   // 経過時間（実行時値）
             float progress    = 0.0f;   // 読み込みの進捗（実行時値）
-            float bobSpeed    = 336.0f; // 跳ねる周期を決める速さ（px/秒）
+            float bobSpeed    = 256.0f; // 跳ねる周期を決める速さ（px/秒）
 
             float parallax    = 0.32f;  // 奥の景色の速度比（railScroll に対して）
-            float railY       = 0.87f;  // レール上端（画面高さに対する比率）
+            float railY       = 0.90f;  // レール上面（画面高さに対する比率）
             float cartX       = -0.14f; // 進捗 0 のトロッコ左端（画面幅に対する比率）
-            float bobAmp      = 4.0f;   // 上下の揺れ幅
+            float bobAmp      = 2.0f;   // 上下の揺れ幅
 
             float tiltDegrees = 1.6f;   // 前後の傾き
-            float cartLift    = 0.0f;   // レール上端から車体下端までの距離（0 でレールに載る）
-            float stationGoal = 260.0f; // 進捗 1.0 で駅が来る位置（トロッコ到着位置からの距離）
-            float stationDrop = 8.0f;   // レール上端から駅の下端までの距離
+            float cartLift    = 0.0f;   // レール上面から車体下端までの距離（0 でレールに載る）
+            float stationGoal = 80.0f;  // 進捗 1.0 で駅が来る位置（トロッコ到着位置からの距離）
+            float stationDrop = 8.0f;   // レール上面から駅の下端までの距離
 
-            float sceneryDrop = 4.0f;   // レール上端から景色の下端までの距離
-            float scale       = 0.72f;  // 全体の拡大率（上の距離とスプライトへ一括で掛かる）
+            float treeDrop    = 8.0f;   // レール上面から木の下端までの距離
+            float scale       = 2.4f;   // 全体の拡大率（上の距離とスプライトへ一括で掛かる）
             float cartGoalX   = 0.73f;  // 進捗 1.0 のトロッコ左端（画面幅に対する比率）
             float railScroll  = 0.0f;   // レールと景色が流れる速さ（0 で世界に固定）
 
@@ -52,10 +53,12 @@ namespace CoreEngine
             float dotInterval = 0.35f;  // 点が 1 つ増える間隔（秒）
 
             float textGap     = 21.0f;  // 文字列の右端から最初の点までの距離
-            // HLSL 側の cbuffer は textGap で終わるが、cbuffer 全体は 16B 単位へ
-            // 切り上げられて 96B になる。C++ 側が 84B のままだとシェーダーが読む
-            // 領域を構造体が覆えないので、末尾を float[3] で埋める
-            float padding[3]  = {};
+            float treeSpacing = 128.0f; // 木 1 本ぶんの区画幅（木はこの中央に立つ）
+            float treeDim     = 0.55f;  // 奥の木の暗さ（1.0 で描いたままの色）
+            // ここまでで float 24 個 = 96B ちょうど。HLSL 側の cbuffer も 16B 単位へ
+            // 切り上げて 96B なので、末尾の詰め物は要らない。フィールドを増減したら
+            // 16B の倍数に戻すこと（足りないとシェーダーが読む領域を構造体が覆えない）
+            float treeScaleVary = 0.35f; // 木の大きさの振れ幅（0 で全部同じ大きさ）
         };
 
         static constexpr Cb::Field kTrolleyParamsFields[] = {
@@ -65,11 +68,12 @@ namespace CoreEngine
             CB_FIELD(TrolleyParams, cartX),       CB_FIELD(TrolleyParams, bobAmp),
             CB_FIELD(TrolleyParams, tiltDegrees), CB_FIELD(TrolleyParams, cartLift),
             CB_FIELD(TrolleyParams, stationGoal), CB_FIELD(TrolleyParams, stationDrop),
-            CB_FIELD(TrolleyParams, sceneryDrop), CB_FIELD(TrolleyParams, scale),
+            CB_FIELD(TrolleyParams, treeDrop),    CB_FIELD(TrolleyParams, scale),
             CB_FIELD(TrolleyParams, cartGoalX),   CB_FIELD(TrolleyParams, railScroll),
             CB_FIELD(TrolleyParams, textTime),    CB_FIELD(TrolleyParams, textScale),
             CB_FIELD(TrolleyParams, textY),       CB_FIELD(TrolleyParams, dotInterval),
-            CB_FIELD(TrolleyParams, textGap),     CB_FIELD(TrolleyParams, padding),
+            CB_FIELD(TrolleyParams, textGap),     CB_FIELD(TrolleyParams, treeSpacing),
+            CB_FIELD(TrolleyParams, treeDim),     CB_FIELD(TrolleyParams, treeScaleVary),
         };
         CB_VERIFY_LAYOUT(TrolleyParams, kTrolleyParamsFields);
         CB_BIND_HLSL(TrolleyParams, kTrolleyParamsFields, "TrolleyParams");
@@ -122,7 +126,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE cartHandle_    = {};
         D3D12_GPU_DESCRIPTOR_HANDLE railHandle_    = {};
         D3D12_GPU_DESCRIPTOR_HANDLE stationHandle_ = {};
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneryHandle_ = {};
+        D3D12_GPU_DESCRIPTOR_HANDLE treeHandle_    = {};
         D3D12_GPU_DESCRIPTOR_HANDLE textHandle_    = {};
 
         // 実行時状態（保存対象ではない）

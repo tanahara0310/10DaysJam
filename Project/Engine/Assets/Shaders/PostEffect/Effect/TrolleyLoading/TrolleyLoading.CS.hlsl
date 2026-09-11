@@ -1,7 +1,14 @@
-// TrolleyLoading.CS.hlsl - トロッコが走るローディング画面 コンピュートシェーダー
+﻿// TrolleyLoading.CS.hlsl - トロッコが走るローディング画面 コンピュートシェーダー
 //
-// 絵は Assets/Textures/loading_*.png（.obj から正射投影で焼いたボクセルのスプライト）を
-// 奥から順に重ねるだけ。手続き的に描くのは「ローディング中…」の点だけ。
+// 絵は Assets/Textures/loading/*.png（手描きのドット絵）を奥から順に重ねる。
+// 手続き的に描くのは「ローディング中…」の点と、奥の並木（等間隔に置いて大きさだけ変える）。
+//
+// ■ スプライトの寸法の約束
+//   4 テクセル = ボクセル 1 個で、どれも 64 テクセル幅のマス目に描かれている
+//   （rail 64x64 / monkey 64x68 / station 64x128 / tree 64x64）。互いの大きさが
+//   最初から揃っているので、全部を同じ uiScale で並べれば比率が合う。
+//   レールだけはマスの下 8 テクセルにしか絵が無く、上面（トロッコが載る高さ）は
+//   マスの上から kRailSurfaceRatio の位置にある。他の絵は下端を接地させる。
 //
 // ■ 「ローディング中…」
 //   画面中央にドット絵フォントを焼いた 1 枚（loading_text.png）を置き、その右へ点を
@@ -25,7 +32,10 @@
 //   この段（PostTonemap）の出力はリニアで、sRGB へのエンコードは最終提示で掛かる。
 //   一方 Load が返すのは PNG の生の値（sRGB）なので、スプライトも定数で書いた色
 //   （点）も SrgbToLinear を通してから合成する。LoadingScreen.CS.hlsl と同じ扱い。
-//   これを省くと枕木の (133,87,43) が画面上で (189,158,115) まで浮く。
+//   これを省くと枕木の (72,50,38) が画面上で (145,122,108) まで浮く。
+//   なお PNG 側に sRGB チャンクが付いていると DDS 生成が「リニア→sRGB」の往路を
+//   飛ばすので、ここのデコードだけが残って一段暗くなる。loading/*.png は
+//   他の UI ドット絵と同じくチャンクを外してある。
 
 #include "ShaderMath.hlsli" // PI / TWO_PI
 
@@ -33,7 +43,7 @@ Texture2D<float4> gTexture : register(t0); // 合成前の画面
 Texture2D<float4> gCart    : register(t1); // トロッコ＋猿
 Texture2D<float4> gRail    : register(t2); // レール 1 周期
 Texture2D<float4> gStation : register(t3); // 駅（進捗の到達点）
-Texture2D<float4> gScenery : register(t4); // 奥の景色（木・岩を焼き込んだ帯）
+Texture2D<float4> gTree    : register(t4); // 奥の並木（1 本ぶん。シェーダー側で並べる）
 Texture2D<float4> gText    : register(t5); // 「ローディング中」（ドット絵フォントを焼いたもの）
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -45,16 +55,16 @@ cbuffer TrolleyParams : register(b0)
     float bobSpeed;     // 跳ねる周期を決める速さ（1080 基準の px/秒）
 
     float parallax;     // 奥の景色の速度比（railScroll に対して）
-    float railY;        // レール上端（画面高さに対する比率）
+    float railY;        // レール上面（画面高さに対する比率）
     float cartX;        // 進捗 0 のときのトロッコ左端（画面幅に対する比率）
     float bobAmp;       // 上下の揺れ幅（1080 基準の px）
 
     float tiltDegrees;  // 前後の傾き（度）
-    float cartLift;     // レール上端から車体下端までの距離（0 でレールに載る）
+    float cartLift;     // レール上面から車体下端までの距離（0 でレールに載る）
     float stationGoal;  // 進捗 1.0 で駅が来る位置（トロッコ左端からの距離）
-    float stationDrop;  // レール上端から駅の下端までの距離
+    float stationDrop;  // レール上面から駅の下端までの距離
 
-    float sceneryDrop;  // レール上端から景色の下端までの距離
+    float treeDrop;     // レール上面から木の下端までの距離
     float scale;        // 全体の拡大率。上の距離もスプライトも一括で掛かる
     float cartGoalX;    // 進捗 1 のときのトロッコ左端（画面幅に対する比率）
     float railScroll;   // レールと景色が流れる速さ（1080 基準の px/秒。0 で世界に固定）
@@ -65,6 +75,9 @@ cbuffer TrolleyParams : register(b0)
     float dotInterval;  // 点が 1 つ増える間隔（秒）
 
     float textGap;      // 文字列の右端から最初の点までの距離（1080 基準 px）
+    float treeSpacing;  // 木 1 本ぶんの区画幅（1080 基準 px。木はこの中央に立つ）
+    float treeDim;      // 奥の木の暗さ（1.0 で描いたままの色。下げるほど奥へ引く）
+    float treeScaleVary;// 木の大きさの振れ幅（0 で全部同じ。0.35 なら 0.65〜1.35 倍を 5 段で使う）
 };
 
 cbuffer ScreenParams : register(b1)
@@ -77,6 +90,19 @@ cbuffer ScreenParams : register(b1)
 static const uint  kGroupSize       = 8;
 static const float kReferenceHeight = 1080.0f; // レイアウト値の基準解像度
 static const float kStationEnter    = 60.0f;   // 駅が画面右外から現れる距離
+
+// レール上面（トロッコが載る高さ）がタイルの上から何割の位置にあるか。
+// rail.png は 64 テクセルのマスの下 8 テクセルだけに絵があり、上の 4 テクセルが
+// レール、下の 4 テクセルが枕木。56/64 がその境目にあたる
+static const float kRailSurfaceRatio = 56.0f / 64.0f;
+
+// 奥の並木の大きさ。段数ぶんの大きさを用意し、区画ごとに「段数と互いに素な歩幅」で
+// 段を回して、そこへハッシュで 0〜1 段だけ揺らす。
+// 歩幅が段数と互いに素なので隣り合う木は必ず別の段になり（差は 2〜4 段で、
+// 5 の倍数＝同じ段には絶対ならない）、揺らぎのぶん周期も崩れる。
+// ハッシュだけで決めると、たまたま小さい順に並んだ画面が出てしまう
+static const uint kTreeSizeSteps  = 5; // 大きさの段数
+static const uint kTreeSizeStride = 3; // 1 区画進むごとに動かす段数（段数と互いに素）
 
 // 「ローディング中」の右に並べる点。大きさはフォントのドット（84px 焼き = 7px）を単位にする
 static const uint  kDotCount     = 3;      // 点の数。1 周期でこの数まで増えて 0 へ戻る
@@ -91,6 +117,22 @@ float3 SrgbToLinear(float3 c)
     float3 lo = c / 12.92f;
     float3 hi = pow(max(c + 0.055f, 0.0f) / 1.055f, 2.4f);
     return lerp(lo, hi, step(0.04045f, c));
+}
+
+/// 区画番号から 0〜1 の擬似乱数を 1 つ作る（並木の大きさを振る用）
+/// @note 番号が同じなら毎フレーム同じ値。スクロールしても木が踊らない
+/// @note frac(sin(n)*43758.5) の定番ハッシュは、n が 0,1,2… と小さい整数のときに
+///       値が相関して昇順に並んでしまう（実際に並木が「小→大」に見えた）。
+///       ビット混合なら小さい連番でもばらける
+float Hash11(float n)
+{
+    uint x = (uint)(int)n;
+    x ^= x >> 16;
+    x *= 0x7feb352du;
+    x ^= x >> 15;
+    x *= 0x846ca68bu;
+    x ^= x >> 16;
+    return (float)x * (1.0f / 4294967296.0f);
 }
 
 float2 Rotate(float2 p, float angle)
@@ -132,15 +174,15 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
         // 位置も大きさも 1080 基準の距離に uiScale を掛けて出しているので、
         // ここへ scale を畳み込むだけで全体が相似のまま拡大・縮小する。
         // 走る速さも跳ねる周期も 1080 基準の距離のまま計算するため、
-        // 縮めても「レール 1 本ぶん進むと 1 回跳ねる」の関係は崩れない
+        // 縮めても「レール 1 タイルぶん進むと 1 回跳ねる」の関係は崩れない
         float  uiScale = (float)screenHeight / kReferenceHeight * scale;
         float2 pix     = (float2)dispatchId.xy + 0.5f;
         float  railTop = railY * (float)screenHeight;
 
-        uint railW,  railH;  gRail.GetDimensions(railW, railH);
-        uint cartW,  cartH;  gCart.GetDimensions(cartW, cartH);
-        uint sceneW, sceneH; gScenery.GetDimensions(sceneW, sceneH);
-        uint stnW,   stnH;   gStation.GetDimensions(stnW, stnH);
+        uint railW, railH; gRail.GetDimensions(railW, railH);
+        uint cartW, cartH; gCart.GetDimensions(cartW, cartH);
+        uint treeW, treeH; gTree.GetDimensions(treeW, treeH);
+        uint stnW,  stnH;  gStation.GetDimensions(stnW, stnH);
 
         // 進捗を走行量へ。両端を緩めて、発車と到着をなめらかにする
         float travel = saturate(progress);
@@ -159,18 +201,42 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
         float bob   = (sin(phase) - 0.5f) * bobAmp * uiScale;
         float tilt  = sin(phase + 1.1f) * radians(tiltDegrees);
 
-        // ---- 奥の景色（ゆっくり流れる） ----
+        // ---- 奥の並木（ゆっくり流れる） ----
+        // treeSpacing ごとの区画に 1 本ずつ、区画の中央へ置く。間隔は一定にして、
+        // 大きさだけ区画ごとに変える（同じ絵を等倍で並べると壁紙に見えるため）。
+        // 木は下端を接地させるので、大きいほど背が高く手前に見える。
+        // 区画からはみ出さないので、1 ピクセルにつき自分の区画だけ見れば済む
+        // ―― 木の枚数ぶんループしなくていい
         {
-            float lx = fmod(pix.x / uiScale + scroll * parallax, (float)sceneW);
-            float ly = (pix.y - (railTop + sceneryDrop * uiScale)) / uiScale + (float)sceneH;
-            float4 c = LoadSprite(gScenery, float2(lx, ly));
-            color = lerp(color, c.rgb, c.a * screenAlpha);
+            float sx      = pix.x / uiScale + scroll * parallax;
+            float spacing = max(treeSpacing, (float)treeW);
+            float slot    = floor(sx / spacing);
+
+            // 大きさは 1 ± treeScaleVary を kTreeSizeSteps 段に割ったもの。
+            // どの段に乗るかは歩幅とハッシュで決まる（隣と同じ段にはならない）
+            uint  step = ((uint)slot * kTreeSizeStride
+                          + (uint)(Hash11(slot) * 2.0f)) % kTreeSizeSteps;
+            float treeScale = lerp(1.0f - treeScaleVary, 1.0f + treeScaleVary,
+                                   (float)step / (float)(kTreeSizeSteps - 1));
+            // 区画をはみ出すと隣の区画で切れてしまうので、収まる倍率で頭打ちにする
+            treeScale = clamp(treeScale, 0.1f, spacing / (float)treeW);
+
+            float  width  = (float)treeW * treeScale;
+            float  left   = slot * spacing + (spacing - width) * 0.5f;
+            float  ground = railTop + treeDrop * uiScale;
+            float2 local  = float2((sx - left) / treeScale,
+                                   (pix.y - ground) / (uiScale * treeScale) + (float)treeH);
+            float4 c = LoadSprite(gTree, local);
+            // 木は手前のトロッコと同じ絵の密度で描かれているので、
+            // そのまま出すと奥に見えない。暗く落として引っ込める
+            color = lerp(color, c.rgb * treeDim, c.a * screenAlpha);
         }
 
         // ---- レール（剰余で無限スクロール） ----
+        // 絵はマスの下の方にしか無いので、上端ではなく「レール上面」を railTop に合わせる
         {
             float lx = fmod(pix.x / uiScale + scroll, (float)railW);
-            float ly = (pix.y - railTop) / uiScale;
+            float ly = (pix.y - railTop) / uiScale + (float)railH * kRailSurfaceRatio;
             float4 c = LoadSprite(gRail, float2(lx, ly));
             color = lerp(color, c.rgb, c.a * screenAlpha);
         }

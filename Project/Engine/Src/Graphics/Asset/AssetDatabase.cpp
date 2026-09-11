@@ -9,6 +9,18 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief パス区切りを '/' に揃える
+        /// @details 登録側（filesystem::path 由来で '\'）と検索側（ソースに '/' で
+        ///          書かれる）で表記が割れるため、キーは片方へ寄せて突き合わせる
+        std::string NormalizeSeparators(std::string path)
+        {
+            std::replace(path.begin(), path.end(), '\\', '/');
+            return path;
+        }
+    }
+
     AssetDatabase& AssetDatabase::GetInstance()
     {
         static AssetDatabase instance;
@@ -148,8 +160,12 @@ namespace CoreEngine
 
     std::filesystem::path AssetDatabase::FindAssetPath(const std::string& name)
     {
+        // 区切りだけ '/' に揃える。相対パスで引かれたときに、呼び出し側が
+        // '\' で書いていても MergeAssetInfo が登録したキーと一致させるため
+        const std::string key = NormalizeSeparators(name);
+
         // まず完全一致で検索
-        auto it = assetsByName_.find(name);
+        auto it = assetsByName_.find(key);
         if (it != assetsByName_.end() && !it->second.empty())
         {
             // 複数ある場合は優先順位の高いものを返す
@@ -178,11 +194,11 @@ namespace CoreEngine
         }
 
         // 拡張子なしで検索
-        std::string nameWithoutExt = name;
-        size_t dotPos = name.find_last_of('.');
+        std::string nameWithoutExt = key;
+        size_t dotPos = key.find_last_of('.');
         if (dotPos != std::string::npos)
         {
-            nameWithoutExt = name.substr(0, dotPos);
+            nameWithoutExt = key.substr(0, dotPos);
         }
 
         it = assetsByName_.find(nameWithoutExt);
@@ -274,6 +290,12 @@ namespace CoreEngine
         const std::string guid = info.guid;
         const std::string name = info.name;
         const std::string fileName = info.fileName;
+        // 相対パス（例: Application/Assets/Textures/loading/monkey.png）。
+        // ファイル名だけでは Models/Monkey/monkey.png のような同名アセットと
+        // 区別できず、カテゴリ優先度が同点だと列挙順の早い方が勝ってしまう。
+        // 呼び出し側がフルの相対パスで指定したときに 1 件へ決まるようにする
+        const std::string relativePath = NormalizeSeparators(
+            Logger::GetInstance().PathToUtf8(info.relativePath));
 
         assetsByGUID_[guid] = std::move(info);
 
@@ -282,6 +304,11 @@ namespace CoreEngine
 
         // ファイル名フル（例: GrayScale.CS.hlsl）で登録
         assetsByName_[fileName].push_back(guid);
+
+        // 相対パスで登録。'/' を含むので上のファイル名キーとは衝突しない
+        if (!relativePath.empty()) {
+            assetsByName_[relativePath].push_back(guid);
+        }
 
         // 中間 stem（例: GrayScale.CS）でも検索できるよう全 stem を登録
         Logger& log = Logger::GetInstance();
