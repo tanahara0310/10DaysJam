@@ -111,17 +111,17 @@ namespace
         CVarRange{ 0.0f, 700.0f } };
 
     CVar<float> cvDropSeconds{
-        "Game.ObjectiveSign.DropSeconds", 0.62f,
+        "Game.ObjectiveSign.DropSeconds", 0.50f,
         "看板が降りてきて収まるまでの秒数",
         CVarRange{ 0.1f, 2.0f } };
 
     CVar<float> cvHoldSeconds{
-        "Game.ObjectiveSign.HoldSeconds", 1.90f,
+        "Game.ObjectiveSign.HoldSeconds", 1.15f,
         "看板が出たままそよいでいる秒数",
         CVarRange{ 0.0f, 8.0f } };
 
     CVar<float> cvRiseSeconds{
-        "Game.ObjectiveSign.RiseSeconds", 0.34f,
+        "Game.ObjectiveSign.RiseSeconds", 0.30f,
         "看板が巻き上がって消えるまでの秒数",
         CVarRange{ 0.05f, 2.0f } };
 
