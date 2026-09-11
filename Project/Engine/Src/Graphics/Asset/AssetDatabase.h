@@ -24,8 +24,12 @@ namespace CoreEngine
         void Finalize();
 
         /// @brief ファイル名でアセットパスを検索
-        /// @param name 検索キー（ファイル名・ステム。パスではなく照合用の名前）
+        /// @param name 検索キー（ファイル名・ステム、またはプロジェクトルートからの相対パス）
         /// @return 見つかった絶対パス。見つからなければ空の path
+        /// @note 同名ファイルが複数あるときファイル名では 1 件に決まらない
+        ///       （カテゴリ優先度が同点なら先に登録された方＝ディレクトリの列挙順で決まる）。
+        ///       "Application/Assets/Textures/loading/monkey.png" のように
+        ///       相対パスで渡せば確実にその 1 件が返る
         /// @note 戻り値を narrow 文字列に落とさないこと（ANSI と UTF-8 の取り違えを避けるため）
         std::filesystem::path FindAssetPath(const std::string& name);
 

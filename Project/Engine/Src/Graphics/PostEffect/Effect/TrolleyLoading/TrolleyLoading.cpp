@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "TrolleyLoading.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
@@ -19,8 +19,8 @@ namespace CoreEngine
     namespace
     {
         CVar<float> cvBobSpeed{
-            "r.TrolleyLoading.BobSpeed", 336.0f,
-            "トロッコが跳ねる速さ（縦 1080 基準の px/秒。枕木 1 本ぶんで 1 回跳ねる換算）",
+            "r.TrolleyLoading.BobSpeed", 256.0f,
+            "トロッコが跳ねる速さ（縦 1080 基準の px/秒。レール 1 タイルぶんで 1 回跳ねる換算）",
             CVarRange{ 40.0f, 1200.0f } };
 
         CVar<float> cvRailScroll{
@@ -34,13 +34,13 @@ namespace CoreEngine
             CVarRange{ 0.0f, 1.0f } };
 
         CVar<float> cvScale{
-            "r.TrolleyLoading.Scale", 0.72f,
+            "r.TrolleyLoading.Scale", 2.4f,
             "全体の拡大率。絵の大きさも配置の距離も一括で変わる（速さの見え方も追従する）",
-            CVarRange{ 0.2f, 2.0f } };
+            CVarRange{ 0.5f, 5.0f } };
 
         CVar<float> cvRailY{
-            "r.TrolleyLoading.RailY", 0.87f,
-            "レール上端の位置（画面高さに対する比率）",
+            "r.TrolleyLoading.RailY", 0.90f,
+            "レール上面（トロッコが載る高さ）の位置（画面高さに対する比率）",
             CVarRange{ 0.3f, 0.98f } };
 
         CVar<float> cvCartX{
@@ -54,8 +54,8 @@ namespace CoreEngine
             CVarRange{ 0.0f, 1.2f } };
 
         CVar<float> cvBobAmp{
-            "r.TrolleyLoading.BobAmp", 4.0f,
-            "枕木を通過するたびに跳ねる上下幅（縦 1080 基準の px）",
+            "r.TrolleyLoading.BobAmp", 2.0f,
+            "枕木を通過するたびに跳ねる上下幅（縦 1080 基準の px。Scale が掛かる）",
             CVarRange{ 0.0f, 20.0f } };
 
         CVar<float> cvTiltDegrees{
@@ -65,23 +65,38 @@ namespace CoreEngine
 
         CVar<float> cvCartLift{
             "r.TrolleyLoading.CartLift", 0.0f,
-            "レール上端から車体下端までの距離（0 でレールの上に載る。上げると浮く）",
+            "レール上面から車体下端までの距離（0 でレールの上に載る。上げると浮く）",
             CVarRange{ -40.0f, 160.0f } };
 
         CVar<float> cvStationGoal{
-            "r.TrolleyLoading.StationGoal", 260.0f,
+            "r.TrolleyLoading.StationGoal", 80.0f,
             "進捗 1.0 で駅が来る位置（到着したトロッコの左端からの距離）",
             CVarRange{ 0.0f, 1200.0f } };
 
         CVar<float> cvStationDrop{
             "r.TrolleyLoading.StationDrop", 8.0f,
-            "レール上端から駅の下端までの距離",
+            "レール上面から駅の下端までの距離",
             CVarRange{ -40.0f, 80.0f } };
 
-        CVar<float> cvSceneryDrop{
-            "r.TrolleyLoading.SceneryDrop", 4.0f,
-            "レール上端から奥の景色の下端までの距離",
+        CVar<float> cvTreeDrop{
+            "r.TrolleyLoading.TreeDrop", 8.0f,
+            "レール上面から奥の木の下端までの距離（8 で枕木の下端に揃う）",
             CVarRange{ -80.0f, 80.0f } };
+
+        CVar<float> cvTreeSpacing{
+            "r.TrolleyLoading.TreeSpacing", 128.0f,
+            "木を置く間隔（縦 1080 基準の px）。狭めるほど並木が詰まる",
+            CVarRange{ 64.0f, 400.0f } };
+
+        CVar<float> cvTreeScaleVary{
+            "r.TrolleyLoading.TreeScaleVary", 0.35f,
+            "木の大きさの振れ幅（0 で全部同じ。0.35 なら 0.65〜1.35 倍を 5 段に割って木ごとに変える）",
+            CVarRange{ 0.0f, 0.9f } };
+
+        CVar<float> cvTreeDim{
+            "r.TrolleyLoading.TreeDim", 0.55f,
+            "奥の木の暗さ（1.0 で描いたままの色）。下げるほど奥へ引っ込んで見える",
+            CVarRange{ 0.0f, 1.0f } };
 
         CVar<float> cvTextScale{
             "r.TrolleyLoading.TextScale", 1.0f,
@@ -111,11 +126,13 @@ namespace CoreEngine
 
         constexpr const char* kCVarPrefix = "r.TrolleyLoading";
 
-        // スプライト。.obj から正射投影で焼いたもの（縦 1080 基準の大きさ）
-        constexpr const char* kCartTexture    = "loading_cart.png";
-        constexpr const char* kRailTexture    = "loading_rail.png";
-        constexpr const char* kStationTexture = "loading_station.png";
-        constexpr const char* kSceneryTexture = "loading_scenery.png";
+        // スプライト。手描きのドット絵で、4 テクセル = ボクセル 1 個。
+        // ファイル名だけで指定すると Models/Monkey/monkey.png などの同名アセットと
+        // 区別が付かない（どちらが返るかがスキャン順任せになる）ので相対パスで指定する
+        constexpr const char* kCartTexture    = "Application/Assets/Textures/loading/monkey.png";
+        constexpr const char* kRailTexture    = "Application/Assets/Textures/loading/rail.png";
+        constexpr const char* kStationTexture = "Application/Assets/Textures/loading/station.png";
+        constexpr const char* kTreeTexture    = "Application/Assets/Textures/loading/tree.png";
         // 「ローディング中」。ドット絵フォント（x8y12pxDenkiChip）を 84px で焼いたもの。
         // 縦 1080 基準の大きさなので、他のスプライトと同じ扱いで置ける
         constexpr const char* kTextTexture    = "loading_text.png";
@@ -143,12 +160,13 @@ namespace CoreEngine
         [[maybe_unused]] HRESULT hr = trolleyParamsCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedTrolleyParams_));
         assert(SUCCEEDED(hr));
 
-        // スプライトを読み込む。sRGB ビューで読まれるのでシェーダー側の Load は既にリニア
+        // スプライトを読み込む。DDS 生成が「リニア→sRGB」で焼くので、シェーダー側の
+        // Load が返すのは PNG の生の値（sRGB）。リニア化はシェーダーが自分で掛ける
         auto& textureManager = TextureManager::GetInstance();
         cartHandle_    = textureManager.Load(kCartTexture).gpuHandle;
         railHandle_    = textureManager.Load(kRailTexture).gpuHandle;
         stationHandle_ = textureManager.Load(kStationTexture).gpuHandle;
-        sceneryHandle_ = textureManager.Load(kSceneryTexture).gpuHandle;
+        treeHandle_    = textureManager.Load(kTreeTexture).gpuHandle;
         textHandle_    = textureManager.Load(kTextTexture).gpuHandle;
 
         UpdateConstantBuffer();
@@ -170,7 +188,10 @@ namespace CoreEngine
         mappedTrolleyParams_->cartLift    = cvCartLift.Get();
         mappedTrolleyParams_->stationGoal = cvStationGoal.Get();
         mappedTrolleyParams_->stationDrop = cvStationDrop.Get();
-        mappedTrolleyParams_->sceneryDrop = cvSceneryDrop.Get();
+        mappedTrolleyParams_->treeDrop    = cvTreeDrop.Get();
+        mappedTrolleyParams_->treeSpacing = cvTreeSpacing.Get();
+        mappedTrolleyParams_->treeDim     = cvTreeDim.Get();
+        mappedTrolleyParams_->treeScaleVary = cvTreeScaleVary.Get();
         mappedTrolleyParams_->scale       = cvScale.Get();
         mappedTrolleyParams_->textScale   = cvTextScale.Get();
         mappedTrolleyParams_->textY       = cvTextY.Get();
@@ -251,7 +272,7 @@ namespace CoreEngine
         int cartIdx    = GetRootParamIndex("gCart");
         int railIdx    = GetRootParamIndex("gRail");
         int stationIdx = GetRootParamIndex("gStation");
-        int sceneryIdx = GetRootParamIndex("gScenery");
+        int treeIdx    = GetRootParamIndex("gTree");
         int textIdx    = GetRootParamIndex("gText");
         int outputIdx  = GetRootParamIndex("gOutput");
         int paramsIdx  = GetRootParamIndex("TrolleyParams");
@@ -261,7 +282,7 @@ namespace CoreEngine
         if (cartIdx >= 0)    cmdList->SetComputeRootDescriptorTable(cartIdx, cartHandle_);
         if (railIdx >= 0)    cmdList->SetComputeRootDescriptorTable(railIdx, railHandle_);
         if (stationIdx >= 0) cmdList->SetComputeRootDescriptorTable(stationIdx, stationHandle_);
-        if (sceneryIdx >= 0) cmdList->SetComputeRootDescriptorTable(sceneryIdx, sceneryHandle_);
+        if (treeIdx >= 0)    cmdList->SetComputeRootDescriptorTable(treeIdx, treeHandle_);
         if (textIdx >= 0)    cmdList->SetComputeRootDescriptorTable(textIdx, textHandle_);
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
         if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, trolleyParamsCB_->GetGPUVirtualAddress());
