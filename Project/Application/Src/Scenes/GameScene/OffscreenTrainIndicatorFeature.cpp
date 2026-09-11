@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "OffscreenTrainIndicatorFeature.h"
 
 #include "Components/GameCore/GameManagerComponent.h"
@@ -18,7 +18,7 @@ namespace
 {
     /// アイコンに使うトロッコの絵。ローディング画面と同じ版下を流用する
     constexpr const char* kIconTexture =
-        "Application/Assets/Textures/loading_cart.png";
+        "Application/Assets/Textures/Loading/cart.png";
 
     /// @brief アイコンの土台だけを生成し、あとは OffscreenTrainIndicatorUIComponent に任せる
     class OffscreenTrainIndicatorFeature final : public ISceneFeature

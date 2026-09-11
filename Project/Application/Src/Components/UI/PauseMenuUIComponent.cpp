@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "PauseMenuUIComponent.h"
 
 #include "EngineSystem/EngineSystem.h"
@@ -29,19 +29,19 @@ namespace
     // 版下は Project/Build/Scripts/gen_pause_tex.py。
     // ART_SCALE を変えたら下の寸法もまとめて直すこと
     // ───────────────────────────────────────────────────────────────
-    constexpr const char* kTexPlankMid = "Application/Assets/Textures/Pause/plank_mid.png";
-    constexpr const char* kTexPlankCapL = "Application/Assets/Textures/Pause/plank_cap_l.png";
-    constexpr const char* kTexPlankCapR = "Application/Assets/Textures/Pause/plank_cap_r.png";
-    constexpr const char* kTexVineV = "Application/Assets/Textures/Pause/vine_v.png";
-    constexpr const char* kTexVineH = "Application/Assets/Textures/Pause/vine_h.png";
-    constexpr const char* kTexFoliage = "Application/Assets/Textures/Pause/foliage.png";
-    constexpr const char* kTexCursor = "Application/Assets/Textures/Pause/cursor.png";
-    constexpr const char* kTexLeafM = "Application/Assets/Textures/Pause/leaf_m.png";
-    constexpr const char* kTexLeafS = "Application/Assets/Textures/Pause/leaf_s.png";
+    constexpr const char* kTexPlankMid = "Application/Assets/Textures/UI/Board/plank_mid.png";
+    constexpr const char* kTexPlankCapL = "Application/Assets/Textures/UI/Board/plank_cap_l.png";
+    constexpr const char* kTexPlankCapR = "Application/Assets/Textures/UI/Board/plank_cap_r.png";
+    constexpr const char* kTexVineV = "Application/Assets/Textures/UI/Plant/vine_v.png";
+    constexpr const char* kTexVineH = "Application/Assets/Textures/UI/Plant/vine_h.png";
+    constexpr const char* kTexFoliage = "Application/Assets/Textures/UI/Plant/foliage.png";
+    constexpr const char* kTexCursor = "Application/Assets/Textures/UI/cursor.png";
+    constexpr const char* kTexLeafM = "Application/Assets/Textures/UI/Plant/leaf_m.png";
+    constexpr const char* kTexLeafS = "Application/Assets/Textures/UI/Plant/leaf_s.png";
     /// 暗幕の単色。伸ばしてもドットが崩れない
     /// @note Models/Box/white1x1.png はアルファチャンネルの無い RGB 画像なので使えない
     ///       （乗算アルファが 0 のまま描かれず、暗幕が効かなかった）
-    constexpr const char* kTexDim = "Application/Assets/Textures/Pause/dim.png";
+    constexpr const char* kTexDim = "Application/Assets/Textures/UI/dim.png";
 
     // ───────────────────────────────────────────────────────────────
     // テクスチャの実寸（gen_pause_tex.py の出力と一致させること）

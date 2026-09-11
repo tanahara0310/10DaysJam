@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
 #include "Math/Vector/Vector2.h"
@@ -17,7 +17,7 @@ namespace CoreEngine
 namespace GameComponents
 {
     /// @brief ツタで吊るした木の看板のポーズメニュー
-    /// @details 絵は `Assets/Textures/Pause/*.png`（版下は
+    /// @details 絵は `Assets/Textures/UI/*.png`（版下は
     ///          `Project/Build/Scripts/gen_pause_tex.py`）。板・端木・垂れ蔦・
     ///          這い蔦・葉の茂みを組み合わせて、ジャングルに置かれた看板に見せる。
     ///          開くと画面が沈み、天井から蔦が伸びて看板が落ちてくる。木札 3 枚が

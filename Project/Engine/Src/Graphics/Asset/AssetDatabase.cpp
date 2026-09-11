@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "AssetDatabase.h"
 #include "AssetMetadata.h"
 #include "Threading/ThreadPool.h"
@@ -290,7 +290,7 @@ namespace CoreEngine
         const std::string guid = info.guid;
         const std::string name = info.name;
         const std::string fileName = info.fileName;
-        // 相対パス（例: Application/Assets/Textures/loading/monkey.png）。
+        // 相対パス（例: Application/Assets/Textures/Loading/monkey.png）。
         // ファイル名だけでは Models/Monkey/monkey.png のような同名アセットと
         // 区別できず、カテゴリ優先度が同点だと列挙順の早い方が勝ってしまう。
         // 呼び出し側がフルの相対パスで指定したときに 1 件へ決まるようにする

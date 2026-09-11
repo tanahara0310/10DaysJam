@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "BananaHarvestEffect.h"
 
 #include "Components/Building/MapViewComponent.h"
@@ -313,7 +313,7 @@ namespace {
     /// 飛んでいる 2D バナナに使うテクスチャ
     /// @note ゲージの粒と同じ絵にしてある。着地したところがそのまま粒になるので、
     ///       「このバナナがこの粒になった」が一目で繋がる。
-    constexpr const char* kHudBananaTexture = "Application/Assets/Textures/Stamina/pip.png";
+    constexpr const char* kHudBananaTexture = "Application/Assets/Textures/UI/Gauge/pip.png";
 
     /// 2D バナナを同時に何本出せるか。足りないぶんは 3D のまま消える（演出なので落とさない）
     constexpr std::size_t kHudImagePoolSize = 24;

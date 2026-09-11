@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ResultGaugeUIComponent.h"
 
 #include "Audio/AudioSystem.h"
@@ -31,23 +31,22 @@ namespace
 {
     // ───────────────────────────────────────────────────────────────
     // テクスチャ（すべて既存の流用。新規アセットは無い）
-    //  Pause/*      … 板・ツタ・茂み・葉カーソル・舞う葉・暗幕・レール（ポーズメニューと同じ版下。
-    //                 レールは板の中央パーツを引き伸ばして使う。専用のレール絵は
-    //                 質感だけ写真っぽくて浮くので採用しない）
-    //  result_cart  … トロッコ（loading_cart.png の絵を、UI と同じドット密度へ焼き直したもの。
-    //                 元の版下は 1 ドットが画面 6.3px かつ非整数グリッドで、周りより粗くにじんでいた）
+    //  Pause/*       … 板・ツタ・茂み・葉カーソル・舞う葉・暗幕（ポーズメニューと同じ版下）。
+    //                  敷いたレールの帯だけは板の中央パーツを引き伸ばして使う
+    //  loading/*     … トロッコと線路。ローディング画面と同じ版下を使って絵柄を揃える
     // ───────────────────────────────────────────────────────────────
-    constexpr const char* kTexPlankMid = "Application/Assets/Textures/Pause/plank_mid.png";
-    constexpr const char* kTexPlankCapL = "Application/Assets/Textures/Pause/plank_cap_l.png";
-    constexpr const char* kTexPlankCapR = "Application/Assets/Textures/Pause/plank_cap_r.png";
-    constexpr const char* kTexVineV = "Application/Assets/Textures/Pause/vine_v.png";
-    constexpr const char* kTexVineH = "Application/Assets/Textures/Pause/vine_h.png";
-    constexpr const char* kTexFoliage = "Application/Assets/Textures/Pause/foliage.png";
-    constexpr const char* kTexCursor = "Application/Assets/Textures/Pause/cursor.png";
-    constexpr const char* kTexLeafM = "Application/Assets/Textures/Pause/leaf_m.png";
-    constexpr const char* kTexLeafS = "Application/Assets/Textures/Pause/leaf_s.png";
-    constexpr const char* kTexDim = "Application/Assets/Textures/Pause/dim.png";
-    constexpr const char* kTexCart = "Application/Assets/Textures/result_cart.png";
+    constexpr const char* kTexPlankMid = "Application/Assets/Textures/UI/Board/plank_mid.png";
+    constexpr const char* kTexPlankCapL = "Application/Assets/Textures/UI/Board/plank_cap_l.png";
+    constexpr const char* kTexPlankCapR = "Application/Assets/Textures/UI/Board/plank_cap_r.png";
+    constexpr const char* kTexVineV = "Application/Assets/Textures/UI/Plant/vine_v.png";
+    constexpr const char* kTexVineH = "Application/Assets/Textures/UI/Plant/vine_h.png";
+    constexpr const char* kTexFoliage = "Application/Assets/Textures/UI/Plant/foliage.png";
+    constexpr const char* kTexCursor = "Application/Assets/Textures/UI/cursor.png";
+    constexpr const char* kTexLeafM = "Application/Assets/Textures/UI/Plant/leaf_m.png";
+    constexpr const char* kTexLeafS = "Application/Assets/Textures/UI/Plant/leaf_s.png";
+    constexpr const char* kTexDim = "Application/Assets/Textures/UI/dim.png";
+    constexpr const char* kTexCart = "Application/Assets/Textures/Loading/monkey.png";
+    constexpr const char* kTexRail = "Application/Assets/Textures/Loading/rail.png";
 
     constexpr const char* kSeTick = "Application/Assets/Sounds/SE/rail_build.mp3";
     constexpr const char* kSeArrive = "Application/Assets/Sounds/SE/title_bound.mp3";
@@ -102,41 +101,56 @@ namespace
     constexpr float kNewRecordRotation = -0.13f;
     constexpr float kNewRecordFontSize = 40.0f;
 
-    constexpr float kRailY = 800.0f;
+    constexpr float kRailY = 800.0f;         ///< レール上面（トロッコが載る線）
     constexpr float kRailLeft = -760.0f;     ///< 0m（画面 x=200）
     constexpr float kGoalX = 600.0f;         ///< 目標地点（画面 x=1560）
-    constexpr float kRailHeight = 44.0f;
-    // 目盛りは 100m 刻み。枕木（レールの縞）はその 100m を等分した位置に置くので、
-    // 何本目かを数えれば必ず目盛りの杭に行き当たる。px を直に刻むとここがずれる
+    // 線路は Loading/rail.png を正方形のまま横へ敷き詰めたもの。
+    // 版下は 64x64 のマスで、絵があるのは下 8 テクセル（上 4 がレール、下 4 が枕木）。
+    // レール上面はマスの上から 56/64 の位置にあるので、置くときはそのぶん持ち上げる
+    constexpr float kRailTileTexels = 64.0f;
+    constexpr float kRailSurfaceTexel = 56.0f;  ///< レール上面のテクセル位置
+    constexpr float kRailBarTexels = 4.0f;      ///< レール（上面から下）の厚み
+    // 目盛りは 100m 刻み。線路のタイルはその 100m を等分した幅にするので、
+    // 何枚目かを数えれば必ず目盛りの杭に行き当たる。px を直に刻むとここがずれる
     constexpr float kTickStepMeters = 100.0f;
-    constexpr int kTiesPerTick = 5;          ///< 目盛り 1 つを枕木で等分する数（= 20m ごと）
-    constexpr float kMinTiePitch = 24.0f;    ///< これより詰まるなら等分数を落とす
+    constexpr int kTilesPerTick = 2;         ///< 目盛り 1 つを渡すタイル数（1 枚に枕木 4 本）
+    constexpr float kMinTilePitch = 48.0f;   ///< これより詰まるなら枚数を落とす
     constexpr int kMaxTicks = 16;
-    constexpr float kSleeperWidth = 15.0f;
-    constexpr float kSleeperHeight = 34.0f;
     constexpr float kRailVineStep = 96.0f;
     constexpr float kTickFontSize = 24.0f;
     constexpr float kTickLabelY = kRailY + 58.0f;
-    // 100m の杭は枕木を下へ伸ばしたもの。太さと上端を枕木に合わせないと、
-    // 並べたときに「太さが違う」「上が欠けて空いて見える」になる
-    constexpr float kTickPostWidth = kSleeperWidth;
-    constexpr float kTickPostHeight = 52.0f;
-    constexpr float kTickPostY =
-        kRailY - kSleeperHeight * 0.5f + kTickPostHeight * 0.5f;
+    // 100m の杭はレール上面から下へ伸ばす。上端を上面に合わせないと、
+    // 並べたときに「上が欠けて空いて見える」になる
+    constexpr float kTickPostWidth = 15.0f;
+    constexpr float kTickPostHeight = 36.0f;
+    constexpr float kTickPostY = kRailY + kTickPostHeight * 0.5f;
+
+    /// @brief 線路タイルの中心を、レール上面からどれだけ上へ置くか [px]
+    /// @details 版下の中心（32/64）より上面（56/64）のほうが下にあるので、その差ぶん持ち上げる
+    constexpr float RailTileCenterLift(float pitch)
+    {
+        return pitch * (kRailSurfaceTexel / kRailTileTexels - 0.5f);
+    }
+
+    /// @brief レール（上面から下）の厚み [px]。敷いた区間を光らせる帯の高さに使う
+    constexpr float RailBarHeight(float pitch)
+    {
+        return pitch * (kRailBarTexels / kRailTileTexels);
+    }
+
     constexpr float kGateBeamY = 638.0f;
     constexpr float kGateBeamWidth = 350.0f;
     constexpr float kGatePostWidth = 40.0f;  ///< 看板を支える柱。まえのきろくの杭より太い
     constexpr float kGatePostTop = kGateBeamY + kPlankHeight * 0.5f;
     constexpr float kGateFontSize = 30.0f;
-    // トロッコは result_cart.png（25x26 ドットを 10 倍で書き出した 250x260）。
-    // 1 ドット = 画面 5px で置くと、ミップ 1 がちょうど表示サイズと一致してドットが崩れない。
-    // 外周 1 ドットは透明なので、絵の見えている大きさは 115x120
-    constexpr float kCartDot = 5.0f;
-    constexpr float kCartWidth = kCartDot * 25.0f;
-    constexpr float kCartHeight = kCartDot * 26.0f;
-    // 最後の + kCartDot は、下端の透明 1 ドットぶんを詰めてレールへ乗せ直す補正
-    constexpr float kCartY =
-        kRailY - kRailHeight * 0.5f - kCartHeight * 0.5f + 6.0f + kCartDot;
+    // トロッコは Loading/monkey.png（64x68。4 テクセル = ボクセル 1 個）。
+    // 等倍の 2 倍で置くと 1 テクセルが画面 2px にきっちり乗ってドットが崩れない。
+    // 版下は外周に透明を持たないので、下端がそのまま車体の底になる
+    constexpr float kCartTexScale = 2.0f;
+    constexpr float kCartWidth = 64.0f * kCartTexScale;
+    constexpr float kCartHeight = 68.0f * kCartTexScale;
+    constexpr float kCartSink = 4.0f;        ///< 車輪をレールへ埋める深さ（浮いて見えないように）
+    constexpr float kCartY = kRailY + kCartSink - kCartHeight * 0.5f;
     constexpr float kOverGoalMaxX = 46.0f;   ///< 目標を越えたぶんのはみ出し幅
 
     constexpr float kRecordPlankWidth = 300.0f;
@@ -144,8 +158,7 @@ namespace
     // 札はトロッコの上端（kCartY - kCartHeight * 0.5）より上へ置く。
     // 同じ位置に来たとき絵が重なってどちらも読めなくなるため
     constexpr float kRecordPlankY =
-        kRailY - kRailHeight * 0.5f - kCartHeight + 6.0f + kCartDot
-        - kRecordPlankHeight * 0.5f - 8.0f;
+        kCartY - kCartHeight * 0.5f - kRecordPlankHeight * 0.5f - 8.0f;
     constexpr float kRecordPostTop = kRecordPlankY + kRecordPlankHeight * 0.5f;
     constexpr float kRecordPostBottom = 806.0f;
     constexpr float kRecordPostWidth = 20.0f;
@@ -264,8 +277,8 @@ namespace GameComponents
 
     CVar<float> ResultGaugeUIComponent::RailBrightness{
         "Result.Gauge.RailBrightness", 0.32f,
-        "トロッコの明るさ。loading_cart.png は見たままの色で描かれているので、"
-        "等倍で貼ると白飛びする（レールは板と同じ Brightness を使うのでここでは動かない）",
+        "トロッコの明るさ。Loading/monkey.png は見たままの色で描かれているので、"
+        "等倍で貼ると白飛びする（線路は板と同じ Brightness を使うのでここでは動かない）",
         CVarRange{ 0.05f, 1.5f } };
 
     CVar<int> ResultGaugeUIComponent::SortOrder{
@@ -521,30 +534,34 @@ void GameComponents::ResultGaugeUIComponent::BuildGauge(int order)
     desc.charsetUtf8 = kPixelCharset;
     MsdfFont* font = fontManager ? fontManager->Acquire(desc) : nullptr;
 
-    // 枕木は 100m の目盛りを等分した位置に置く。こうすると 5 本ごとに目盛りの杭と重なり、
-    // 「何本進んだか」と「何 m 進んだか」が画面の上で一致する
-    const float pitch = TiePitch();
-    const int tieCount = static_cast<int>((kGoalX - kRailLeft) / pitch + 0.001f);
+    // 線路のタイルは 100m の目盛りを等分した幅で敷き詰める。こうすると 2 枚ごとに
+    // 継ぎ目が目盛りの杭と重なり、「何枚進んだか」と「何 m 進んだか」が画面の上で一致する。
+    // 版下は正方形なので、幅＝高さで置けば枕木の縦横比も崩れない
+    const float pitch = RailTilePitch();
+    const int tileCount =
+        static_cast<int>(std::ceil((kGoalX - kRailLeft) / pitch - 0.001f));
 
-    // まだ敷いていない区間の枕木（薄い板）
-    for (int i = 1; i <= tieCount; ++i) {
-        auto* sleeper = SpawnImage(kTexPlankMid, "ResultSleeper", order);
-        if (!sleeper) {
+    for (int i = 0; i < tileCount; ++i) {
+        auto* tile = SpawnImage(kTexRail, "ResultRailTile" + std::to_string(i), order);
+        if (!tile) {
             continue;
         }
-        sleeper->SetSize({ kSleeperWidth, kSleeperHeight });
-        sleeper->SetAnchoredPosition({ kRailLeft + pitch * static_cast<float>(i), kRailY });
-        sleepers_.push_back(sleeper);
+        tile->SetPivot({ 0.0f, 0.5f }); // 左端を基準に隣とぴったり突き合わせる
+        tile->SetSize({ pitch, pitch });
+        tile->SetAnchoredPosition({ kRailLeft + pitch * static_cast<float>(i),
+                                    kRailY - RailTileCenterLift(pitch) });
+        sleepers_.push_back(tile);
     }
 
-    // 走った区間に敷くレール。専用の版下だと質感だけ写真っぽくて他の板から浮くので、
-    // 板の中央パーツ（kTexPlankMid）を 1 枚だけ横に伸ばして使う。
-    // 無地なので継ぎ目やパターンずれの心配が無く、伸縮も ApplyGauge で毎フレーム描き直すだけでいい
+    // 走った区間を光らせる帯。線路タイルのレール部分にだけ重ねる。
+    // 専用の版下だと質感だけ写真っぽくて他の板から浮くので、板の中央パーツ
+    // （kTexPlankMid）を 1 枚だけ横に伸ばして使う。無地なので継ぎ目やパターンずれが無く、
+    // 伸縮も ApplyGauge で毎フレーム描き直すだけでいい
     railBar_ = SpawnImage(kTexPlankMid, "ResultRailBar", order + 1);
     if (railBar_) {
         railBar_->SetPivot({ 0.0f, 0.5f }); // 左端（0m）を基準に右へ伸ばす
-        railBar_->SetSize({ 0.0f, kRailHeight });
-        railBar_->SetAnchoredPosition({ kRailLeft, kRailY });
+        railBar_->SetSize({ 0.0f, RailBarHeight(pitch) });
+        railBar_->SetAnchoredPosition({ kRailLeft, kRailY + RailBarHeight(pitch) * 0.5f });
     }
 
     // 敷いた線をなぞるツタ
@@ -554,7 +571,7 @@ void GameComponents::ResultGaugeUIComponent::BuildGauge(int order)
             continue;
         }
         vine->SetSize({ kCreeperWidth * 0.6f, kCreeperHeight * 0.6f });
-        vine->SetAnchoredPosition({ x + 30.0f, kRailY - kRailHeight * 0.5f - 14.0f });
+        vine->SetAnchoredPosition({ x + 30.0f, kRailY - 14.0f });
         vine->SetActive(false);
         railVines_.push_back(vine);
     }
@@ -685,16 +702,16 @@ float GameComponents::ResultGaugeUIComponent::GoalDistance() const
     return (std::max)(1.0f, GoalMeters.Get());
 }
 
-float GameComponents::ResultGaugeUIComponent::TiePitch() const
+float GameComponents::ResultGaugeUIComponent::RailTilePitch() const
 {
-    // 目盛り 1 つ（100m）ぶんの px を等分する。詰まりすぎるときだけ等分数を落として、
-    // 「枕木が目盛りに乗る」関係だけは崩さない
+    // 目盛り 1 つ（100m）ぶんの px を等分する。詰まりすぎるときだけ枚数を落として、
+    // 「タイルの継ぎ目が目盛りに乗る」関係だけは崩さない
     const float tickSpan = (kGoalX - kRailLeft) * (kTickStepMeters / GoalDistance());
-    int ties = kTiesPerTick;
-    while (ties > 1 && tickSpan / static_cast<float>(ties) < kMinTiePitch) {
-        --ties;
+    int tiles = kTilesPerTick;
+    while (tiles > 1 && tickSpan / static_cast<float>(tiles) < kMinTilePitch) {
+        --tiles;
     }
-    return tickSpan / static_cast<float>(ties);
+    return tickSpan / static_cast<float>(tiles);
 }
 
 float GameComponents::ResultGaugeUIComponent::DistanceToX(float meters) const
@@ -1028,17 +1045,20 @@ void GameComponents::ResultGaugeUIComponent::ApplyGauge()
     const bool reached = shownMeters_ >= goal;
 
     // 敷いたレール（板 1 枚を左端から現在地まで伸ばすだけ。中身が無地なので伸縮に継ぎ目が出ない）
+    const float pitch = RailTilePitch();
     if (railBar_) {
         const float length = (std::max)(0.0f, endX - kRailLeft);
-        railBar_->SetSize({ length, kRailHeight });
+        railBar_->SetSize({ length, RailBarHeight(pitch) });
         railBar_->SetColor(wood);
     }
-    for (UIImage* sleeper : sleepers_) {
-        if (!sleeper) {
+    // 線路そのものは最初から最後まで見せたまま、走った区間だけ明るくする。
+    // 消してしまうと「進んだぶん線路が無くなる」ように見えてしまう。
+    // 明暗は目盛りの杭と同じ 2 段階にして、どこまで進んだかの読み方を揃える
+    for (UIImage* tile : sleepers_) {
+        if (!tile) {
             continue;
         }
-        sleeper->SetActive(sleeper->GetAnchoredPosition().x > endX - 8.0f);
-        sleeper->SetColor(Tinted({ 1.0f, 1.0f, 1.0f, 1.0f }, brightness * 0.72f));
+        tile->SetColor(tile->GetAnchoredPosition().x + pitch <= endX ? wood : woodDim);
     }
     for (UIImage* vine : railVines_) {
         if (!vine) {

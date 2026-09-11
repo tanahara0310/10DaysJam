@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "PauseMenuFeature.h"
 
 #include "Audio/AudioSystem.h"
@@ -29,7 +29,7 @@ using namespace CoreEngine;
 namespace
 {
     // オーナー（入れ物）用。中身は PauseMenuUIComponent が組み立てる
-    constexpr const char* kRootTexture = "Application/Assets/Textures/Pause/dim.png";
+    constexpr const char* kRootTexture = "Application/Assets/Textures/UI/dim.png";
 
     constexpr const char* kSeOpen = "Application/Assets/Sounds/SE/title_bound.mp3";
     constexpr const char* kSeMove = "Application/Assets/Sounds/SE/build.mp3";

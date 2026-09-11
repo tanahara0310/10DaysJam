@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "GameEntranceFeature.h"
 
 #include "Audio/AudioSystem.h"
@@ -43,7 +43,7 @@ namespace
     /// MapViewComponent が置く距離目盛りのオブジェクト名の頭
     constexpr const char* kMarkerNamePrefix = "DistanceMarker";
     /// 看板の入れ物に使う透明画像と、開幕の白幕に使う白一色の画像（どちらも同じ dim.png）
-    constexpr const char* kSignRootTexture = "Application/Assets/Textures/Pause/dim.png";
+    constexpr const char* kSignRootTexture = "Application/Assets/Textures/UI/dim.png";
     /// 白幕の描画順。ポーズメニュー（2000）より手前へ出す
     constexpr int kWhiteoutSortOrder = 3000;
     /// 基準解像度。白幕はこの大きさで画面を覆う（変更禁止）

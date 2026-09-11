@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "GameObject/Component/Core/IComponent.h"
 #include "Math/Vector/Vector2.h"
@@ -30,10 +30,9 @@ namespace GameComponents
     ///           - 自己最高    ……右上の板。記録が無い回でも必ず出す
     ///          距離は 0 から数えあげ、トロッコが実際にレールを敷きながら走って止まる。
     ///
-    ///          絵は既存の流用のみ。板・ツタ・茂み・葉カーソル・レールはポーズメニューと同じ
-    ///          `Textures/Pause/*.png`（レールは板の中央パーツを引き伸ばして使う。
-    ///          専用のレール絵は見た目が浮くので使わない）。トロッコ・駅だけはローディング
-    ///          演出の `loading_*.png`。新規アセットは 1 枚も足していない。
+    ///          絵は既存の流用のみ。板・ツタ・茂み・葉カーソルはポーズメニューと同じ
+    ///          `Textures/UI/*.png`。線路とトロッコはローディング画面と同じ
+    ///          `Textures/Loading/*.png`。新規アセットは 1 枚も足していない。
     ///
     /// @note 背景（地面に埋まったサル）が主役なので、UI は画面の上端・下端・四隅にだけ置く。
     ///       y = 250〜760 には何も出さない。暗幕も掛けない。
@@ -41,9 +40,9 @@ namespace GameComponents
     /// @note 位置はすべて基準解像度 1920x1080 の px。アンカーは TopCenter で統一し、
     ///       x は画面中央から、y は画面上端から測る。
     ///
-    /// @note ゲージの刻みは 100m 固定。枕木（レールの縞）はその 100m を等分した位置に置くので、
-    ///       目盛りの杭と必ず重なる。px を直に刻むと目盛りとずれるので、
-    ///       間隔は必ず `TiePitch()` から取ること。
+    /// @note ゲージの刻みは 100m 固定。線路のタイル（Loading/rail.png）はその 100m を
+    ///       等分した幅で敷くので、継ぎ目が目盛りの杭と必ず重なる。px を直に刻むと
+    ///       目盛りとずれるので、幅と間隔は必ず `RailTilePitch()` から取ること。
     ///
     /// @note 選択肢の木札は、シーンが動かす `ResultButtonAnimationComponent` 付きの
     ///       UIText に **板のほうが追従する** 作りにしてある。こうすると
@@ -129,8 +128,9 @@ namespace GameComponents
         Plank SpawnPlank(const std::string& name, int order);
         void BuildHeadline(int order);
         void BuildSideBoards(int order);
-        /// @brief 目盛り 1 つぶん（100m）を等分した、枕木 1 本ぶんの間隔 [px]
-        float TiePitch() const;
+        /// @brief 目盛り 1 つぶん（100m）を等分した、線路タイル 1 枚ぶんの幅 [px]
+        /// @note タイルは正方形なので、この値がそのまま高さにもなる
+        float RailTilePitch() const;
         void BuildGauge(int order);
         void BuildChoices(int order);
         void BuildFooter(int order);
@@ -172,8 +172,8 @@ namespace GameComponents
         CoreEngine::UIText* bestText_ = nullptr;
 
         // ゲージ
-        CoreEngine::UIImage* railBar_ = nullptr;  ///< 敷いた区間 1 本（板を伸縮させて使う）
-        std::vector<CoreEngine::UIImage*> sleepers_;
+        CoreEngine::UIImage* railBar_ = nullptr;  ///< 敷いた区間を光らせる帯（板を伸縮させて使う）
+        std::vector<CoreEngine::UIImage*> sleepers_;  ///< 線路タイル（レール＋枕木）を左から敷いたもの
         std::vector<CoreEngine::UIImage*> railVines_;
         std::vector<CoreEngine::UIImage*> tickPosts_;  ///< 100m ごとの目盛り（最後は目標地点）
         std::vector<CoreEngine::UIText*> tickTexts_;

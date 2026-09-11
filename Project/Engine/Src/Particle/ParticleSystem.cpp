@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ParticleSystem.h"
 #include "Utility/Random/RandomGenerator.h"
 #include "Camera/Camera.h"
@@ -95,7 +95,7 @@ void ParticleSystem::Initialize(GraphicsCore* dxCommon, ResourceFactory* resourc
     };
 
     // デフォルトテクスチャを設定（存在するパスに変更）
-    SetTexture("Textures/circle.png");
+    SetTexture("Textures/Particle/circle.png");
 }
 
 // 更新処理関数（他のオブジェクトと統一）
