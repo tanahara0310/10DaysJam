@@ -75,6 +75,16 @@ namespace GameComponents
         void SetViewCamera(CoreEngine::Camera* camera);
         void SetInsufficientFeedback(std::function<void()> onStaminaInsufficient);
 
+        /// @brief 入力の読み取りだけを止める（見た目の更新は続ける）
+        /// @details 突入演出のあいだカーソルを動かせなくするために使う。
+        ///          コンポーネントごと `SetEnabled(false)` で切ると矢印の回転と脈打ちまで
+        ///          止まって画面が固まって見えるので、止めるのは入力だけにする。
+        /// @param locked true で移動・敷設・Undo・投石がまとめて効かなくなる
+        void SetInputLocked(bool locked) { inputLocked_ = locked; }
+
+        /// @brief 入力を止めているか
+        bool IsInputLocked() const { return inputLocked_; }
+
         /// @brief 進行方向へ 1 マス敷いた場合のスタミナ消費量を返す（スタミナゲージの予告表示用）
         /// @details 向きは入力が来るまで決まらないため、優先方向（HorizontalPrioritize）の
         ///          1 マス先を見る。橋や岩のマスでは通常のレールより高い値になる。
@@ -149,6 +159,8 @@ namespace GameComponents
         // 画面上での大きさはカメラとの距離で変わるので、割合ではなくその場で測る
         // （IsInsideScreen を見ること）。カメラが引けば止まる位置も自動で端へ寄る。
         float cursorEdgeRadiusRatio_ = 0.5f;
+        // 入力だけを止めている最中か（演出中のロック用。見た目の更新は続ける）
+        bool inputLocked_ = false;
         bool isBreakingRock_ = false;
         bool isCursorAboveRock_ = false;
         // 画面端で止めた直後かどうか。長押し中にログを流し続けないための印

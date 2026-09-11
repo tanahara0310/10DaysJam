@@ -66,7 +66,7 @@ void WinApp::RegisterWindowClass()
 // ウィンドウの生成
 void WinApp::CreateAppWindow(const wchar_t* title)
 {
-    // 1280x720を基準サイズにした通常ウィンドウ（起動時に最大化表示）
+    // EngineConfig の window.width/height（既定 1280x720）の通常ウィンドウ
     UINT style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
 
     RECT windowRect = { 0, 0, currentClientWidth_, currentClientHeight_ };
@@ -87,11 +87,10 @@ void WinApp::CreateAppWindow(const wchar_t* title)
         wc_.hInstance,                 // インスタンスハンドル
         nullptr);                      // その他のパラメータ
 
-    // 起動時はボーダーレス全画面。ただしこの時点では表示しない。
-    // SW_SHOWMAXIMIZED ではタイトルバーとタスクバーが残るので「全画面」にはならない。
-    // ここでジオメトリだけ先に適用するのはクライアントサイズを確定させるため
-    // （遅らせると RT を 1280x720 で作った直後にモニタ解像度で作り直すことになる）。
-    SetFullscreen(true);
+    // 起動時は全画面にしない。既定の大きさのまま出すことでクライアントサイズが
+    // ここで確定し、レンダーターゲットを作り直さずに済む。全画面へは Alt+Enter
+    // （またはメニューの Layout → 全画面表示）で切り替える。
+    // この時点ではまだ表示しない。表示は起動シーケンス完了後の ShowMainWindow()。
 }
 
 void WinApp::ShowMainWindow()
@@ -121,11 +120,11 @@ void WinApp::SetFullscreen(bool fullscreen)
         windowedPlacement_.length = sizeof(WINDOWPLACEMENT);
         GetWindowPlacement(hwnd_, &windowedPlacement_);
 
-        // 起動時（非表示のまま全画面化する経路）では showCmd が SW_HIDE になる。
+        // ShowMainWindow() より前に全画面化された場合は showCmd が SW_HIDE になる。
         // そのまま復元すると Alt+Enter でウィンドウモードへ戻した瞬間に消えるので、
-        // 従来と同じ「最大化ウィンドウ」へ矯正しておく
+        // 既定の大きさのウィンドウへ矯正しておく
         if (windowedPlacement_.showCmd == SW_HIDE) {
-            windowedPlacement_.showCmd = SW_SHOWMAXIMIZED;
+            windowedPlacement_.showCmd = SW_SHOWNORMAL;
         }
 
         HMONITOR monitor = MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST);

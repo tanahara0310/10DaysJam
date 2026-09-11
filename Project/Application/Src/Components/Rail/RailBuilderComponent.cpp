@@ -210,6 +210,12 @@ void GameComponents::RailBuilderComponent::Update() {
         modelScale };
     transform_->Get().rotate.y = timer_ * rotationSpeed_;
 
+    // 入力を止められている間（突入演出など）はここで抜ける。
+    // 上の拡縮・回転は毎フレーム進めるので、矢印は回り続ける
+    if (inputLocked_) {
+        return;
+    }
+
     // ゲームオブジェクトのオーナーからエンジンシステムを取得し、入力マネージャーを取得する
     GameObject* owner = GetOwner();
     EngineSystem* engine =

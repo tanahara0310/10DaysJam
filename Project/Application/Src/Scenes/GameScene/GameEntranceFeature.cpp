@@ -5,14 +5,12 @@
 #include "Camera/Rig/CameraRig.h"
 #include "Camera/Shake/CameraShake.h"
 #include "Camera/Shake/CameraShakePresets.h"
-#include "Components/GameCore/GameSettingsComponent.h"
 #include "Components/Rail/RailBuilderComponent.h"
 #include "Components/Train/TrainMovementComponent.h"
 #include "Components/UI/ObjectiveSignComponent.h"
 #include "Components/UI/PauseMenuUIComponent.h"
 #include "Components/UI/SpeedGaugeUIComponent.h"
 #include "Components/UI/StaminaGaugeUIComponent.h"
-#include "Components/Utility/BlockModelLayout.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
@@ -61,7 +59,7 @@ namespace
     constexpr float kMaxStepSeconds = 0.1f;
     /// 到達した目盛りが白から達成色へ落ち着くまでの秒数
     constexpr float kReachedFlashSeconds = 0.6f;
-    /// 次の目標の目盛りが脈打つはやさ [rad/秒]
+    /// 未達の目標の目盛りが脈打つはやさ [rad/秒]
     constexpr float kTargetPulseSpeed = 4.0f;
     /// 脈打ちの振れ幅（1.0 に対する比率）
     constexpr float kTargetPulseAmount = 0.35f;
@@ -74,47 +72,48 @@ namespace
     CVar<bool> cvEnabled{
         "Game.Entrance.Enabled", true,
         "突入演出（雲海ブレイクとカメラの降下）を出すか。"
-        "切っても目標看板と目標の進行はそのまま動く" };
+        "切っても目標看板と目標の判定はそのまま動く" };
 
     CVar<float> cvCloudSeconds{
-        "Game.Entrance.CloudSeconds", 2.05f,
+        "Game.Entrance.CloudSeconds", 1.40f,
         "開幕の白幕（雲の中）が晴れるまでの秒数",
         CVarRange{ 0.2f, 8.0f } };
 
     CVar<float> cvCameraDelay{
-        "Game.Entrance.CameraDelay", 0.20f,
+        "Game.Entrance.CameraDelay", 0.15f,
         "空のリグからゲーム構図へ降り始めるまでの秒数",
         CVarRange{ 0.0f, 4.0f } };
 
     CVar<float> cvCameraBlendSeconds{
-        "Game.Entrance.CameraBlendSeconds", 2.10f,
+        "Game.Entrance.CameraBlendSeconds", 1.50f,
         "空のリグからゲーム構図へ降り切るまでの秒数",
         CVarRange{ 0.1f, 8.0f } };
 
     CVar<float> cvSignDelay{
-        "Game.Entrance.SignDelay", 2.20f,
-        "最初の目標看板が降りてくる時刻 [秒]",
+        "Game.Entrance.SignDelay", 1.50f,
+        "目標看板が降りてくる時刻 [秒]",
         CVarRange{ 0.0f, 10.0f } };
 
     CVar<float> cvCallDelay{
-        "Game.Entrance.CallDelay", 4.75f,
+        "Game.Entrance.CallDelay", 3.20f,
         "「つなげ！！」を叩き込む時刻 [秒]",
         CVarRange{ 0.0f, 12.0f } };
 
     CVar<float> cvHudRevealOffset{
-        "Game.Entrance.HudRevealOffset", 0.15f,
+        "Game.Entrance.HudRevealOffset", 0.12f,
         "「つなげ！！」から何秒後に HUD（スタミナ・速度計・操作ヒント・レールの矢印）が"
         "出てくるか。演出が終わるまでは引っ込んでいる",
         CVarRange{ 0.0f, 6.0f } };
 
     CVar<float> cvHudRevealSeconds{
-        "Game.Entrance.HudRevealSeconds", 0.55f,
+        "Game.Entrance.HudRevealSeconds", 0.45f,
         "HUD が定位置へ滑り込む（矢印は伸び上がる）までの秒数（1 つあたり）",
         CVarRange{ 0.05f, 3.0f } };
 
-    CVar<int> cvGoalStep{
-        "Game.Goal.StepMeters", 500,
-        "目標距離の刻み [m]。500 なら 500 → 1000 → 1500 … と続く",
+    CVar<int> cvGoalMeters{
+        "Game.Goal.Meters", 500,
+        "目標距離 [m]。開幕の看板がこの数字を出し、列車がここを越えたら達成。"
+        "次の目標は作らないので、看板が降りてくるのは開幕の 1 回きり",
         CVarRange{ 10.0f, 2000.0f } };
 
     CVar<Vector4> cvReachedColor{
@@ -124,7 +123,7 @@ namespace
 
     CVar<Vector4> cvTargetColor{
         "Game.Goal.MarkerTargetColor", { 0.25f, 0.010f, 0.008f, 1.0f },
-        "次の目標地点の目盛りの色（脈打つ）。同じくリニア値で入れること。"
+        "目標地点の目盛りの色（届くまで脈打つ）。同じくリニア値で入れること。"
         "既定は赤（画面では (230, 60, 55) ほど）で、脈の山では白へ寄って光る" };
 
     Vector4 Lerp(const Vector4& from, const Vector4& to, float t)
@@ -139,7 +138,7 @@ namespace
     // Feature
     // ──────────────────────────────────────────────────────────
 
-    /// @brief 突入演出と、500m 刻みの目標提示をまとめて指揮する Feature
+    /// @brief 突入演出と、500m の目標提示をまとめて指揮する Feature
     class GameEntranceFeature final : public ISceneFeature
     {
     public:
@@ -166,7 +165,7 @@ namespace
                 Logger::GetInstance().Warnf(
                     LogCategory::Game,
                     "GameEntranceFeature: レールカーソルが見つからないので"
-                    "雲の中でも操作できてしまいます");
+                    "演出中でも操作できてしまいます");
             }
             // UI もトーンマップ前のバッファへ描かれるので、掛かる露出を打ち消す
             if (auto* postEffects = engine_ ? engine_->GetService<PostEffectManager>() : nullptr) {
@@ -188,7 +187,7 @@ namespace
                     "GameEntranceFeature: 目標看板を作れませんでした");
             }
 
-            goalMeters_ = GoalStep();
+            goalMeters_ = GoalMeters();
 
             // 開幕の白幕。1 フレーム目から白いよう、ここで作って濃さも入れておく
             if (auto* sheet = ctx.gameObjectManager->AddObject(std::make_unique<UIImage>())) {
@@ -231,7 +230,7 @@ namespace
         }
 
     private:
-        int GoalStep() const { return std::max(1, cvGoalStep.Get()); }
+        int GoalMeters() const { return std::max(1, cvGoalMeters.Get()); }
 
         /// @brief 開幕の白幕の濃さを、演出の進み具合に合わせて更新する
         /// @param progress 0 = 開幕（雲の中）／1 = 晴れ切った
@@ -257,41 +256,26 @@ namespace
             whiteout_->SetColor({ 1.0f, 1.0f, 1.0f, alpha });
         }
 
-        /// @brief 雲の中にいる間、プレイヤーの操作を止める
+        /// @brief 突入演出のあいだ、プレイヤーの操作を止める
         ///
-        /// @details 止めるのはレールカーソル（RailBuilderComponent）だけでよい。
+        /// @details 止めるのはレールカーソル（RailBuilderComponent）の**入力だけ**。
         ///          列車はプレイヤーが最初のレールを敷くまで発車しないので、
         ///          カーソルを止めればゲームの進行ごと待たせられる。
-        ///          コンポーネントごと切るため、移動・敷設・Undo・投石がまとめて
-        ///          効かなくなり、長押しの溜め（buildPushTimer_ など）も進まない。
-        ///          ゲームオーバー時に GameManagerComponent がやっているのと同じ止め方。
+        ///
+        ///          コンポーネントごと `SetEnabled(false)` で切ってはいけない。理由は 2 つある。
+        ///          1. 矢印の回転と脈打ちまで止まり、演出中だけ画面が固まって見える。
+        ///          2. シーンの読み込みは「Feature の後処理（PostSceneInitialize）」→
+        ///             「シーンデータの復元」の順に走る（`BaseScene::BuildLoadTasks`）。
+        ///             復元は RailBuilder.json の `"enabled": true` を流し込むので、
+        ///             ここで切っても直後に有効へ戻る（«演出中なのに動ける» の正体）。
+        ///          `SetInputLocked` は保存対象ではないので、復元に消されない。
         void SetControlLocked(bool locked)
         {
             if (!railBuilder_ || controlLocked_ == locked) {
                 return;
             }
             controlLocked_ = locked;
-            railBuilder_->SetEnabled(!locked);
-            if (locked) {
-                PrimeCursorScale();
-            }
-        }
-
-        /// @brief 止めている間ぶんだけ、カーソルの大きさを先に入れておく
-        ///
-        /// @details RailBuilderComponent は毎フレーム自分で拡縮を書くが、止めている間は
-        ///          それが回らず、Transform の初期値（1 倍）のまま小さく映ってしまう。
-        ///          白幕は終わりぎわがほとんど透けるので、そこで小さい矢印が見えないよう
-        ///          1 マスぶんの大きさをここで入れておく（脈打ちは操作を返してから始まる）。
-        void PrimeCursorScale()
-        {
-            auto* transform = railBuilder_->Sibling<TransformComponent>();
-            if (!transform) {
-                return;
-            }
-            const float scale = GameComponents::BlockModelLayout::GetScale(
-                GameComponents::GameSettings::GridSize.Get());
-            transform->Get().scale = { scale, scale, scale };
+            railBuilder_->SetInputLocked(locked);
         }
 
         void UpdateEntrance(SceneContext& ctx)
@@ -337,16 +321,6 @@ namespace
                 }
             }
 
-            // ---- 操作を返す ----
-            // 白幕が晴れて（＝ワールドが見えて）からカーソルを動かせるようにする。
-            // 「つなげ！！」や HUD の登場まで待たせると、見えているのに動かせない
-            // 間ができてしまうので、締めの演出より先に返す。
-            // 演出を切っている（Game.Entrance.Enabled が false）ときは白幕自体が
-            // 出ないため、ここは初回で素通りする
-            if (controlLocked_ && !whiteoutActive_) {
-                SetControlLocked(false);
-            }
-
             // ---- もくひょう看板 ----
             const float signDelay = playCinematic ? cvSignDelay.Get() : 0.3f;
             if (!signShown_ && elapsed_ >= signDelay) {
@@ -373,6 +347,11 @@ namespace
             if (callPlayed_ && hudRevealDone_ && !whiteoutActive_
                 && elapsed_ >= callDelay + kWhiteoutClearMargin) {
                 entranceDone_ = true;
+                // ---- 操作を返す ----
+                // 「つなげ！！」と HUD が出揃って演出が終わってから返す。
+                // 演出を切っている（Game.Entrance.Enabled が false）ときは
+                // そもそも止めていないので、ここは素通りする
+                SetControlLocked(false);
             }
         }
 
@@ -419,35 +398,34 @@ namespace
             }
         }
 
-        /// @brief 列車が目標を越えたら、目盛りへ色を付けて次の目標の看板を出す
+        /// @brief 列車が目標へ届いたら、足元の目盛りを達成の色にする
+        ///
+        /// @details 目標は `Game.Goal.Meters`（既定 500m）の 1 つだけ。越えても
+        ///          «次の目標» は作らないので、看板は開幕に降りてきた 1 枚きり。
         void UpdateGoal()
         {
             if (!train_) {
                 return;
             }
+            // 到達した瞬間の光りかたに使う。達成後も進め続けること
+            // （止めると目盛りが白く光ったまま固まる）
             reachedFlash_ += std::clamp(Time::DeltaTime(), 0.0f, kMaxStepSeconds);
+            if (goalReached_) {
+                return;
+            }
+            // 未達のうちは、インスペクターで目標距離を動かしたぶんに追従させる
+            goalMeters_ = GoalMeters();
 
             // 地面の目盛りはワールド X をそのままメートルとして置かれている。
             // 列車の絶対位置で見るので、看板の数字と足元の数字が必ず一致する
-            const float worldX = train_->GetWorldPosition().x;
-            const int step = GoalStep();
-            bool advanced = false;
-            while (worldX >= static_cast<float>(goalMeters_)) {
-                reachedMeters_ = goalMeters_;
-                goalMeters_ += step;
-                advanced = true;
-            }
-            if (!advanced) {
+            if (train_->GetWorldPosition().x < static_cast<float>(goalMeters_)) {
                 return;
             }
+            goalReached_ = true;
             reachedFlash_ = 0.0f;
-            if (sign_) {
-                sign_->Show(static_cast<std::uint32_t>(goalMeters_));
-            }
             PlaySe(kGoalSePath);
             Logger::GetInstance().Infof(
-                LogCategory::Game,
-                "GameEntrance: {}m 到達。つぎの目標は {}m", reachedMeters_, goalMeters_);
+                LogCategory::Game, "GameEntrance: {}m 到達", goalMeters_);
         }
 
         /// @brief 目標地点の目盛りだけ色を差し替える（それ以外は白のまま）
@@ -456,11 +434,9 @@ namespace
             if (!ctx.gameObjectManager) {
                 return;
             }
-            const int step = GoalStep();
             const Vector4 plain{ 1.0f, 1.0f, 1.0f, 1.0f };
-            const Vector4 reached = cvReachedColor.Get();
 
-            // 次の目標は脈打たせて「ここを目指す」と分かるようにする
+            // 未達のうちは脈打たせて「ここを目指す」と分かるようにする
             const float pulse = 1.0f
                 + std::sin(pulseTimer_ * kTargetPulseSpeed) * kTargetPulseAmount;
             const Vector4 target = [&] {
@@ -470,7 +446,9 @@ namespace
             // 到達した瞬間だけ白く光らせ、達成色へ落ち着かせる
             const float flash =
                 std::clamp(reachedFlash_ / kReachedFlashSeconds, 0.0f, 1.0f);
-            const Vector4 justReached = Lerp(plain, reached, flash);
+            const Vector4 goalColor = goalReached_
+                ? Lerp(plain, cvReachedColor.Get(), flash)
+                : target;
 
             pulseTimer_ += std::clamp(Time::DeltaTime(), 0.0f, kMaxStepSeconds);
 
@@ -485,19 +463,7 @@ namespace
                 }
                 const int meters =
                     static_cast<int>(std::lround(transform->Get().translate.x));
-                if (meters <= 0 || meters % step != 0) {
-                    marker->SetColor(plain);
-                    continue;
-                }
-                if (meters == reachedMeters_) {
-                    marker->SetColor(justReached);
-                } else if (meters <= reachedMeters_) {
-                    marker->SetColor(reached);
-                } else if (meters == goalMeters_) {
-                    marker->SetColor(target);
-                } else {
-                    marker->SetColor(plain);
-                }
+                marker->SetColor(meters == goalMeters_ ? goalColor : plain);
             }
         }
 
@@ -523,7 +489,6 @@ namespace
         float pulseTimer_ = 0.0f;
         float reachedFlash_ = kReachedFlashSeconds;
         int goalMeters_ = 500;
-        int reachedMeters_ = 0;
 
         bool whiteoutActive_ = false;
         bool controlLocked_ = false;
@@ -533,6 +498,8 @@ namespace
         bool callPlayed_ = false;
         bool hudRevealDone_ = false;
         bool entranceDone_ = false;
+        /// 目標へ届いたか。届いたらそれ以上は進めない（次の目標を作らない）
+        bool goalReached_ = false;
     };
 }
 
