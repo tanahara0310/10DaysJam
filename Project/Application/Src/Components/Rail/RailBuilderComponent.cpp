@@ -426,6 +426,10 @@ void GameComponents::RailBuilderComponent::Update() {
         }
         SyncTransformToGrid();
 
+        if (staminaCost > 0.0f && OnStaminaConsumed_) {
+            OnStaminaConsumed_(staminaCost, transform_->Get().translate);
+        }
+
         if (!wasBreakingRock) {
             StartNextRockThrow();
         }
@@ -440,6 +444,10 @@ void GameComponents::RailBuilderComponent::Update() {
     // 通常マスへの敷設ではカーソルを通常高さにする。
     isCursorAboveRock_ = false;
     SyncTransformToGrid();
+
+    if (staminaCost > 0.0f && OnStaminaConsumed_) {
+        OnStaminaConsumed_(staminaCost, transform_->Get().translate);
+    }
 
     Logger::GetInstance().Infof(
         LogCategory::Game,
@@ -693,6 +701,11 @@ float GameComponents::RailBuilderComponent::GetNextPlacementCost() const {
 void GameComponents::RailBuilderComponent::SetInsufficientFeedback(
     std::function<void()> onStaminaInsufficient) {
     OnStaminaInsufficient_ = std::move(onStaminaInsufficient);
+}
+
+void GameComponents::RailBuilderComponent::SetStaminaConsumedFeedback(
+    std::function<void(float, const CoreEngine::Vector3&)> onStaminaConsumed) {
+    OnStaminaConsumed_ = std::move(onStaminaConsumed);
 }
 
 void GameComponents::RailBuilderComponent::NotifyStaminaInsufficient() {

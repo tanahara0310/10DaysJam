@@ -74,6 +74,9 @@ namespace GameComponents
         // 渡さなければ制限は掛からず、従来どおりどこまでも先へ進める。
         void SetViewCamera(CoreEngine::Camera* camera);
         void SetInsufficientFeedback(std::function<void()> onStaminaInsufficient);
+        /// @brief 敷設成功時の消費量とカーソル位置を通知する。nullptr で解除する。
+        void SetStaminaConsumedFeedback(
+            std::function<void(float, const CoreEngine::Vector3&)> onStaminaConsumed);
 
         /// @brief 入力の読み取りだけを止める（見た目の更新は続ける）
         /// @details 突入演出のあいだカーソルを動かせなくするために使う。
@@ -171,5 +174,6 @@ namespace GameComponents
         std::function<void()> OnUndoSE_ = nullptr;
         std::function<void()> OnFailureSE_ = nullptr;
         std::function<void()> OnStaminaInsufficient_ = nullptr;
+        std::function<void(float, const CoreEngine::Vector3&)> OnStaminaConsumed_ = nullptr;
     };
 }

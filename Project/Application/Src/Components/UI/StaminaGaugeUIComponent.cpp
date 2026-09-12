@@ -71,7 +71,6 @@ namespace
     // アニメーション
     // ───────────────────────────────────────────────────────────────
     constexpr float kGrowRate = 11.0f;    ///< 生えるはやさ（1 秒あたりの grow 変化量）
-    constexpr float kEatRate = 9.0f;     ///< 食べられるはやさ
     constexpr float kGrowStagger = 0.02f;///< 連続で生えるときのずらし秒数
     constexpr float kFlashDecay = 5.0f;
     /// バナナが入ったときに、実っている粒をどこまで縮めてから伸び直させるか。
@@ -155,6 +154,16 @@ namespace
         "Game.StaminaGauge.GainPopStretch", 0.18f,
         "バナナが入った瞬間に粒が縦へ伸びる量。0 で伸縮なし",
         CVarRange{ 0.0f, 1.0f } };
+
+    CVar<float> cvFallDuration{
+        "Game.StaminaGauge.FallDuration", 0.25f,
+        "消費した黄色い粒が落下しながら消えるまでの秒数",
+        CVarRange{ 0.1f, 2.0f } };
+
+    CVar<float> cvFallDistance{
+        "Game.StaminaGauge.FallDistance", 72.0f,
+        "消費した黄色い粒の落下距離 [px]（表示倍率を掛ける前）",
+        CVarRange{ 0.0f, 240.0f } };
 
     /// 生えた／食べられた瞬間の発光量
     CVar<float> cvFlashStrength{
@@ -296,6 +305,10 @@ void GameComponents::StaminaGaugeUIComponent::Update()
 
     const bool enabled = cvEnabled.Get();
     if (!enabled) {
+        for (auto& falling : fallingPips_) {
+            if (falling.image) { falling.image->SetActive(false); }
+            falling.active = false;
+        }
         if (board_->IsActive()) {
             board_->SetActive(false);
             for (auto* cap : { capLeft_, capRight_ }) {
@@ -337,6 +350,7 @@ void GameComponents::StaminaGaugeUIComponent::Update()
         }
     }
 
+    UpdateFallingPips(deltaTime);
     UpdateTargets();
     UpdateAnimation(deltaTime);
     ApplyLayout(time);
@@ -436,6 +450,11 @@ void GameComponents::StaminaGaugeUIComponent::UpdateTargets()
                 pip.delay = stagger;
                 stagger += kGrowStagger;
             } else {
+                if (i < visiblePipCount_) {
+                    StartPipFall(pip);
+                }
+                // 黄色い実は独立して落とし、残量はこのフレームで空表示にする。
+                pip.grow = 0.0f;
                 pip.delay = 0.0f;
             }
         }
@@ -478,8 +497,7 @@ void GameComponents::StaminaGaugeUIComponent::UpdateAnimation(float deltaTime)
             pip.delay = std::max(0.0f, pip.delay - deltaTime);
         } else {
             const float target = pip.filled ? 1.0f : 0.0f;
-            const float rate = pip.filled ? kGrowRate : kEatRate;
-            pip.grow = MoveTowards(pip.grow, target, rate * deltaTime);
+            pip.grow = MoveTowards(pip.grow, target, kGrowRate * deltaTime);
         }
 
         // 実が消えきったら皮へ、生え始めたら実へ差し替える。
@@ -511,6 +529,74 @@ void GameComponents::StaminaGaugeUIComponent::UpdateAnimation(float deltaTime)
             glow * tintG * (1.0f - warn * 0.35f),
             glow * tintB * (1.0f - warn * 0.45f),
             alpha });
+    }
+}
+
+void GameComponents::StaminaGaugeUIComponent::StartPipFall(const Pip& pip)
+{
+    if (!pip.image || !pip.image->IsActive() || !pip.showsFruit || pip.grow <= 0.0f ||
+        introReveal_ <= 0.0f) {
+        return;
+    }
+
+    // 終了した画像を再利用する。高速な消費・回復でもシーン内の画像数を制限する。
+    auto slot = std::find_if(fallingPips_.begin(), fallingPips_.end(),
+        [](const FallingPip& falling) { return !falling.active; });
+    if (slot == fallingPips_.end()) {
+        if (fallingPips_.size() < kMaxPipCount * 2) {
+            auto* image = SpawnPart(GetOwner(), kTexPip,
+                "StaminaGaugeFallingPip_" + std::to_string(fallingPips_.size()),
+                cvSortOrder.Get() + 5);
+            if (!image) {
+                return;
+            }
+            fallingPips_.push_back(FallingPip{});
+            slot = fallingPips_.end() - 1;
+            slot->image = image;
+        } else {
+            slot = std::max_element(fallingPips_.begin(), fallingPips_.end(),
+                [](const FallingPip& a, const FallingPip& b) {
+                    return a.elapsed / a.duration < b.elapsed / b.duration;
+                });
+        }
+    }
+
+    slot->startPosition = pip.image->GetAnchoredPosition();
+    slot->elapsed = 0.0f;
+    slot->duration = std::max(0.1f, cvFallDuration.Get());
+    slot->distance = std::max(0.0f, cvFallDistance.Get()) * std::max(0.1f, cvScale.Get());
+    slot->active = true;
+    slot->image->SetPivot(pip.image->GetPivot());
+    slot->image->SetSize(pip.image->GetSize());
+    slot->image->SetAnchoredPosition(slot->startPosition);
+    slot->image->SetUIRotation(pip.image->GetUIRotation());
+    slot->image->SetSortOrder(cvSortOrder.Get() + 5);
+    // 予告の点滅や赤い発光を引き継がず、消費した黄色をはっきり見せる。
+    const float brightness = cvPipBrightness.Get();
+    slot->image->SetColor({ brightness, brightness, brightness, 1.0f });
+    slot->image->SetActive(true);
+}
+
+void GameComponents::StaminaGaugeUIComponent::UpdateFallingPips(float deltaTime)
+{
+    for (auto& falling : fallingPips_) {
+        if (!falling.active || !falling.image) {
+            continue;
+        }
+        falling.elapsed += deltaTime;
+        if (falling.elapsed >= falling.duration) {
+            falling.image->SetActive(false);
+            falling.active = false;
+            continue;
+        }
+        const float progress = std::clamp(falling.elapsed / falling.duration, 0.0f, 1.0f);
+        // 下向きの初速から加速。形と大きさを保って落とし、透明度だけを下げる。
+        const float offset = falling.distance * (0.2f * progress + 0.8f * progress * progress);
+        falling.image->SetAnchoredPosition({
+            falling.startPosition.x, falling.startPosition.y + offset });
+        const float brightness = cvPipBrightness.Get();
+        const float alpha = 1.0f - progress * progress * (3.0f - 2.0f * progress);
+        falling.image->SetColor({ brightness, brightness, brightness, alpha });
     }
 }
 
