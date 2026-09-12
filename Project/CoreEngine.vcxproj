@@ -237,6 +237,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.cpp" />
+    <ClCompile Include="Application\Src\Scenes\GameScene\StaminaCostPopupFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\GameScene\StageLightsFeature.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultScene.cpp" />
     <ClCompile Include="Application\Src\Scenes\ResultScene\ResultSceneUi.cpp" />
@@ -855,6 +856,7 @@ xcopy "$(ProjectDir)Engine\Config" "$(TargetDir)Engine\Config\" /E /I /Y</Comman
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedGaugeFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\SpeedBlurFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\StaminaGaugeFeature.h" />
+    <ClInclude Include="Application\Src\Scenes\GameScene\StaminaCostPopupFeature.h" />
     <ClInclude Include="Application\Src\Scenes\GameScene\StageLightsFeature.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultScene.h" />
     <ClInclude Include="Application\Src\Scenes\ResultScene\ResultSceneUi.h" />

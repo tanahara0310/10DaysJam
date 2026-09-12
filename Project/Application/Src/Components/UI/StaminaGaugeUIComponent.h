@@ -19,8 +19,7 @@ namespace GameComponents
     /// @brief スタミナをバナナの粒の数で見せる HUD ゲージ。
     /// @details 数字ではなく離散的な粒で表す。粒 1 つ = `Game.StaminaGauge.StaminaPerPip`
     ///          （既定 2 = レール 1 マスの基本コスト）で、5 粒ごとに房の切れ目が入るため
-    ///          目盛りを兼ねる。食べた粒はその場に皮として残るので、直前に何粒持って
-    ///          いかれたかが見える。
+    ///          目盛りを兼ねる。消費した黄色い粒は落下しながら消え、元の位置には皮が残る。
     /// @note 板・端木・粒・葉はこのコンポーネントが `Awake()` で生成する。シーン側は
     ///       `StaminaGaugeFeature` を 1 行登録するだけでよい。
     /// @note 拡大縮小でドットがボケないよう、テクスチャは基準解像度 1920x1080 の等倍で
@@ -79,10 +78,22 @@ namespace GameComponents
             bool  preview = false;  ///< 次の 1 マスで食べられる予定か（点滅で予告する）
         };
 
+        /// @brief ゲージから切り離した消費粒。回復後も独立して落下を続ける。
+        struct FallingPip {
+            CoreEngine::UIImage* image = nullptr;
+            CoreEngine::Vector2 startPosition{};
+            float elapsed = 0.0f;
+            float duration = 0.25f;
+            float distance = 72.0f;
+            bool active = false;
+        };
+
         void BuildParts();
         /// @brief 現在のスタミナから各粒の目標状態を決める
         void UpdateTargets();
         void UpdateAnimation(float deltaTime);
+        void StartPipFall(const Pip& pip);
+        void UpdateFallingPips(float deltaTime);
         /// @brief CVar の位置・粒数から毎フレーム配置し直す（インスペクタ調整を即反映するため）
         void ApplyLayout(float time);
         /// @brief バナナが入った反応の強さ。0 なら平常時。上へ弾んで戻る減衰波
@@ -98,6 +109,7 @@ namespace GameComponents
         CoreEngine::UIImage* capLeft_ = nullptr;
         CoreEngine::UIImage* capRight_ = nullptr;
         std::vector<Pip> pips_;
+        std::vector<FallingPip> fallingPips_;
         std::vector<CoreEngine::UIImage*> leaves_;
         std::vector<CoreEngine::UIImage*> vines_;   ///< 板の縁に絡ませた蔦
 
